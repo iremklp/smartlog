@@ -6,6 +6,9 @@ from .detection_result import DetectionResult
 from .enums import ErrorType, LogSeverity, LogSourceType, ParseStatus, StrEnum
 from .iis_header import IisW3CHeader
 from .iis_record import IisW3CRecord
+from .json_field_mapping import JsonFieldMapping
+from .json_log_record import JsonLogRecord
+from .json_profile_detection import JsonProfileDetection
 from .log_event import LogEvent
 from .normalization import (
     NormalizationInput,
@@ -33,6 +36,9 @@ __all__ = [
     "ErrorType",
     "IisW3CHeader",
     "IisW3CRecord",
+    "JsonFieldMapping",
+    "JsonLogRecord",
+    "JsonProfileDetection",
     "LogEvent",
     "LogSeverity",
     "LogSourceType",

@@ -7,6 +7,14 @@ from .iis import (
     IisParserError,
     IisTokenizationError,
 )
+from .json_parser import (
+    JsonDecodingError,
+    JsonFieldPathError,
+    JsonMappingError,
+    JsonParserError,
+    JsonProfileError,
+    JsonStructureError,
+)
 from .normalization import NormalizationError
 from .parser_registry import (
     ParserAlreadyRegisteredError,
@@ -38,6 +46,12 @@ __all__ = [
     "IisHeaderError",
     "IisParserError",
     "IisTokenizationError",
+    "JsonDecodingError",
+    "JsonFieldPathError",
+    "JsonMappingError",
+    "JsonParserError",
+    "JsonProfileError",
+    "JsonStructureError",
     "NormalizationError",
     "ParserAlreadyRegisteredError",
     "ParserNotFoundError",
