@@ -28,6 +28,8 @@ from .plugin_discovery_result import PluginDiscoveryResult
 from .plugin_load_result import PluginLoadResult
 from .redis_event_classification import RedisEventClassification
 from .redis_record import RedisLogRecord
+from .syslog_record import SyslogRecord
+from .windows_event_record import WindowsEventRecord
 from .web_access_record import WebAccessRecord
 from .web_error_record import WebErrorRecord
 
@@ -61,6 +63,8 @@ __all__ = [
     "PluginLoadResult",
     "RedisEventClassification",
     "RedisLogRecord",
+    "SyslogRecord",
+    "WindowsEventRecord",
     "WebAccessRecord",
     "WebErrorRecord",
     "StrEnum",

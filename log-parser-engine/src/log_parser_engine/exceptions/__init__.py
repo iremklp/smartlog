@@ -37,6 +37,19 @@ from .redis import (
     RedisTimestampError,
     RedisTokenizationError,
 )
+from .syslog import (
+    SyslogMappingError,
+    SyslogParserError,
+    SyslogStructureError,
+    SyslogTimestampError,
+    SyslogTokenizationError,
+)
+from .windows_event import (
+    WindowsEventMappingError,
+    WindowsEventParserError,
+    WindowsEventStructureError,
+    WindowsEventXmlError,
+)
 
 __all__ = [
     "DetectionError",
@@ -69,4 +82,13 @@ __all__ = [
     "RedisParserError",
     "RedisTimestampError",
     "RedisTokenizationError",
+    "SyslogMappingError",
+    "SyslogParserError",
+    "SyslogStructureError",
+    "SyslogTimestampError",
+    "SyslogTokenizationError",
+    "WindowsEventMappingError",
+    "WindowsEventParserError",
+    "WindowsEventStructureError",
+    "WindowsEventXmlError",
 ]

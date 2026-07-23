@@ -191,6 +191,7 @@ def normalize_source_type(value: Any) -> LogSourceType:
             "nginx": LogSourceType.nginx,
             "apache": LogSourceType.apache,
             "windows_event": LogSourceType.windows_event,
+            "syslog": LogSourceType.syslog,
             "linux_syslog": LogSourceType.linux_syslog,
             "kubernetes": LogSourceType.kubernetes,
             "openshift": LogSourceType.openshift,

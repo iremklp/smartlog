@@ -39,6 +39,7 @@ class LogSourceType(StrEnum):
     NGINX = "nginx"
     APACHE = "apache"
     WINDOWS_EVENT = "windows_event"
+    SYSLOG = "syslog"
     LINUX_SYSLOG = "linux_syslog"
     KUBERNETES = "kubernetes"
     OPENSHIFT = "openshift"
@@ -54,6 +55,7 @@ class LogSourceType(StrEnum):
     nginx = NGINX
     apache = APACHE
     windows_event = WINDOWS_EVENT
+    syslog = SYSLOG
     linux_syslog = LINUX_SYSLOG
     kubernetes = KUBERNETES
     openshift = OPENSHIFT
