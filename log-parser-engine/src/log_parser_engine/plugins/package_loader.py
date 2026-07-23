@@ -51,6 +51,8 @@ class PackagePluginLoader(BasePluginLoader):
                 f"unable to import package {self._package_name}"
             ) from exc
 
+        allowed_module_names = self._allowed_module_names(package)
+
         package_path = getattr(package, "__path__", None)
         if package_path is None:
             if self._include_package_module:
@@ -73,6 +75,13 @@ class PackagePluginLoader(BasePluginLoader):
                 continue
             if module_name == self._package_name:
                 if not self._include_package_module:
+                    continue
+            if allowed_module_names is not None:
+                module_basename = module_name.rsplit(".", 1)[-1]
+                if (
+                    module_name not in allowed_module_names
+                    and module_basename not in allowed_module_names
+                ):
                     continue
             candidates.append(
                 PluginCandidate(
@@ -140,6 +149,21 @@ class PackagePluginLoader(BasePluginLoader):
         if not normalized:
             raise ValueError("object_names must contain at least one entry")
         return tuple(normalized)
+
+    def _allowed_module_names(self, package: Any) -> set[str] | None:
+        raw_allowed = getattr(package, "__plugin_modules__", None)
+        if raw_allowed is None:
+            return None
+
+        allowed: set[str] = set()
+        for module_name in raw_allowed:
+            cleaned = str(module_name).strip()
+            if not cleaned:
+                continue
+            allowed.add(cleaned)
+            if not cleaned.startswith(f"{self._package_name}."):
+                allowed.add(f"{self._package_name}.{cleaned}")
+        return allowed or None
 
     def _is_private_module(self, module_name: str) -> bool:
         parts = module_name.split(".")

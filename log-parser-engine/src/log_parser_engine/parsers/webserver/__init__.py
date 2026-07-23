@@ -1,13 +1,9 @@
-from .access_parser import AccessLogParser
-from .error_parser import ErrorLogParser
-from .helpers import detect_http_method, normalize_severity, normalize_text, normalize_vendor, parse_status
+from .access_parser import ApacheNginxAccessLogParser
+from .error_parser import ApacheNginxErrorLogParser
 
-__all__ = [
-    "AccessLogParser",
-    "ErrorLogParser",
-    "detect_http_method",
-    "normalize_severity",
-    "normalize_text",
-    "normalize_vendor",
-    "parse_status",
-]
+__plugin_modules__ = ("access_plugin", "error_plugin")
+
+__all__ = (
+    "ApacheNginxAccessLogParser",
+    "ApacheNginxErrorLogParser",
+)

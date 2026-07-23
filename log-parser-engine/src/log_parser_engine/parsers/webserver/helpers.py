@@ -39,7 +39,18 @@ def normalize_severity(value: Any) -> str | None:
         return None
     if isinstance(value, str):
         cleaned = value.strip().lower()
-        if cleaned in {"error", "warn", "warning", "notice", "info", "debug", "crit", "critical", "emerg", "alert"}:
+        if cleaned in {
+            "error",
+            "warn",
+            "warning",
+            "notice",
+            "info",
+            "debug",
+            "crit",
+            "critical",
+            "emerg",
+            "alert",
+        }:
             return cleaned
     return None
 

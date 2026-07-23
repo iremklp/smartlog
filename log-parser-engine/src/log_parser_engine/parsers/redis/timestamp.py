@@ -31,14 +31,21 @@ def parse_redis_timestamp(
         year = int(parts[2])
         time_part = parts[3]
     elif len(parts) >= 3:
-        year = (reference_datetime.year if reference_datetime else datetime.now(timezone.utc).year)
+        year = (
+            reference_datetime.year
+            if reference_datetime is not None
+            else datetime.now(timezone.utc).year
+        )
         time_part = parts[2]
     else:
         raise RedisTimestampError("invalid redis timestamp")
 
     for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
         try:
-            parsed = datetime.strptime(f"{year:04d}-{month:02d}-{day:02d} {time_part}", fmt)
+            parsed = datetime.strptime(
+                f"{year:04d}-{month:02d}-{day:02d} {time_part}",
+                fmt,
+            )
             return _normalize(parsed, default_timezone)
         except ValueError:
             continue

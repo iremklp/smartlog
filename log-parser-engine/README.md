@@ -34,3 +34,7 @@ poetry run ruff check .
 ```bash
 poetry run mypy src
 ```
+
+## Plugin discovery notes
+
+Parser implementation modules are separate from plugin entry modules. Webserver plugins are exposed only through `*_plugin.py` entry modules, and helper modules must not export `Parser` or `create_parser`.
