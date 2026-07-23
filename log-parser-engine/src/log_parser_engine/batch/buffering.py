@@ -23,7 +23,10 @@ class DetectionSampleBuffer:
             return False
         if self.max_records <= len(self._items):
             return False
-        if self._characters + item.character_count > self.max_characters and self._items:
+        if (
+            self._characters + item.character_count > self.max_characters
+            and self._items
+        ):
             return False
         self._items.append(item)
         self._characters += item.character_count
@@ -31,7 +34,10 @@ class DetectionSampleBuffer:
 
     @property
     def full(self) -> bool:
-        return len(self._items) >= self.max_records or self._characters >= self.max_characters
+        return (
+            len(self._items) >= self.max_records
+            or self._characters >= self.max_characters
+        )
 
     @property
     def item_count(self) -> int:

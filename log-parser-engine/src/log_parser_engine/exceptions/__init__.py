@@ -1,11 +1,44 @@
 """Exceptions for detection, parser selection, and plugin loading."""
 
+from .batch import (
+    BatchConfigurationError,
+    BatchConsecutiveErrorLimitExceeded,
+    BatchDetectionError,
+    BatchErrorLimitExceeded,
+    BatchErrorRateExceeded,
+    BatchMixedFormatError,
+    BatchParseError,
+    BatchProgressCallbackError,
+    BatchRecordTooLargeError,
+    BatchSourceError,
+    BatchStateError,
+    BatchUnsupportedRecordModeError,
+)
 from .detection import DetectionError, DuplicateParserError
 from .iis import (
     IisFieldMappingError,
     IisHeaderError,
     IisParserError,
     IisTokenizationError,
+)
+from .ingestion import (
+    ArchiveBombError,
+    ArchiveEntrySelectionError,
+    ArchiveEntryTooLargeError,
+    ArchiveError,
+    ArchiveNotAllowedError,
+    BinaryContentError,
+    EmptyContentError,
+    EncodingDetectionError,
+    EncryptedArchiveError,
+    IngestionError,
+    InputNotFoundError,
+    InputPermissionError,
+    InputSourceError,
+    InputTooLargeError,
+    NestedArchiveError,
+    SymlinkNotAllowedError,
+    TextDecodingError,
 )
 from .json_parser import (
     JsonDecodingError,
@@ -16,25 +49,6 @@ from .json_parser import (
     JsonStructureError,
 )
 from .normalization import NormalizationError
-from .ingestion import (
-    ArchiveBombError,
-    ArchiveEntrySelectionError,
-    ArchiveEntryTooLargeError,
-    ArchiveError,
-    ArchiveNotAllowedError,
-    BinaryContentError,
-    EmptyContentError,
-    EncryptedArchiveError,
-    EncodingDetectionError,
-    IngestionError,
-    InputNotFoundError,
-    InputPermissionError,
-    InputSourceError,
-    InputTooLargeError,
-    NestedArchiveError,
-    SymlinkNotAllowedError,
-    TextDecodingError,
-)
 from .parser_registry import (
     ParserAlreadyRegisteredError,
     ParserNotFoundError,
@@ -73,6 +87,18 @@ from .windows_event import (
 __all__ = [
     "DetectionError",
     "DuplicateParserError",
+    "BatchConfigurationError",
+    "BatchConsecutiveErrorLimitExceeded",
+    "BatchDetectionError",
+    "BatchErrorLimitExceeded",
+    "BatchErrorRateExceeded",
+    "BatchMixedFormatError",
+    "BatchParseError",
+    "BatchProgressCallbackError",
+    "BatchRecordTooLargeError",
+    "BatchSourceError",
+    "BatchStateError",
+    "BatchUnsupportedRecordModeError",
     "ArchiveBombError",
     "ArchiveEntrySelectionError",
     "ArchiveEntryTooLargeError",

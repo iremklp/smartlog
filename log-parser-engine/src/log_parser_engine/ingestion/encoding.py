@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Callable
+
 from log_parser_engine.exceptions import EncodingDetectionError, TextDecodingError
 from log_parser_engine.models import EncodingDetection
 
@@ -7,10 +9,14 @@ from .bom import detect_bom
 from .helpers import dedupe_strings, normalize_codec_name
 from .options import IngestionOptions
 
+_charset_normalizer_from_bytes: Callable[[bytes], Any] | None
+
 try:  # optional and controlled
-    from charset_normalizer import from_bytes as _charset_normalizer_from_bytes
+    from charset_normalizer import from_bytes as _charset_normalizer_from_bytes_import
 except Exception:  # noqa: BLE001
     _charset_normalizer_from_bytes = None
+else:
+    _charset_normalizer_from_bytes = _charset_normalizer_from_bytes_import
 
 
 def detect_encoding(
@@ -97,6 +103,8 @@ def _try_charset_normalizer(
     data: bytes,
     options: IngestionOptions,
 ) -> EncodingDetection | None:
+    if _charset_normalizer_from_bytes is None:
+        return None
     result = _charset_normalizer_from_bytes(data).best()
     if result is None:
         return None

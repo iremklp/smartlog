@@ -67,7 +67,9 @@ class BatchItem(BaseModel):
             if self.record_type == "blank" and self.character_count == 0:
                 return self
             if self.raw_record_preview is None and self.character_count > 0:
-                raise ValueError("raw_record_preview is required when raw_record is absent")
+                raise ValueError(
+                    "raw_record_preview is required when raw_record is absent"
+                )
             return self
 
         if len(self.raw_record) != self.character_count:

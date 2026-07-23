@@ -44,7 +44,9 @@ class BatchParseResult(BaseModel):
 
     @property
     def partial_success(self) -> bool:
-        return self.statistics.records_succeeded > 0 and self.statistics.records_failed > 0
+        return (
+            self.statistics.records_succeeded > 0 and self.statistics.records_failed > 0
+        )
 
     @property
     def empty(self) -> bool:

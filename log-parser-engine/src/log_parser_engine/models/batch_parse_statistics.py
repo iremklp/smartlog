@@ -61,7 +61,9 @@ class BatchParseStatistics(BaseModel):
             raise ValueError("count values must not be negative")
         return value
 
-    @field_validator("total_duration_ms", "detection_duration_ms", "parsing_duration_ms")
+    @field_validator(
+        "total_duration_ms", "detection_duration_ms", "parsing_duration_ms"
+    )
     @classmethod
     def validate_durations(cls, value: float) -> float:
         if value < 0:
@@ -103,7 +105,9 @@ class BatchParseStatistics(BaseModel):
             and self.latest_event_timestamp is not None
             and self.earliest_event_timestamp > self.latest_event_timestamp
         ):
-            raise ValueError("earliest_event_timestamp must be <= latest_event_timestamp")
+            raise ValueError(
+                "earliest_event_timestamp must be <= latest_event_timestamp"
+            )
         return self
 
     @property

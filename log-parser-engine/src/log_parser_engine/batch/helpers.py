@@ -12,7 +12,9 @@ def sanitize_preview(value: str, *, max_length: int = 200) -> str:
     return cleaned[: max_length - 3] + "..."
 
 
-def extract_error_code(parse_result: ParseResult | None, fallback: str = "PARSE_FAILED") -> str:
+def extract_error_code(
+    parse_result: ParseResult | None, fallback: str = "PARSE_FAILED"
+) -> str:
     if parse_result is None or not parse_result.errors:
         return fallback
     error_type = parse_result.errors[0].error_type
@@ -21,7 +23,9 @@ def extract_error_code(parse_result: ParseResult | None, fallback: str = "PARSE_
     return str(error_type).strip().upper() or fallback
 
 
-def extract_error_message(parse_result: ParseResult | None, *, include_details: bool) -> str:
+def extract_error_message(
+    parse_result: ParseResult | None, *, include_details: bool
+) -> str:
     if parse_result is None or not parse_result.errors:
         return "parse failed"
     message = parse_result.errors[0].message.strip()
@@ -39,6 +43,10 @@ def update_min_max_timestamps(
     current_max: datetime | None,
     timestamp: datetime,
 ) -> tuple[datetime | None, datetime | None]:
-    minimum = timestamp if current_min is None or timestamp < current_min else current_min
-    maximum = timestamp if current_max is None or timestamp > current_max else current_max
+    minimum = (
+        timestamp if current_min is None or timestamp < current_min else current_min
+    )
+    maximum = (
+        timestamp if current_max is None or timestamp > current_max else current_max
+    )
     return minimum, maximum

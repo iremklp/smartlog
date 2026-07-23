@@ -5,9 +5,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .batch_item import BatchItem
+from .enums import ParseStatus
 from .log_event import LogEvent
 from .parse_result import ParseResult
-from .enums import ParseStatus
 
 
 class BatchItemResult(BaseModel):
@@ -51,16 +51,22 @@ class BatchItemResult(BaseModel):
     @model_validator(mode="after")
     def validate_rules(self) -> "BatchItemResult":
         if self.status == "success":
-            if self.parse_result is None or self.parse_result.status != ParseStatus.success:
+            if (
+                self.parse_result is None
+                or self.parse_result.status != ParseStatus.success
+            ):
                 raise ValueError("success status requires successful parse_result")
             if self.error_code is not None or self.error_message is not None:
                 raise ValueError("success status cannot include error fields")
 
         if self.status == "failure":
             has_parse_failure = (
-                self.parse_result is not None and self.parse_result.status != ParseStatus.success
+                self.parse_result is not None
+                and self.parse_result.status != ParseStatus.success
             )
-            has_error_text = self.error_code is not None or self.error_message is not None
+            has_error_text = (
+                self.error_code is not None or self.error_message is not None
+            )
             if not has_parse_failure and not has_error_text:
                 raise ValueError("failure status requires parse failure or error info")
 

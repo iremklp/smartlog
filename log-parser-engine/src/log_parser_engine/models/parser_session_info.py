@@ -72,7 +72,10 @@ class ParserSessionInfo(BaseModel):
     def validate_rules(self) -> "ParserSessionInfo":
         if self.started_at_record < 1:
             raise ValueError("started_at_record must be >= 1")
-        if self.ended_at_record is not None and self.ended_at_record < self.started_at_record:
+        if (
+            self.ended_at_record is not None
+            and self.ended_at_record < self.started_at_record
+        ):
             raise ValueError("ended_at_record must be >= started_at_record")
         if self.records_succeeded + self.records_failed > self.records_attempted:
             raise ValueError("session success/failure counts exceed attempted")

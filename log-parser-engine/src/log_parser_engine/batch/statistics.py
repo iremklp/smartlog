@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .helpers import update_min_max_timestamps
 from log_parser_engine.models import BatchItemResult, BatchParseStatistics
+
+from .helpers import update_min_max_timestamps
 
 
 @dataclass(slots=True)
@@ -56,10 +57,12 @@ class StatisticsTracker:
                     self.parser_counts.get(result.parser_name, 0) + 1
                 )
             if result.event is not None:
-                self.earliest_event_timestamp, self.latest_event_timestamp = update_min_max_timestamps(
-                    self.earliest_event_timestamp,
-                    self.latest_event_timestamp,
-                    result.event.timestamp,
+                self.earliest_event_timestamp, self.latest_event_timestamp = (
+                    update_min_max_timestamps(
+                        self.earliest_event_timestamp,
+                        self.latest_event_timestamp,
+                        result.event.timestamp,
+                    )
                 )
         elif result.status == "failure":
             self.records_attempted += 1

@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Iterable, Iterator, Protocol
 
 from log_parser_engine.exceptions import InputNotFoundError, SymlinkNotAllowedError
+from log_parser_engine.exceptions.batch import BatchSourceError
 
 from .helpers import sanitize_preview
 from .options import BatchParseOptions
 from .state import ParserRecordStrategy
-from log_parser_engine.exceptions.batch import BatchSourceError
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,8 +42,7 @@ class RecordReader(Protocol):
         source: Iterable[str],
         *,
         options: BatchParseOptions,
-    ) -> Iterator[SourceRecord]:
-        ...
+    ) -> Iterator[SourceRecord]: ...
 
 
 class LineRecordReader:
@@ -184,7 +183,11 @@ def iter_bounded_lines(
             )
             continue
 
-        if len(content) <= max_characters and not ended_with_newline and len(chunk) <= max_characters:
+        if (
+            len(content) <= max_characters
+            and not ended_with_newline
+            and len(chunk) <= max_characters
+        ):
             yield BoundedLine(
                 text=content,
                 preview=sanitize_preview(content),
@@ -221,7 +224,9 @@ def iter_bounded_lines(
         )
 
 
-def iter_records_from_bounded_lines(lines: Iterable[BoundedLine]) -> Iterator[SourceRecord]:
+def iter_records_from_bounded_lines(
+    lines: Iterable[BoundedLine],
+) -> Iterator[SourceRecord]:
     index = 0
     for line in lines:
         index += 1

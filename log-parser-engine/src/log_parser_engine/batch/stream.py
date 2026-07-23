@@ -4,10 +4,16 @@ from collections.abc import Iterator
 from contextlib import AbstractContextManager
 from typing import Callable
 
-from log_parser_engine.models import BatchItemResult, BatchParseStatistics, ParserSessionInfo
+from log_parser_engine.models import (
+    BatchItemResult,
+    BatchParseStatistics,
+    ParserSessionInfo,
+)
 
 
-class BatchParseStream(Iterator[BatchItemResult], AbstractContextManager["BatchParseStream"]):
+class BatchParseStream(
+    Iterator[BatchItemResult], AbstractContextManager["BatchParseStream"]
+):
     """Lazy iterator wrapper that exposes live/final stream statistics."""
 
     def __init__(
@@ -53,7 +59,12 @@ class BatchParseStream(Iterator[BatchItemResult], AbstractContextManager["BatchP
         if self._close_callback is not None:
             self._close_callback()
 
-    def __exit__(self, exc_type, exc_value, traceback) -> bool | None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: object | None,
+    ) -> bool | None:
         self.close()
         return None
 

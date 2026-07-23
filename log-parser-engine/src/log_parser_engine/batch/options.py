@@ -76,7 +76,13 @@ class BatchParseOptions(BaseModel):
             raise ValueError("value must be 1 or greater")
         return value
 
-    @field_validator("max_records", "max_collected_events", "max_errors", "max_consecutive_errors", "redetect_interval")
+    @field_validator(
+        "max_records",
+        "max_collected_events",
+        "max_errors",
+        "max_consecutive_errors",
+        "redetect_interval",
+    )
     @classmethod
     def validate_optional_positive_ints(cls, value: int | None) -> int | None:
         if value is None:

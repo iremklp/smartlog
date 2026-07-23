@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 from log_parser_engine.core import ParserContext, ParserManager
 from log_parser_engine.models import (
     BatchItem,
     BatchItemResult,
-    ParseResult,
-    ParseStatus,
     ParserSessionInfo,
 )
 
@@ -22,14 +20,13 @@ from .state import ParserRecordStrategy
 class ParserStateAdapter(Protocol):
     parser_name: str
 
-    def classify_item(self, item: SourceRecord) -> str:
-        ...
+    def classify_item(self, item: SourceRecord) -> str: ...
 
-    def process_non_data_item(self, item: SourceRecord, state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        ...
+    def process_non_data_item(
+        self, item: SourceRecord, state: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]: ...
 
-    def build_context_attributes(self, state: dict[str, Any]) -> dict[str, Any]:
-        ...
+    def build_context_attributes(self, state: dict[str, Any]) -> dict[str, Any]: ...
 
 
 class StatelessLineAdapter:
@@ -41,7 +38,9 @@ class StatelessLineAdapter:
             return "blank"
         return "data"
 
-    def process_non_data_item(self, item: SourceRecord, state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def process_non_data_item(
+        self, item: SourceRecord, state: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
         return "skipped", {}
 
     def build_context_attributes(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -56,12 +55,19 @@ class IisW3CStateAdapter(StatelessLineAdapter):
         if stripped == "":
             return "blank"
         if stripped.startswith("#"):
-            if stripped.lower().startswith("#fields:") or stripped.lower().startswith("#software:") or stripped.lower().startswith("#version:") or stripped.lower().startswith("#date:"):
+            if (
+                stripped.lower().startswith("#fields:")
+                or stripped.lower().startswith("#software:")
+                or stripped.lower().startswith("#version:")
+                or stripped.lower().startswith("#date:")
+            ):
                 return "header"
             return "comment"
         return "data"
 
-    def process_non_data_item(self, item: SourceRecord, state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def process_non_data_item(
+        self, item: SourceRecord, state: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
         if item.raw is None:
             return "skipped", {}
         stripped = item.raw.strip()
@@ -70,7 +76,9 @@ class IisW3CStateAdapter(StatelessLineAdapter):
         header = dict(state.get("iis_header", {}))
         if lowered.startswith("#fields:"):
             value = stripped.split(":", 1)[1].strip() if ":" in stripped else ""
-            fields = tuple(part.strip().lower() for part in value.split() if part.strip())
+            fields = tuple(
+                part.strip().lower() for part in value.split() if part.strip()
+            )
             state["iis_fields"] = fields
             updates["iis_fields"] = fields
             header["fields"] = fields
@@ -177,11 +185,24 @@ class ParserSession:
     ) -> BatchItemResult:
         item_type = self._adapter.classify_item(source_record)
         if item_type in {"blank", "header", "comment"}:
-            status, updates = self._adapter.process_non_data_item(source_record, self._state)
-            item = self._build_public_item(source_record, record_type=item_type, include_raw_record=include_raw_record)
+            status, updates = self._adapter.process_non_data_item(
+                source_record, self._state
+            )
+            item = self._build_public_item(
+                source_record,
+                record_type=cast(
+                    Literal["header", "comment", "blank"],
+                    item_type,
+                ),
+                include_raw_record=include_raw_record,
+            )
             return BatchItemResult(
                 item=item,
-                status="skipped" if status == "blank" else status,
+                status=(
+                    "skipped"
+                    if status == "blank"
+                    else cast(Literal["header", "comment"], status)
+                ),
                 parser_name=self._mutable.parser_name,
                 state_updates=updates,
                 attributes={"reason": item_type, "source_id": source_id},
@@ -201,11 +222,17 @@ class ParserSession:
         self._mutable.records_attempted += 1
         self._mutable.ended_at_record = source_record.index
 
-        item = self._build_public_item(source_record, record_type="data", include_raw_record=include_raw_record)
+        item = self._build_public_item(
+            source_record, record_type="data", include_raw_record=include_raw_record
+        )
 
         if parse_result_succeeded(parse_result):
             self._mutable.records_succeeded += 1
-            event = parse_result.events[0] if parse_result.events and include_success_event else None
+            event = (
+                parse_result.events[0]
+                if parse_result.events and include_success_event
+                else None
+            )
             return BatchItemResult(
                 item=item,
                 status="success",
@@ -283,7 +310,7 @@ class ParserSession:
         self,
         source_record: SourceRecord,
         *,
-        record_type: str,
+        record_type: Literal["data", "header", "comment", "blank", "document"],
         include_raw_record: bool,
     ) -> BatchItem:
         raw_record = source_record.raw if include_raw_record else None

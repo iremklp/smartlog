@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .options import BatchParseOptions
 from log_parser_engine.exceptions.batch import (
     BatchConsecutiveErrorLimitExceeded,
     BatchErrorLimitExceeded,
     BatchErrorRateExceeded,
 )
 from log_parser_engine.models import BatchItemResult
+
+from .options import BatchParseOptions
 
 
 @dataclass(frozen=True, slots=True)
