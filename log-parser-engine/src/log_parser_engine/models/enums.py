@@ -19,3 +19,16 @@ class LogSourceType(str, Enum):
     HTTP = "HTTP"
     DATABASE = "DATABASE"
     WINDOWS_EVENT = "WINDOWS_EVENT"
+
+
+class ParseStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
+
+class ErrorType(str, Enum):
+    UNKNOWN = "UNKNOWN"
+    PARSING = "PARSING"
+    VALIDATION = "VALIDATION"
+    INGESTION = "INGESTION"
+    UNKNOWN_FORMAT = "UNKNOWN_FORMAT"

@@ -11,7 +11,7 @@ class ParseError(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     message: str
-    status: ParseStatus = ParseStatus.FAILED
+    status: ParseStatus = ParseStatus.FAILURE
     error_type: ErrorType = ErrorType.UNKNOWN_FORMAT
     details: dict[str, str] | None = None
 
