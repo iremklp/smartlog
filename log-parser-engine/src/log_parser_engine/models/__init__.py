@@ -5,6 +5,11 @@ from .detection_decision import DetectionDecision
 from .detection_result import DetectionResult
 from .enums import ErrorType, LogSeverity, LogSourceType, ParseStatus, StrEnum
 from .log_event import LogEvent
+from .normalization import (
+    NormalizationInput,
+    NormalizationResult,
+    NormalizationWarning,
+)
 from .parse_error import ParseError
 from .parse_result import ParseResult
 from .parser_metadata import ParserMetadata
@@ -22,6 +27,9 @@ __all__ = [
     "LogEvent",
     "LogSeverity",
     "LogSourceType",
+    "NormalizationInput",
+    "NormalizationResult",
+    "NormalizationWarning",
     "ParseError",
     "ParseResult",
     "ParseStatus",
