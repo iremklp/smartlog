@@ -101,3 +101,8 @@ class DetectionResult(BaseModel):
             signals=signals,
             metadata=metadata or {},
         )
+
+    def __getattribute__(self, name: str) -> Any:
+        if name == "match" and object.__getattribute__(self, "__class__") is not None:
+            return object.__getattribute__(self, "matched")
+        return super().__getattribute__(name)

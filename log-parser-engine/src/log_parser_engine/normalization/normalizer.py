@@ -67,21 +67,40 @@ class Normalizer:
             raise NormalizationError("message is required")
         raw_message = str(message_value).strip()
 
+        event_type_value = self._extract_value(mapped, "event_type")
+        host_value = self._extract_value(mapped, "host")
+        source_value = self._extract_value(mapped, "source")
+        service_value = self._extract_value(mapped, "service")
+        application_value = self._extract_value(mapped, "application")
+        tags_value = self._extract_value(mapped, "tags")
+        if tags_value is None:
+            tags_value = []
+        attributes_payload = payload.attributes or {}
+        context_attributes = context.attributes if context is not None else {}
+        merged_attributes = {
+            **attributes_payload,
+            **context_attributes,
+        }
+        if isinstance(attributes_payload, dict):
+            merged_attributes.update(attributes_payload)
+        if isinstance(context_attributes, dict):
+            merged_attributes.update(context_attributes)
+
         event = LogEvent(
             timestamp=timestamp,
             source_type=source_type,
             severity=severity,
+            event_type=str(event_type_value) if event_type_value is not None else None,
             message=raw_message,
             raw_message=raw_message,
-            service=context.service if context is not None else None,
-            application=context.application if context is not None else None,
+            service=service_value or (context.service if context is not None else None),
+            application=application_value or (context.application if context is not None else None),
             environment=context.environment if context is not None else None,
-            host=context.host if context is not None else None,
-            attributes={
-                **(payload.attributes or {}),
-                **(context.attributes if context is not None else {}),
-            },
+            host=host_value or (context.host if context is not None else None),
+            source=source_value,
+            attributes=merged_attributes,
             duration_ms=duration_ms,
+            tags=list(tags_value) if isinstance(tags_value, list) else [str(tags_value)],
         )
         return NormalizationResult(event=event, warnings=warnings)
 

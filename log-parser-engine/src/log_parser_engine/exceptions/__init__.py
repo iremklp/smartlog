@@ -22,6 +22,13 @@ from .plugin import (
     PluginFactoryError,
     PluginLoadError,
 )
+from .redis import (
+    RedisClassificationError,
+    RedisMappingError,
+    RedisParserError,
+    RedisTimestampError,
+    RedisTokenizationError,
+)
 
 __all__ = [
     "DetectionError",
@@ -43,4 +50,9 @@ __all__ = [
     "PluginError",
     "PluginFactoryError",
     "PluginLoadError",
+    "RedisClassificationError",
+    "RedisMappingError",
+    "RedisParserError",
+    "RedisTimestampError",
+    "RedisTokenizationError",
 ]

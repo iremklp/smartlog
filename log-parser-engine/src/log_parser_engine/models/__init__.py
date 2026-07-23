@@ -23,6 +23,8 @@ from .pipeline_stage_result import PipelineStageResult
 from .plugin_candidate import PluginCandidate
 from .plugin_discovery_result import PluginDiscoveryResult
 from .plugin_load_result import PluginLoadResult
+from .redis_event_classification import RedisEventClassification
+from .redis_record import RedisLogRecord
 
 __all__ = [
     "DetectionCandidate",
@@ -49,5 +51,7 @@ __all__ = [
     "PluginCandidate",
     "PluginDiscoveryResult",
     "PluginLoadResult",
+    "RedisEventClassification",
+    "RedisLogRecord",
     "StrEnum",
 ]
