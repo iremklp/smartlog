@@ -5,10 +5,9 @@ from typing import Any
 
 from log_parser_engine.core.parser_context import ParserContext
 from log_parser_engine.exceptions import NormalizationError
-from log_parser_engine.models import (
-    LogEvent,
-    LogSeverity,
-    LogSourceType,
+from log_parser_engine.models.enums import LogSeverity, LogSourceType
+from log_parser_engine.models.log_event import LogEvent
+from log_parser_engine.models.normalization import (
     NormalizationInput,
     NormalizationResult,
     NormalizationWarning,

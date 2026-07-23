@@ -1,0 +1,2 @@
+#Fields: date time s-ip cs-method cs-uri-stem sc-status cs-host
+2026-07-23 12:00:02 10.0.0.11 POST /login 200 example.local

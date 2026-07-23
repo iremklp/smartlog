@@ -1,0 +1,5 @@
+#Software: Microsoft Internet Information Services 10.0
+#Version: 1.0
+#Date: 2026-07-23 12:00:00
+#Fields: date time s-ip cs-method cs-uri-stem cs-uri-query s-port cs-username c-ip cs(User-Agent) cs(Referer) sc-status sc-substatus sc-win32-status time-taken
+2026-07-23 12:00:01 10.0.0.10 GET /api/orders id=42 443 - 10.1.2.3 Mozilla/5.0 - 200 0 0 125
