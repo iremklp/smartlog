@@ -1,0 +1,1 @@
+2026/07/23 14:32:10 [error] 12345#0: *1 SSL_do_handshake() failed (SSL: error:0A000126:SSL routines::unexpected eof while reading), client: 127.0.0.1, server: example.com, request: "GET / HTTP/1.1", host: "example.com"

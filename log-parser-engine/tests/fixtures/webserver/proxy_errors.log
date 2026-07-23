@@ -1,0 +1,1 @@
+2026/07/23 14:32:10 [error] 12345#0: *1 upstream prematurely closed connection while reading response header from upstream, client: 127.0.0.1, server: example.com, request: "GET / HTTP/1.1", upstream: "http://127.0.0.1:8080", host: "example.com"
