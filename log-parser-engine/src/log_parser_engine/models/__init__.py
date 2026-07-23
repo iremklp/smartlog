@@ -9,6 +9,12 @@ from .iis_record import IisW3CRecord
 from .json_field_mapping import JsonFieldMapping
 from .json_log_record import JsonLogRecord
 from .json_profile_detection import JsonProfileDetection
+from .archive_entry_info import ArchiveEntryInfo
+from .encoding_detection import EncodingDetection
+from .ingestion_metadata import IngestionMetadata
+from .ingestion_result import IngestionResult
+from .ingestion_source import IngestionSource
+from .ingestion_warning import IngestionWarning
 from .log_event import LogEvent
 from .normalization import (
     NormalizationInput,
@@ -43,6 +49,12 @@ __all__ = [
     "JsonFieldMapping",
     "JsonLogRecord",
     "JsonProfileDetection",
+    "ArchiveEntryInfo",
+    "EncodingDetection",
+    "IngestionMetadata",
+    "IngestionResult",
+    "IngestionSource",
+    "IngestionWarning",
     "LogEvent",
     "LogSeverity",
     "LogSourceType",
