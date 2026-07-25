@@ -55,6 +55,28 @@ def test_api_parse_endpoint_uses_injected_service() -> None:
     assert response.json()["success"] is True
 
 
+def test_api_parse_store_route_not_shadowed_by_parser_name_route() -> None:
+    parser = FakeParser(
+        "fake",
+        source_type=LogSourceType.FILE,
+        matched=True,
+        confidence=0.9,
+        reason="match",
+    )
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False),
+        registry=ParserRegistry([parser]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post("/parse/store", json={"raw_log": "hello world"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] in {"inserted", "ignored_duplicate", "replaced"}
+
+
 def test_api_parse_file_and_store_statistics_endpoints() -> None:
     parser = FakeParser(
         "fake",

@@ -30,6 +30,11 @@ from .ingestion_metadata import IngestionMetadata
 from .ingestion_result import IngestionResult
 from .ingestion_source import IngestionSource
 from .ingestion_warning import IngestionWarning
+from .iis_header import IisW3CHeader
+from .iis_record import IisW3CRecord
+from .json_field_mapping import JsonFieldMapping
+from .json_log_record import JsonLogRecord
+from .json_profile_detection import JsonProfileDetection
 from .log_event import LogEvent
 from .parse_error import ParseError
 from .parse_result import ParseResult
@@ -40,7 +45,13 @@ from .parser_metadata import ParserMetadata
 from .parser_registration import ParserRegistration
 from .parser_session_info import ParserSessionInfo
 from .parser_selection import ParserSelection
+from .redis_event_classification import RedisEventClassification
+from .redis_record import RedisLogRecord
 from .stored_event import StoredEvent
+from .syslog_record import SyslogRecord
+from .web_access_record import WebAccessRecord
+from .web_error_record import WebErrorRecord
+from .windows_event_record import WindowsEventRecord
 
 __all__ = [
     "ArchiveEntryInfo",
@@ -64,6 +75,11 @@ __all__ = [
     "IngestionResult",
     "IngestionSource",
     "IngestionWarning",
+    "IisW3CHeader",
+    "IisW3CRecord",
+    "JsonFieldMapping",
+    "JsonLogRecord",
+    "JsonProfileDetection",
     "LogEvent",
     "ParseError",
     "ParseResult",
@@ -74,6 +90,12 @@ __all__ = [
     "ParserRegistration",
     "ParserSessionInfo",
     "ParserSelection",
+    "RedisEventClassification",
+    "RedisLogRecord",
+    "SyslogRecord",
+    "WebAccessRecord",
+    "WebErrorRecord",
+    "WindowsEventRecord",
     # Event Store Models
     "StoredEvent",
     "EventQuery",

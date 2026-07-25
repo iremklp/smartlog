@@ -117,20 +117,6 @@ async def parse_file(
     return service.parse_text(ingestion.text, context=context)
 
 
-@router.post("/parse/{parser_name}")
-def parse_with_parser(
-    parser_name: str,
-    payload: ParseWithParserRequest,
-    service: LogAnalysisApplicationService = Depends(get_service),
-):
-    return service.parse_with_parser(
-        parser_name,
-        payload.raw_log,
-        context=payload.context,
-        allow_disabled_parser=payload.allow_disabled_parser,
-    )
-
-
 @router.post("/parse/store")
 def parse_and_store_text(
     payload: ParseRequest,
@@ -144,6 +130,20 @@ def parse_and_store_text(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/parse/{parser_name}")
+def parse_with_parser(
+    parser_name: str,
+    payload: ParseWithParserRequest,
+    service: LogAnalysisApplicationService = Depends(get_service),
+):
+    return service.parse_with_parser(
+        parser_name,
+        payload.raw_log,
+        context=payload.context,
+        allow_disabled_parser=payload.allow_disabled_parser,
+    )
 
 
 @router.post("/batch/parse")
