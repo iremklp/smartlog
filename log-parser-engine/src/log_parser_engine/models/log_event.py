@@ -7,12 +7,13 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .enums import LogSeverity, LogSourceType
+from .immutable import FrozenDict, FrozenList, freeze_mapping
 
 
 class LogEvent(BaseModel):
     """Immutable domain model for normalized log events."""
 
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
 
     schema_version: str = Field(default="1.0", min_length=1)
     event_id: UUID = Field(default_factory=uuid4)
@@ -37,8 +38,8 @@ class LogEvent(BaseModel):
     http_path: str | None = None
     http_status: int | None = None
     duration_ms: float | None = None
-    attributes: dict[str, Any] = Field(default_factory=dict)
-    tags: list[str] = Field(default_factory=list)
+    attributes: dict[str, Any] = Field(default_factory=FrozenDict)
+    tags: list[str] = Field(default_factory=FrozenList)
 
     @field_validator("timestamp")
     @classmethod
@@ -81,7 +82,12 @@ class LogEvent(BaseModel):
             if cleaned not in seen:
                 normalized.append(cleaned)
                 seen.add(cleaned)
-        return normalized
+        return FrozenList(normalized)
+
+    @field_validator("attributes")
+    @classmethod
+    def freeze_attributes(cls, value: dict[str, Any]) -> dict[str, Any]:
+        return freeze_mapping(value)
 
     @model_validator(mode="after")
     def ensure_ingested_is_timezone_aware(self) -> "LogEvent":

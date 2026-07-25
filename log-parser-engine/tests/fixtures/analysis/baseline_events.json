@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-07-25T15:00:00Z",
+    "source_type": "HTTP",
+    "severity": "INFO",
+    "message": "Synthetic baseline success",
+    "raw_message": "synthetic-baseline-200",
+    "service": "gateway",
+    "http_method": "GET",
+    "http_path": "/api/health",
+    "http_status": 200,
+    "duration_ms": 20.0
+  },
+  {
+    "timestamp": "2026-07-25T15:01:00Z",
+    "source_type": "HTTP",
+    "severity": "INFO",
+    "message": "Synthetic baseline success two",
+    "raw_message": "synthetic-baseline-200-2",
+    "service": "gateway",
+    "http_method": "GET",
+    "http_path": "/api/health",
+    "http_status": 200,
+    "duration_ms": 22.0
+  }
+]

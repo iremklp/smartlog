@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-07-25T16:00:00Z",
+    "source_type": "HTTP",
+    "severity": "ERROR",
+    "message": "Synthetic comparison server error",
+    "raw_message": "synthetic-comparison-500",
+    "service": "gateway",
+    "http_method": "GET",
+    "http_path": "/api/health",
+    "http_status": 500,
+    "duration_ms": 220.0
+  },
+  {
+    "timestamp": "2026-07-25T16:01:00Z",
+    "source_type": "HTTP",
+    "severity": "ERROR",
+    "message": "Synthetic comparison server error two",
+    "raw_message": "synthetic-comparison-500-2",
+    "service": "gateway",
+    "http_method": "GET",
+    "http_path": "/api/health",
+    "http_status": 500,
+    "duration_ms": 250.0
+  }
+]

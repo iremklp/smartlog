@@ -3,8 +3,10 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from log_parser_engine.models import (
+    AnalysisResult,
     BatchParseResult,
     BatchWriteResult,
+    ComparisonResult,
     EventQueryResult,
     EventWriteResult,
     IngestionResult,
@@ -42,3 +44,15 @@ class QueryExecutionResponse(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     result: EventQueryResult
+
+
+class AnalyzeEventsResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    result: AnalysisResult
+
+
+class CompareEventsResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    result: ComparisonResult

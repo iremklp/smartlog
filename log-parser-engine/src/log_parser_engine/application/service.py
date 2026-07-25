@@ -3,9 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
+from typing import Literal, cast
 
 from log_parser_engine.batch import BatchParseOptions
 from log_parser_engine.core import ParserContext
+from log_parser_engine.exceptions import AnalysisConcurrencyLimitError
 from log_parser_engine.models import (
     BatchParseResult,
     BatchWriteResult,
@@ -23,12 +26,17 @@ from log_parser_engine.models import (
     PipelineResult,
     StoredEvent,
 )
-from log_parser_engine.storage import BatchWriteOptions, EventStore
-from log_parser_engine.storage import EventWriteOptions
+from log_parser_engine.storage import (
+    BatchWriteOptions,
+    EventStore,
+    EventWriteOptions,
+)
 
+from .commands import AnalyzeEventsCommand, CompareEventsCommand
 from .container import ApplicationContainer
 from .health import ApplicationHealth
 from .helpers import build_parser_context
+from .responses import AnalyzeEventsResponse, CompareEventsResponse
 from .runtime_statistics import ApplicationRuntimeStatistics
 
 
@@ -52,12 +60,17 @@ class LogAnalysisApplicationService:
         store_stats = self._container.store_statistics()
         checked_at = datetime.now(timezone.utc)
         warnings = self._container.startup_warnings
-        status = "healthy" if not warnings else "degraded"
+        status: Literal["healthy", "degraded"] = (
+            "healthy" if not warnings else "degraded"
+        )
         return ApplicationHealth(
             status=status,
             created_at=self._container.created_at,
             checked_at=checked_at,
-            uptime_ms=(checked_at - self._container.created_at).total_seconds() * 1000.0,
+            uptime_ms=(
+                checked_at - self._container.created_at
+            ).total_seconds()
+            * 1000.0,
             parser_count=self._container.registry.count,
             enabled_parser_count=self._container.registry.enabled_count,
             store_event_count=store_stats.event_count,
@@ -66,17 +79,102 @@ class LogAnalysisApplicationService:
 
     def runtime_statistics(self) -> ApplicationRuntimeStatistics:
         observed_at = datetime.now(timezone.utc)
+        analysis_metrics = self._container.analysis_runtime_metrics.snapshot()
         return ApplicationRuntimeStatistics(
             created_at=self._container.created_at,
             observed_at=observed_at,
-            uptime_ms=(observed_at - self._container.created_at).total_seconds() * 1000.0,
+            uptime_ms=(
+                observed_at - self._container.created_at
+            ).total_seconds()
+            * 1000.0,
             parser_count=self._container.registry.count,
             enabled_parser_count=self._container.registry.enabled_count,
             store_statistics=self._container.store_statistics(),
             startup_warnings=self._container.startup_warnings,
+            **analysis_metrics,
         )
 
-    def list_parsers(self, *, enabled_only: bool = False) -> tuple[ParserRegistration, ...]:
+    def analyze_events(
+        self,
+        command: AnalyzeEventsCommand,
+    ) -> AnalyzeEventsResponse:
+        if not isinstance(command, AnalyzeEventsCommand):
+            raise TypeError("command must be an AnalyzeEventsCommand")
+        started = perf_counter()
+        if not self._container.try_acquire_analysis_slot():
+            self._container.analysis_runtime_metrics.record_analysis(
+                event_count=0,
+                duration_ms=(perf_counter() - started) * 1000.0,
+                failed=True,
+            )
+            raise AnalysisConcurrencyLimitError(
+                self._container.options.max_concurrent_analysis_operations
+            )
+        try:
+            events = self._container.store.snapshot_events()
+            result = self._container.analysis_engine.analyze(events, command.request)
+        except Exception:
+            duration_ms = (perf_counter() - started) * 1000.0
+            self._container.analysis_runtime_metrics.record_analysis(
+                event_count=0,
+                duration_ms=duration_ms,
+                failed=True,
+            )
+            raise
+        finally:
+            self._container.release_analysis_slot()
+        self._container.analysis_runtime_metrics.record_analysis(
+            event_count=result.matched_event_count,
+            duration_ms=result.analysis_duration_ms,
+        )
+        return AnalyzeEventsResponse(result=result)
+
+    def compare_events(
+        self,
+        command: CompareEventsCommand,
+    ) -> CompareEventsResponse:
+        if not isinstance(command, CompareEventsCommand):
+            raise TypeError("command must be a CompareEventsCommand")
+        started = perf_counter()
+        if not self._container.try_acquire_analysis_slot():
+            self._container.analysis_runtime_metrics.record_comparison(
+                event_count=0,
+                duration_ms=(perf_counter() - started) * 1000.0,
+                failed=True,
+            )
+            raise AnalysisConcurrencyLimitError(
+                self._container.options.max_concurrent_analysis_operations
+            )
+        try:
+            events = self._container.store.snapshot_events()
+            result = self._container.analysis_engine.compare(
+                events,
+                events,
+                command.request,
+            )
+        except Exception:
+            duration_ms = (perf_counter() - started) * 1000.0
+            self._container.analysis_runtime_metrics.record_comparison(
+                event_count=0,
+                duration_ms=duration_ms,
+                failed=True,
+            )
+            raise
+        finally:
+            self._container.release_analysis_slot()
+        self._container.analysis_runtime_metrics.record_comparison(
+            event_count=(
+                result.baseline_event_count + result.comparison_event_count
+            ),
+            duration_ms=result.duration_ms,
+        )
+        return CompareEventsResponse(result=result)
+
+    def list_parsers(
+        self,
+        *,
+        enabled_only: bool = False,
+    ) -> tuple[ParserRegistration, ...]:
         return self._container.registry.list_registrations(enabled_only=enabled_only)
 
     def ingest_text(
@@ -112,10 +210,13 @@ class LogAnalysisApplicationService:
         options: PipelineOptions | None = None,
     ) -> PipelineResult:
         resolved_context = build_parser_context(context)
-        return self._container.pipeline.process(
-            raw_log,
-            context=resolved_context,
-            options=options,
+        return cast(
+            PipelineResult,
+            self._container.pipeline.process(
+                raw_log,
+                context=resolved_context,
+                options=options,
+            ),
         )
 
     def parse_with_parser(

@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .enums import LogSeverity
+from .immutable import FrozenDict, freeze_mapping
 from .log_event import LogEvent
 
 
@@ -21,16 +22,24 @@ class StoredEvent(BaseModel):
 
     id: str = Field(description="The unique identifier of the event in the store.")
     event: LogEvent = Field(description="The original, immutable log event.")
-    inserted_at: datetime = Field(description="The UTC timestamp when the event was inserted into the store.")
-    sequence: int = Field(description="A monotonically increasing sequence number for insertion order.")
-    content_hash: str = Field(description="The SHA-256 hash of the canonical event content.")
-    estimated_size_bytes: int = Field(description="The estimated memory size of the event in bytes.")
+    inserted_at: datetime = Field(
+        description="The UTC timestamp when the event was inserted into the store."
+    )
+    sequence: int = Field(
+        description="A monotonically increasing sequence number for insertion order."
+    )
+    content_hash: str = Field(
+        description="The SHA-256 hash of the canonical event content."
+    )
+    estimated_size_bytes: int = Field(
+        description="The estimated memory size of the event in bytes."
+    )
     source_batch_id: str | None = Field(
         default=None,
         description="The identifier of the batch this event originated from.",
     )
     metadata: dict[str, Any] = Field(
-        default_factory=dict,
+        default_factory=FrozenDict,
         description="Custom metadata associated with the stored event.",
     )
 
@@ -44,7 +53,10 @@ class StoredEvent(BaseModel):
     @field_validator("inserted_at")
     @classmethod
     def _validate_inserted_at(cls, value: datetime) -> datetime:
-        if value.tzinfo is None or value.tzinfo.utcoffset(value) != timezone.utc.utcoffset(None):
+        if (
+            value.tzinfo is None
+            or value.tzinfo.utcoffset(value) != timezone.utc.utcoffset(None)
+        ):
             raise ValueError("inserted_at must be an aware UTC datetime")
         return value
 
@@ -60,7 +72,9 @@ class StoredEvent(BaseModel):
     def _validate_hash(cls, value: str) -> str:
         # Basic validation for a hex digest. A full regex is overkill.
         if len(value) != 64 or not all(c in "0123456789abcdef" for c in value):
-            raise ValueError("content_hash must be a 64-character lowercase SHA-256 hex digest")
+            raise ValueError(
+                "content_hash must be a 64-character lowercase SHA-256 hex digest"
+            )
         return value
 
     @field_validator("estimated_size_bytes")
@@ -69,11 +83,11 @@ class StoredEvent(BaseModel):
         if value < 0:
             raise ValueError("estimated_size_bytes must not be negative")
         return value
-    
+
     @field_validator("metadata")
     @classmethod
     def _defensive_copy_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
-        return value.copy()
+        return freeze_mapping(value)
 
     # --- Convenience Properties to access underlying event data ---
 

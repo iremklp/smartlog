@@ -1,0 +1,17 @@
+[
+  {
+    "timestamp": "2026-07-25T14:00:00Z",
+    "source_type": "FILE",
+    "severity": "UNKNOWN",
+    "message": "Synthetic sparse event",
+    "raw_message": "synthetic-sparse-event"
+  },
+  {
+    "timestamp": "2026-07-25T14:05:00Z",
+    "source_type": "FILE",
+    "severity": "INFO",
+    "message": "Synthetic event with minimal metadata",
+    "raw_message": "synthetic-minimal-event",
+    "tags": ["synthetic"]
+  }
+]

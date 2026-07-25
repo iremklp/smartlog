@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-07-25T10:00:00Z",
+    "source_type": "APPLICATION",
+    "severity": "INFO",
+    "event_type": "request.completed",
+    "message": "Synthetic request completed",
+    "raw_message": "synthetic-request-completed",
+    "service": "catalog",
+    "host": "test-node-01",
+    "duration_ms": 24.0,
+    "attributes": {"parser_name": "json"}
+  },
+  {
+    "timestamp": "2026-07-25T10:01:00Z",
+    "source_type": "APPLICATION",
+    "severity": "ERROR",
+    "event_type": "request.failed",
+    "message": "Synthetic request failed",
+    "raw_message": "synthetic-request-failed",
+    "service": "checkout",
+    "host": "test-node-02",
+    "duration_ms": 180.0,
+    "attributes": {"parser_name": "json"}
+  }
+]

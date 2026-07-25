@@ -5,10 +5,17 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from log_parser_engine.application import ApplicationContainer, ApplicationOptions, LogAnalysisApplicationService
+from log_parser_engine.application import (
+    ApplicationContainer,
+    ApplicationOptions,
+    LogAnalysisApplicationService,
+)
 
 from .errors import register_exception_handlers
-from .middleware import request_id_middleware
+from .middleware import (
+    AnalysisRequestSizeLimitMiddleware,
+    request_id_middleware,
+)
 from .routes import router
 
 
@@ -40,6 +47,10 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["X-Request-ID"],
+    )
+    app.add_middleware(
+        AnalysisRequestSizeLimitMiddleware,
+        max_body_bytes=resolved_container.options.max_analysis_request_body_bytes,
     )
     app.state.container = resolved_container
     app.state.service = service

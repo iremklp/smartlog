@@ -1,10 +1,13 @@
 """Application service layer for the log parser engine."""
 
+from .commands import AnalyzeEventsCommand, CompareEventsCommand
 from .container import ApplicationContainer
 from .health import ApplicationHealth
 from .options import ApplicationOptions
 from .responses import (
+    AnalyzeEventsResponse,
     BatchExecutionResponse,
+    CompareEventsResponse,
     IngestionExecutionResponse,
     ParseExecutionResponse,
     QueryExecutionResponse,
@@ -15,10 +18,14 @@ from .service import LogAnalysisApplicationService
 
 __all__ = [
     "ApplicationContainer",
+    "AnalyzeEventsCommand",
+    "AnalyzeEventsResponse",
     "ApplicationHealth",
     "ApplicationOptions",
     "ApplicationRuntimeStatistics",
     "BatchExecutionResponse",
+    "CompareEventsCommand",
+    "CompareEventsResponse",
     "IngestionExecutionResponse",
     "ParseExecutionResponse",
     "QueryExecutionResponse",

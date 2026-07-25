@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from log_parser_engine.analysis import AnalysisOptions
 from log_parser_engine.batch import BatchParseOptions
 from log_parser_engine.storage import EventStoreOptions
 
@@ -17,6 +18,13 @@ class ApplicationOptions(BaseModel):
     parser_ambiguity_margin: float = 0.05
     event_store_options: EventStoreOptions = Field(default_factory=EventStoreOptions)
     batch_parse_options: BatchParseOptions = Field(default_factory=BatchParseOptions)
+    analysis_options: AnalysisOptions = Field(default_factory=AnalysisOptions)
+    max_concurrent_analysis_operations: int = Field(default=2, ge=1, le=64)
+    max_analysis_request_body_bytes: int = Field(
+        default=65_536,
+        ge=256,
+        le=1_048_576,
+    )
 
     @field_validator("name")
     @classmethod

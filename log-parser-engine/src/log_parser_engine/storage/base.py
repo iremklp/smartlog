@@ -74,6 +74,15 @@ class EventStore(Protocol):
         """
         ...
 
+    def snapshot_events(self) -> tuple[StoredEvent, ...]:
+        """
+        Return an immutable, insertion-ordered snapshot of all stored events.
+
+        Implementations must release any internal lock before returning so callers
+        can perform long-running analysis without blocking writes.
+        """
+        ...
+
     def query(
         self,
         query: EventQuery | None = None,

@@ -242,46 +242,113 @@ Frontend:
 
 Backend:
 
-- `pytest` test toplama aşaması, bazı plugin modellerinin public model
-  paketinden dışa aktarılmaması nedeniyle başarısızdır.
-- İlk hata `PluginCandidate` modelinin `log_parser_engine.models` üzerinden
-  import edilememesidir.
-- `mypy src` kontrolünde 13 dosyada 43 tip hatası bulunmaktadır.
-- `ruff check .` kontrolünde format, import, satır uzunluğu ve kullanılmayan
-  importlar dahil 281 bulgu bulunmaktadır.
+- Tam test paketi toplanıp çalışmaktadır; son kontrolde 389 test geçmiş,
+  analiz katmanı dışındaki eski test/fixture uyumsuzlukları nedeniyle 21 test
+  başarısız olmuş ve 11 test setup hatası vermiştir.
+- Tam paket coverage sonucu %84'tür. Yalnız istatistiksel analiz modülünün
+  odak testleri 129/129 geçmiş ve modül coverage değeri %93 olmuştur.
+- `mypy src` kontrolünde 5 eski dosyada toplam 20 tip hatası bulunmaktadır.
+- `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
+  ve tanımsız isimler dahil 231 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.
 
 ### Statistical Analysis Engine Durumu
 
-İstatistiksel analiz katmanı için `AnalysisOptions`, `AnalysisRequest`,
-`ComparisonRequest` ve ilgili exception temelleri oluşturulmuştur. Analiz
-motoru, accumulatorlar, sonuç modelleri, REST API entegrasyonu ve kapsamlı
-testler henüz tamamlanmamıştır.
+İstatistiksel analiz katmanı tamamlanmış ve application service ile REST API'ye
+bağlanmıştır. Motor yalnız kendisine verilen `StoredEvent` snapshotı üzerinde
+çalışır; event store'u değiştirmez, SQL veya harici bir veri tabanı kullanmaz ve
+AI/LLM çağrısı yapmaz. Üretilen insight'lar eşiklere ve açık metriklere dayanan
+deterministik gözlemlerdir; kök neden iddiası değildir.
 
-Planlanan analiz yetenekleri:
+Desteklenen analizler:
 
-- event ve severity özetleri
-- hata oranları
-- dağılımlar ve zaman serileri
-- latency percentile hesapları
-- HTTP status, method ve endpoint analizleri
-- dönem karşılaştırmaları
-- AI kullanmayan deterministik insight üretimi
+- toplam event, severity, hata ve kritik oranı özetleri
+- event type, parser, servis, host, tag ve HTTP boyutlarında bounded dağılımlar
+- UTC ve Unix epoch hizalı zaman serileri
+- exact veya açıkça işaretlenmiş deterministik örneklemeli percentile analizi
+- latency min/max/ortalama/median/population standard deviation ve histogram
+- HTTP status sınıfı, method, endpoint, 4xx/5xx ve endpoint latency analizi
+- baseline/comparison dönem karşılaştırmaları
+- minimum örnek ve anlamlı değişim eşiklerine bağlı temkinli insight'lar
+- raw log içermeyen, sınırlı ve sanitize edilmiş event örnekleri
+
+Canonical API uçları:
+
+```text
+POST /api/v1/analysis
+POST /api/v1/analysis/compare
+```
+
+Analiz isteği filtre, zaman aralığı, bucket boyutu, top-N, grup alanları,
+percentile'lar ve dahil edilecek modülleri seçebilir. Başlangıç zamanı inclusive,
+bitiş zamanı exclusive'dir. HTTP hata oranı yalnız 4xx ve 5xx sonuçlarını hata
+olarak değerlendirir; genel `error_rate` ise severity `ERROR` ve `CRITICAL`
+kayıtlarını kullanır. Percentile metodu varsayılan olarak `nearest_rank`tır.
+Örnekleme etkinleştirilirse median dahil order-statistic/percentile sonuçları
+yaklaşık olur; count, min/max, mean ve population standard deviation tam veri
+kümesinden hesaplanır. Sonuç bu durumu `percentiles_approximated` ve
+`percentile_sample_count` alanlarıyla açıkça bildirir.
+
+Python kullanımı:
+
+```python
+from log_parser_engine.analysis import StatisticalAnalysisEngine
+from log_parser_engine.models import AnalysisRequest
+
+snapshot = store.snapshot_events()
+result = StatisticalAnalysisEngine().analyze(
+    snapshot,
+    AnalysisRequest(
+        time_bucket_seconds=300,
+        group_fields=("severity", "service", "event_type"),
+        percentiles=(50, 95, 99),
+        top_n=10,
+    ),
+)
+```
+
+API örneği:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/analysis \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "time_bucket_seconds": 300,
+    "group_fields": ["severity", "service"],
+    "percentiles": [50, 95, 99],
+    "include_samples": false
+  }'
+```
+
+Güvenlik ve kaynak sınırları:
+
+- event, grup, timeline bucket, percentile sample, top-N ve response alanları
+  yapılandırılabilir limitlere tabidir
+- `message`, `raw_message`, kimlik, credential, token ve authorization alanları
+  gruplama veya HTTP alan override'ı olarak kullanılamaz
+- attribute yollarında object attribute erişimi, dunder segmentleri, regex,
+  `eval` ve çalıştırılabilir expression desteklenmez
+- sonuç modellerindeki metadata/evidence/attributes koleksiyonları iç içe
+  yapılarda da immutable'dır
+- API cevapları request metadata'sını, full filter metinlerini veya raw logu
+  geri yansıtmaz
+
+Analiz sonuçları kalıcı değildir. `InMemoryEventStore` process/pod belleğinde
+yaşar; uygulama veya pod yeniden başladığında silinir ve OpenShift'te farklı
+replica'lar arasında paylaşılmaz. Analiz endpointleri yalnız istek anında ilgili
+podda bulunan snapshotı görür.
 
 ### Production Öncesi Öncelikler
 
-1. Public plugin model exportlarını düzeltmek ve test koleksiyonunu çalışır
-   hale getirmek
-2. Bütün backend testlerini başarıyla tamamlamak
-3. `mypy` tip hatalarını gidermek
-4. Ruff kalite bulgularını temizlemek
-5. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
+1. Analiz dışındaki eski backend test uyumsuzluklarını gidermek
+2. Proje genelindeki kalan `mypy` tip hatalarını gidermek
+3. Proje genelindeki Ruff kalite bulgularını temizlemek
+4. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
    okumaya geçirmek
-6. Statistical Analysis Engine'i tamamlayıp API ve UI katmanlarına entegre
-   etmek
-7. Frontend bundle'ı route-level code splitting ile küçültmek
+5. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
+6. Frontend bundle'ı route-level code splitting ile küçültmek
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
 başarılı olmalıdır:

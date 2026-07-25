@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": "2026-07-25T13:00:00Z",
+    "source_type": "APPLICATION",
+    "severity": "ERROR",
+    "event_type": "dependency.failure",
+    "message": "Synthetic dependency failure one",
+    "raw_message": "synthetic-error-spike-1",
+    "service": "payments"
+  },
+  {
+    "timestamp": "2026-07-25T13:00:10Z",
+    "source_type": "APPLICATION",
+    "severity": "ERROR",
+    "event_type": "dependency.failure",
+    "message": "Synthetic dependency failure two",
+    "raw_message": "synthetic-error-spike-2",
+    "service": "payments"
+  },
+  {
+    "timestamp": "2026-07-25T13:00:20Z",
+    "source_type": "APPLICATION",
+    "severity": "CRITICAL",
+    "event_type": "dependency.failure",
+    "message": "Synthetic critical dependency failure",
+    "raw_message": "synthetic-error-spike-3",
+    "service": "payments"
+  }
+]

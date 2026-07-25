@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from log_parser_engine.batch import BatchParseOptions
 from log_parser_engine.core import ParserContext
 from log_parser_engine.models import (
+    AnalysisRequest,
+    ComparisonRequest,
     EventAggregationRequest,
     EventQuery,
     LogEvent,
@@ -92,3 +94,19 @@ class AggregateEventsCommand(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     request: EventAggregationRequest
+
+
+class AnalyzeEventsCommand(BaseModel):
+    """Request an analysis over the application store's immutable snapshot."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request: AnalysisRequest = Field(default_factory=AnalysisRequest)
+
+
+class CompareEventsCommand(BaseModel):
+    """Compare two filtered views of the same immutable store snapshot."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request: ComparisonRequest = Field(default_factory=ComparisonRequest)

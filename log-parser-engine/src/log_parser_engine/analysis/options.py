@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -14,7 +15,13 @@ class AnalysisOptions(BaseModel):
     max_top_n: int = 100
     max_timeline_buckets: int = 2_000
     default_time_bucket_seconds: int = 300
+    max_time_bucket_seconds: int = 31_536_000
     max_percentile_samples: int = 1_000_000
+    max_group_fields_per_request: int = 20
+    max_percentiles_per_request: int = 20
+    max_samples_per_request: int = 100
+    max_comparison_metrics_per_request: int = 20
+    max_dimension_value_length: int = 256
     percentile_method: Literal["nearest_rank", "linear"] = "nearest_rank"
     duration_field_candidates: tuple[str, ...] = (
         "duration_ms", "latency_ms", "response_time_ms", "elapsed_ms",
@@ -50,8 +57,12 @@ class AnalysisOptions(BaseModel):
     @field_validator(
         "max_events", "max_groups", "default_top_n", "max_top_n",
         "max_timeline_buckets", "default_time_bucket_seconds",
+        "max_time_bucket_seconds",
         "max_percentile_samples", "minimum_comparison_count",
         "minimum_endpoint_requests_for_rate", "minimum_endpoint_latency_samples",
+        "max_group_fields_per_request", "max_percentiles_per_request",
+        "max_samples_per_request", "max_comparison_metrics_per_request",
+        "max_dimension_value_length",
     )
     @classmethod
     def positive(cls, value: int) -> int:
@@ -70,13 +81,38 @@ class AnalysisOptions(BaseModel):
             raise ValueError("candidate list must not be empty")
         return result
 
+    @field_validator(
+        "significant_change_percent",
+        "error_rate_warning_threshold",
+        "error_rate_critical_threshold",
+        "latency_warning_percentile_ms",
+        "latency_critical_percentile_ms",
+        "dominant_group_warning_percentage",
+        "dominant_group_critical_percentage",
+    )
+    @classmethod
+    def finite_threshold(cls, value: float | None) -> float | None:
+        if value is not None and not math.isfinite(value):
+            raise ValueError("analysis thresholds must be finite")
+        return value
+
     @model_validator(mode="after")
     def validate_options(self) -> "AnalysisOptions":
         if self.default_top_n > self.max_top_n:
             raise ValueError("default_top_n cannot exceed max_top_n")
+        if self.default_time_bucket_seconds > self.max_time_bucket_seconds:
+            raise ValueError(
+                "default_time_bucket_seconds cannot exceed "
+                "max_time_bucket_seconds"
+            )
         if not 1 <= self.max_attribute_depth <= 20:
             raise ValueError("max_attribute_depth must be between 1 and 20")
-        if not 0 <= self.error_rate_warning_threshold < self.error_rate_critical_threshold <= 1:
+        if not (
+            0
+            <= self.error_rate_warning_threshold
+            < self.error_rate_critical_threshold
+            <= 1
+        ):
             raise ValueError("error rate thresholds must be ordered ratios")
         if self.significant_change_percent < 0:
             raise ValueError("significant_change_percent must not be negative")
@@ -86,4 +122,13 @@ class AnalysisOptions(BaseModel):
             raise ValueError("latency thresholds must not be negative")
         if warning is not None and critical is not None and warning > critical:
             raise ValueError("latency warning cannot exceed critical")
+        if not (
+            0
+            <= self.dominant_group_warning_percentage
+            < self.dominant_group_critical_percentage
+            <= 100
+        ):
+            raise ValueError(
+                "dominant group thresholds must be ordered percentages"
+            )
         return self

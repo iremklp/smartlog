@@ -392,3 +392,7 @@ class InMemoryEventStore(EventStore):
         )
         return engine.execute()
 
+    def snapshot_events(self) -> tuple[StoredEvent, ...]:
+        """Return a consistent sequence-ordered snapshot without holding the lock."""
+        with self._lock:
+            return tuple(sorted(self._events_by_id.values(), key=lambda item: item.sequence))

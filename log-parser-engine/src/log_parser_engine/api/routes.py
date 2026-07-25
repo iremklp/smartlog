@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
-from log_parser_engine.application import LogAnalysisApplicationService
+from log_parser_engine.application import (
+    AnalyzeEventsCommand,
+    ApplicationHealth,
+    ApplicationRuntimeStatistics,
+    CompareEventsCommand,
+    LogAnalysisApplicationService,
+)
 from log_parser_engine.core import ParserContext
 from log_parser_engine.models import (
     BatchParseResult,
@@ -11,8 +17,11 @@ from log_parser_engine.models import (
     EventQueryResult,
     EventStoreStatistics,
     EventWriteResult,
+    IngestionResult,
     ParseResult,
+    ParserRegistration,
     PipelineResult,
+    StoredEvent,
 )
 
 from .dependencies import get_service
@@ -20,7 +29,12 @@ from .schemas import (
     AddEventRequest,
     AddManyEventsRequest,
     AggregateRequest,
+    AnalysisApiErrorResponse,
+    AnalysisApiRequest,
+    AnalysisApiResponse,
     BatchParseRequest,
+    ComparisonApiRequest,
+    ComparisonApiResponse,
     IngestTextRequest,
     ParseRequest,
     ParseWithParserRequest,
@@ -31,12 +45,16 @@ router = APIRouter()
 
 
 @router.get("/health")
-def health(service: LogAnalysisApplicationService = Depends(get_service)):
+def health(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> ApplicationHealth:
     return service.health()
 
 
 @router.get("/runtime/statistics")
-def runtime_statistics(service: LogAnalysisApplicationService = Depends(get_service)):
+def runtime_statistics(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> ApplicationRuntimeStatistics:
     return service.runtime_statistics()
 
 
@@ -48,15 +66,75 @@ def store_statistics(
 
 
 @router.get("/parsers")
-def list_parsers(service: LogAnalysisApplicationService = Depends(get_service)):
+def list_parsers(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> tuple[ParserRegistration, ...]:
     return service.list_parsers()
+
+
+@router.post(
+    "/analysis",
+    tags=["Analysis"],
+    include_in_schema=False,
+    response_model=AnalysisApiResponse,
+)
+@router.post(
+    "/api/v1/analysis",
+    tags=["Analysis"],
+    response_model=AnalysisApiResponse,
+    responses={
+        400: {"model": AnalysisApiErrorResponse},
+        413: {"model": AnalysisApiErrorResponse},
+        422: {"model": AnalysisApiErrorResponse},
+    },
+    summary="Analyze stored events",
+)
+def analyze_events(
+    payload: AnalysisApiRequest,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> AnalysisApiResponse:
+    command = AnalyzeEventsCommand(request=payload)
+    result = service.analyze_events(command).result
+    return AnalysisApiResponse.from_domain(
+        result,
+        options=service.container.options.analysis_options,
+    )
+
+
+@router.post(
+    "/analysis/compare",
+    tags=["Analysis"],
+    include_in_schema=False,
+    response_model=ComparisonApiResponse,
+)
+@router.post(
+    "/api/v1/analysis/compare",
+    tags=["Analysis"],
+    response_model=ComparisonApiResponse,
+    responses={
+        400: {"model": AnalysisApiErrorResponse},
+        413: {"model": AnalysisApiErrorResponse},
+        422: {"model": AnalysisApiErrorResponse},
+    },
+    summary="Compare two stored-event scopes",
+)
+def compare_events(
+    payload: ComparisonApiRequest,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> ComparisonApiResponse:
+    command = CompareEventsCommand(request=payload)
+    result = service.compare_events(command).result
+    return ComparisonApiResponse.from_domain(
+        result,
+        options=service.container.options.analysis_options,
+    )
 
 
 @router.post("/ingest/text")
 def ingest_text(
     payload: IngestTextRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
+) -> IngestionResult:
     return service.ingest_text(payload.text, source_name=payload.source_name)
 
 
@@ -64,8 +142,12 @@ def ingest_text(
 def parse_text(
     payload: ParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
-    return service.parse_text(payload.raw_log, context=payload.context, options=payload.options)
+) -> PipelineResult:
+    return service.parse_text(
+        payload.raw_log,
+        context=payload.context,
+        options=payload.options,
+    )
 
 
 @router.post("/parse/file")
@@ -77,7 +159,13 @@ async def parse_file(
     batch_mode: bool = Form(default=False),
     allow_disabled_parser: bool = Form(default=False),
     service: LogAnalysisApplicationService = Depends(get_service),
-) -> PipelineResult | ParseResult | BatchParseResult | EventWriteResult | BatchWriteResult:
+) -> (
+    PipelineResult
+    | ParseResult
+    | BatchParseResult
+    | EventWriteResult
+    | BatchWriteResult
+):
     payload = await file.read()
     if not payload:
         raise HTTPException(status_code=400, detail="uploaded file is empty")
@@ -105,7 +193,10 @@ async def parse_file(
         )
         if store_result:
             if not parse_result.events:
-                raise HTTPException(status_code=400, detail="parser did not produce an event to store")
+                raise HTTPException(
+                    status_code=400,
+                    detail="parser did not produce an event to store",
+                )
             return service.add_event(parse_result.events[0])
         return parse_result
 
@@ -137,7 +228,7 @@ def parse_with_parser(
     parser_name: str,
     payload: ParseWithParserRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
+) -> ParseResult:
     return service.parse_with_parser(
         parser_name,
         payload.raw_log,
@@ -150,15 +241,19 @@ def parse_with_parser(
 def batch_parse_text(
     payload: BatchParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
-    return service.batch_parse_text(payload.text, context=payload.context, options=payload.options)
+) -> BatchParseResult:
+    return service.batch_parse_text(
+        payload.text,
+        context=payload.context,
+        options=payload.options,
+    )
 
 
 @router.post("/batch/parse/store")
 def batch_parse_and_store_text(
     payload: BatchParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
+) -> BatchWriteResult:
     return service.batch_parse_and_store_text(
         payload.text,
         context=payload.context,
@@ -170,7 +265,7 @@ def batch_parse_and_store_text(
 def add_event(
     payload: AddEventRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
+) -> EventWriteResult:
     return service.add_event(payload.event, options=payload.options)
 
 
@@ -178,17 +273,23 @@ def add_event(
 def add_many_events(
     payload: AddManyEventsRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
-):
+) -> BatchWriteResult:
     return service.add_many_events(payload.events, options=payload.options)
 
 
 @router.get("/events/{event_id}")
-def get_event(event_id: str, service: LogAnalysisApplicationService = Depends(get_service)):
+def get_event(
+    event_id: str,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> StoredEvent | None:
     return service.get_event(event_id)
 
 
 @router.delete("/events/{event_id}")
-def delete_event(event_id: str, service: LogAnalysisApplicationService = Depends(get_service)):
+def delete_event(
+    event_id: str,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> dict[str, bool]:
     return {"deleted": service.delete_event(event_id)}
 
 

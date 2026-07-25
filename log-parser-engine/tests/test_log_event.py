@@ -34,3 +34,21 @@ def test_log_event_rejects_naive_timestamp() -> None:
             message="hello",
             raw_message="hello",
         )
+
+
+def test_nested_log_event_collections_are_immutable() -> None:
+    event = LogEvent(
+        timestamp=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        source_type=LogSourceType.nginx,
+        message="hello",
+        raw_message="hello",
+        attributes={"nested": {"values": [1, 2]}},
+        tags=["alpha"],
+    )
+
+    with pytest.raises(TypeError, match="mutation"):
+        event.attributes["new"] = True
+    with pytest.raises(TypeError, match="mutation"):
+        event.attributes["nested"]["new"] = True
+    with pytest.raises(TypeError, match="mutation"):
+        event.tags.append("beta")

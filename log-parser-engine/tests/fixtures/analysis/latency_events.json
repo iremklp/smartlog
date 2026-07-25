@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": "2026-07-25T12:00:00Z",
+    "source_type": "APPLICATION",
+    "severity": "INFO",
+    "message": "Synthetic low latency event",
+    "raw_message": "synthetic-latency-low",
+    "service": "search",
+    "duration_ms": 8.0
+  },
+  {
+    "timestamp": "2026-07-25T12:00:30Z",
+    "source_type": "APPLICATION",
+    "severity": "WARNING",
+    "message": "Synthetic medium latency event",
+    "raw_message": "synthetic-latency-medium",
+    "service": "search",
+    "attributes": {"response_time_ms": 275.0}
+  },
+  {
+    "timestamp": "2026-07-25T12:01:00Z",
+    "source_type": "APPLICATION",
+    "severity": "ERROR",
+    "message": "Synthetic high latency event",
+    "raw_message": "synthetic-latency-high",
+    "service": "search",
+    "attributes": {"request_time": 2.5}
+  }
+]

@@ -1,10 +1,9 @@
-
 from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
 
-from log_parser_engine.models import LogEvent, LogSeverity, LogSourceType, StoredEvent
+from log_parser_engine.models import LogEvent, LogSourceType, StoredEvent
 
 
 @pytest.fixture
@@ -42,19 +41,59 @@ def test_stored_event_validation(sample_log_event: LogEvent):
     now = datetime.now(timezone.utc)
 
     with pytest.raises(ValidationError, match="id must not be empty"):
-        StoredEvent(id=" ", event=sample_log_event, inserted_at=now, sequence=1, content_hash="a"*64, estimated_size_bytes=100)
+        StoredEvent(
+            id=" ",
+            event=sample_log_event,
+            inserted_at=now,
+            sequence=1,
+            content_hash="a" * 64,
+            estimated_size_bytes=100,
+        )
 
     with pytest.raises(ValidationError, match="must be an aware UTC datetime"):
-        StoredEvent(id="1", event=sample_log_event, inserted_at=datetime.now(), sequence=1, content_hash="a"*64, estimated_size_bytes=100)
+        StoredEvent(
+            id="1",
+            event=sample_log_event,
+            inserted_at=datetime.now(),
+            sequence=1,
+            content_hash="a" * 64,
+            estimated_size_bytes=100,
+        )
 
-    with pytest.raises(ValidationError, match="sequence must be greater than or equal to 1"):
-        StoredEvent(id="1", event=sample_log_event, inserted_at=now, sequence=0, content_hash="a"*64, estimated_size_bytes=100)
+    with pytest.raises(
+        ValidationError, match="sequence must be greater than or equal to 1"
+    ):
+        StoredEvent(
+            id="1",
+            event=sample_log_event,
+            inserted_at=now,
+            sequence=0,
+            content_hash="a" * 64,
+            estimated_size_bytes=100,
+        )
 
     with pytest.raises(ValidationError, match="content_hash must be a 64-character"):
-        StoredEvent(id="1", event=sample_log_event, inserted_at=now, sequence=1, content_hash="short", estimated_size_bytes=100)
+        StoredEvent(
+            id="1",
+            event=sample_log_event,
+            inserted_at=now,
+            sequence=1,
+            content_hash="short",
+            estimated_size_bytes=100,
+        )
 
-    with pytest.raises(ValidationError, match="estimated_size_bytes must not be negative"):
-        StoredEvent(id="1", event=sample_log_event, inserted_at=now, sequence=1, content_hash="a"*64, estimated_size_bytes=-1)
+    with pytest.raises(
+        ValidationError, match="estimated_size_bytes must not be negative"
+    ):
+        StoredEvent(
+            id="1",
+            event=sample_log_event,
+            inserted_at=now,
+            sequence=1,
+            content_hash="a" * 64,
+            estimated_size_bytes=-1,
+        )
+
 
 def test_stored_event_metadata_copy(sample_log_event: LogEvent):
     """Ensures that the metadata dictionary is defensively copied."""
@@ -69,9 +108,28 @@ def test_stored_event_metadata_copy(sample_log_event: LogEvent):
         metadata=metadata,
     )
     assert event.metadata == metadata
-    
+
     # Modify original metadata dict
     metadata["key"] = "changed"
-    
+
     # The event's metadata should not have changed
     assert event.metadata == {"key": "value"}
+
+
+def test_stored_event_metadata_is_deeply_immutable(
+    sample_log_event: LogEvent,
+) -> None:
+    event = StoredEvent(
+        id="immutable",
+        event=sample_log_event,
+        inserted_at=datetime.now(timezone.utc),
+        sequence=1,
+        content_hash="b" * 64,
+        estimated_size_bytes=100,
+        metadata={"nested": {"items": [1, 2]}},
+    )
+
+    with pytest.raises(TypeError, match="mutation"):
+        event.metadata["new"] = True
+    with pytest.raises(TypeError, match="mutation"):
+        event.metadata["nested"]["new"] = True

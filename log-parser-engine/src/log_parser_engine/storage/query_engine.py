@@ -10,6 +10,7 @@ from typing import Any, Sequence
 from log_parser_engine.models import (
     EventAggregationRequest,
     EventAggregationResult,
+    EventFilter,
     EventPage,
     EventQuery,
     EventQueryResult,
@@ -32,6 +33,71 @@ SEVERITY_ORDER = {
     LogSeverity.CRITICAL: 6,
     LogSeverity.UNKNOWN: 7,
 }
+
+
+def matches_event_filter(event: StoredEvent, event_filter: EventFilter) -> bool:
+    """Return whether a stored event matches the canonical query filter semantics."""
+    log_event = event.event
+    if event_filter.event_ids and event.id not in event_filter.event_ids:
+        return False
+    if event_filter.exclude_event_ids and event.id in event_filter.exclude_event_ids:
+        return False
+    if event_filter.start_time and event.timestamp < event_filter.start_time:
+        return False
+    if event_filter.end_time and event.timestamp >= event_filter.end_time:
+        return False
+    if event_filter.severities and event.severity not in event_filter.severities:
+        return False
+    if event_filter.source_types and log_event.source_type not in event_filter.source_types:
+        return False
+    if event_filter.event_types and log_event.event_type not in event_filter.event_types:
+        return False
+
+    parser_name = log_event.attributes.get("parser_name")
+    if event_filter.parser_names and parser_name not in event_filter.parser_names:
+        return False
+    if event_filter.hosts and log_event.host not in event_filter.hosts:
+        return False
+    if event_filter.services and log_event.service not in event_filter.services:
+        return False
+    if event_filter.client_ips and log_event.client_ip not in event_filter.client_ips:
+        return False
+    if event_filter.user_ids and log_event.user_id not in event_filter.user_ids:
+        return False
+    if (
+        event_filter.correlation_ids
+        and log_event.correlation_id not in event_filter.correlation_ids
+    ):
+        return False
+
+    if event_filter.tags_any and not any(
+        tag in log_event.tags for tag in event_filter.tags_any
+    ):
+        return False
+    if event_filter.tags_all and not all(
+        tag in log_event.tags for tag in event_filter.tags_all
+    ):
+        return False
+
+    if event_filter.message_contains:
+        message = log_event.message
+        search_term = event_filter.message_contains
+        if not event_filter.message_case_sensitive:
+            message = message.casefold()
+            search_term = search_term.casefold()
+        if search_term not in message:
+            return False
+
+    if event_filter.attribute_exists and not all(
+        resolve_attribute_path(log_event, path)[0]
+        for path in event_filter.attribute_exists
+    ):
+        return False
+    for path, expected in event_filter.attribute_equals.items():
+        found, value = resolve_attribute_path(log_event, path)
+        if not found or value != expected:
+            return False
+    return True
 
 
 class InMemoryEventQueryEngine:
@@ -142,46 +208,12 @@ class InMemoryEventQueryEngine:
         if not events_to_scan:
             return []
             
-        q_filter = self._query.filter
         filtered = []
 
         for event in events_to_scan:
-            # Note: Filters already applied by index are re-applied here for correctness.
-            # This is a trade-off for simplicity over pure performance.
-            if q_filter.event_ids and event.id not in q_filter.event_ids: continue
-            if q_filter.exclude_event_ids and event.id in q_filter.exclude_event_ids: continue
-            if q_filter.start_time and event.timestamp < q_filter.start_time: continue
-            if q_filter.end_time and event.timestamp >= q_filter.end_time: continue
-            if q_filter.severities and event.severity not in q_filter.severities: continue
-            
-            # More filters...
-            if q_filter.tags_any and not any(t in event.event.tags for t in q_filter.tags_any): continue
-            if q_filter.tags_all and not all(t in event.event.tags for t in q_filter.tags_all): continue
-
-            if q_filter.message_contains:
-                msg = event.event.message
-                search_term = q_filter.message_contains
-                if not q_filter.message_case_sensitive:
-                    msg = msg.casefold()
-                    search_term = search_term.casefold()
-                if search_term not in msg:
-                    continue
-
-            if q_filter.attribute_exists:
-                if not all(resolve_attribute_path(event.event, p)[0] for p in q_filter.attribute_exists):
-                    continue
-            
-            if q_filter.attribute_equals:
-                match = True
-                for path, val in q_filter.attribute_equals.items():
-                    found, resolved_val = resolve_attribute_path(event.event, path)
-                    if not found or resolved_val != val:
-                        match = False
-                        break
-                if not match:
-                    continue
-            
-            filtered.append(event)
+            # Indexed filters are intentionally rechecked for correctness.
+            if matches_event_filter(event, self._query.filter):
+                filtered.append(event)
             
         return filtered
 
@@ -288,4 +320,3 @@ class InMemoryEventQueryEngine:
             return []
         
         return [val.value if hasattr(val, "value") else val]
-
