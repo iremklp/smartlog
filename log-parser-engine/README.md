@@ -170,3 +170,130 @@ The batch layer intentionally does not implement:
 - multiline stack-trace grouping
 - XML `<Events>` container batch parsing
 - JSON array batch parsing
+
+## Proje Özeti ve Mevcut Durum
+
+Bu proje, farklı kaynaklardan gelen logları ortak bir veri modeline dönüştüren,
+plugin tabanlı ve genişletilebilir bir log analiz platformudur.
+
+### Mimari Akış
+
+```text
+Log girdisi
+  → Encoding, binary ve arşiv kontrolleri
+  → Parser tespiti
+  → Parse ve normalizasyon
+  → Canonical LogEvent
+  → Batch/streaming orchestration
+  → InMemoryEventStore
+  → Query ve aggregation API
+  → React Web UI
+```
+
+Ana katmanlar:
+
+- `ingestion`: encoding, BOM, binary içerik, satır sonu ve arşiv kontrolleri
+- `core`, `plugins` ve `parsers`: parser sözleşmesi, otomatik format tespiti,
+  parser yönetimi ve plugin keşfi
+- `normalization` ve `pipeline`: farklı log tiplerini ortak `LogEvent`
+  modeline dönüştürme
+- `batch`: streaming işleme, parser session reuse, state yönetimi ve merkezi
+  hata politikaları
+- `storage`: SQL kullanmadan çalışan in-memory event store, filtreleme,
+  pagination, facet, aggregation, retention ve eviction
+- `application` ve `api`: uygulama servisi ve FastAPI REST katmanı
+- `frontend`: React, TypeScript ve Vite tabanlı analiz ve yönetim arayüzü
+
+### Desteklenen Log Formatları
+
+Mevcut built-in parserlar:
+
+- IIS W3C
+- JSON logları
+- Redis logları
+- Syslog RFC 3164
+- Syslog RFC 5424
+- Apache/Nginx access logları
+- Apache/Nginx error logları
+- Windows Event XML
+
+### In-Memory Store Kısıtları
+
+Eventler yalnızca çalışan process belleğinde tutulur:
+
+- Uygulama veya pod yeniden başladığında veriler kaybolur.
+- Birden fazla replica çalıştığında her pod kendi bağımsız event store'una
+  sahiptir.
+- Bu yapı kalıcı audit storage veya merkezi log arşivi değildir.
+- Bellek kullanımı `max_events`, retention ve eviction seçenekleriyle
+  sınırlandırılmalıdır.
+
+### Güncel Geliştirme Durumu
+
+> Durum notu: 25 Temmuz 2026 tarihinde yapılan yerel kalite kontrolünün
+> özetidir. Sonraki değişikliklerden sonra komutlar yeniden çalıştırılmalıdır.
+
+Frontend:
+
+- Vitest smoke testi başarılıdır.
+- TypeScript ve Vite production build başarılıdır.
+- Üretilen ana JavaScript bundle'ı yaklaşık 779 kB olduğundan ileride route
+  bazlı code splitting uygulanması önerilir.
+
+Backend:
+
+- `pytest` test toplama aşaması, bazı plugin modellerinin public model
+  paketinden dışa aktarılmaması nedeniyle başarısızdır.
+- İlk hata `PluginCandidate` modelinin `log_parser_engine.models` üzerinden
+  import edilememesidir.
+- `mypy src` kontrolünde 13 dosyada 43 tip hatası bulunmaktadır.
+- `ruff check .` kontrolünde format, import, satır uzunluğu ve kullanılmayan
+  importlar dahil 281 bulgu bulunmaktadır.
+
+Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
+durumuyla bütün production kalite kapılarını henüz geçmemektedir.
+
+### Statistical Analysis Engine Durumu
+
+İstatistiksel analiz katmanı için `AnalysisOptions`, `AnalysisRequest`,
+`ComparisonRequest` ve ilgili exception temelleri oluşturulmuştur. Analiz
+motoru, accumulatorlar, sonuç modelleri, REST API entegrasyonu ve kapsamlı
+testler henüz tamamlanmamıştır.
+
+Planlanan analiz yetenekleri:
+
+- event ve severity özetleri
+- hata oranları
+- dağılımlar ve zaman serileri
+- latency percentile hesapları
+- HTTP status, method ve endpoint analizleri
+- dönem karşılaştırmaları
+- AI kullanmayan deterministik insight üretimi
+
+### Production Öncesi Öncelikler
+
+1. Public plugin model exportlarını düzeltmek ve test koleksiyonunu çalışır
+   hale getirmek
+2. Bütün backend testlerini başarıyla tamamlamak
+3. `mypy` tip hatalarını gidermek
+4. Ruff kalite bulgularını temizlemek
+5. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
+   okumaya geçirmek
+6. Statistical Analysis Engine'i tamamlayıp API ve UI katmanlarına entegre
+   etmek
+7. Frontend bundle'ı route-level code splitting ile küçültmek
+
+Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
+başarılı olmalıdır:
+
+```bash
+poetry run pytest
+poetry run pytest --cov=log_parser_engine
+poetry run ruff check .
+poetry run mypy src
+
+cd frontend
+npm test
+npm run lint
+npm run build
+```
