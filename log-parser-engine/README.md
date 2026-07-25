@@ -242,14 +242,14 @@ Frontend:
 
 Backend:
 
-- Tam test paketi toplanıp çalışmaktadır; son kontrolde 389 test geçmiş,
+- Tam test paketi toplanıp çalışmaktadır; son kontrolde 399 test geçmiş,
   analiz katmanı dışındaki eski test/fixture uyumsuzlukları nedeniyle 21 test
   başarısız olmuş ve 11 test setup hatası vermiştir.
 - Tam paket coverage sonucu %84'tür. Yalnız istatistiksel analiz modülünün
-  odak testleri 129/129 geçmiş ve modül coverage değeri %93 olmuştur.
+  odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - `mypy src` kontrolünde 5 eski dosyada toplam 20 tip hatası bulunmaktadır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve tanımsız isimler dahil 231 bulgu bulunmaktadır.
+  ve tanımsız isimler dahil 229 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.
@@ -326,8 +326,14 @@ Güvenlik ve kaynak sınırları:
 
 - event, grup, timeline bucket, percentile sample, top-N ve response alanları
   yapılandırılabilir limitlere tabidir
+- timeline bucket süresi ve uç datetime aritmetiği taşma üretmeyecek biçimde
+  sınırlandırılmıştır
+- API istek gövdesi byte limiti ve non-blocking eşzamanlı analiz slotu sınırı
+  uygular; kapasite dolduğunda izlenebilir `413` veya `429` cevabı döner
 - `message`, `raw_message`, kimlik, credential, token ve authorization alanları
   gruplama veya HTTP alan override'ı olarak kullanılamaz
+- public API yalnız bilinen analiz boyutlarını kabul eder; özel attribute
+  grupları ancak server tarafında güvenilir iç kullanımda değerlendirilebilir
 - attribute yollarında object attribute erişimi, dunder segmentleri, regex,
   `eval` ve çalıştırılabilir expression desteklenmez
 - sonuç modellerindeki metadata/evidence/attributes koleksiyonları iç içe

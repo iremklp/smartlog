@@ -24,10 +24,6 @@ _ANALYSIS_PATHS = frozenset(
 )
 
 
-class _AnalysisRequestBodyTooLarge(Exception):
-    """Internal control-flow error raised before request model parsing."""
-
-
 class AnalysisRequestSizeLimitMiddleware:
     """Bound analysis request bodies before FastAPI materializes their JSON."""
 
@@ -60,20 +56,31 @@ class AnalysisRequestSizeLimitMiddleware:
             return
 
         received_bytes = 0
-
-        async def receive_limited() -> Message:
-            nonlocal received_bytes
+        buffered_messages: list[Message] = []
+        while True:
             message = await receive()
+            buffered_messages.append(message)
             if message["type"] == "http.request":
                 received_bytes += len(message.get("body", b""))
                 if received_bytes > self._max_body_bytes:
-                    raise _AnalysisRequestBodyTooLarge
-            return message
+                    await self._reject(scope, receive, send)
+                    return
+                if not message.get("more_body", False):
+                    break
+            elif message["type"] == "http.disconnect":
+                break
 
-        try:
-            await self._app(scope, receive_limited, send)
-        except _AnalysisRequestBodyTooLarge:
-            await self._reject(scope, receive, send)
+        message_index = 0
+
+        async def receive_buffered() -> Message:
+            nonlocal message_index
+            if message_index < len(buffered_messages):
+                message = buffered_messages[message_index]
+                message_index += 1
+                return message
+            return await receive()
+
+        await self._app(scope, receive_buffered, send)
 
     @staticmethod
     def _content_length(scope: Scope) -> int | None:

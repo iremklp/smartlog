@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -7,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from log_parser_engine.analysis import AnalysisOptions
 from log_parser_engine.api import create_app
+from log_parser_engine.api.middleware import AnalysisRequestSizeLimitMiddleware
 from log_parser_engine.application import ApplicationContainer, ApplicationOptions
 from log_parser_engine.core import ParserRegistry
 from log_parser_engine.models import LogEvent, LogSeverity, LogSourceType
@@ -234,6 +237,83 @@ def test_analysis_api_bounds_request_body_before_json_materialization() -> None:
     )
     assert response.json()["error"]["details"] == {"limit_bytes": 256}
     assert response.headers["x-request-id"]
+
+
+def test_analysis_body_limit_handles_chunked_body_without_content_length() -> None:
+    async def exercise_middleware() -> tuple[bool, list[dict[str, Any]]]:
+        downstream_called = False
+
+        async def downstream(
+            scope: dict[str, Any],
+            receive: Any,
+            send: Any,
+        ) -> None:
+            nonlocal downstream_called
+            downstream_called = True
+
+        middleware = AnalysisRequestSizeLimitMiddleware(
+            downstream,
+            max_body_bytes=256,
+        )
+        incoming = iter(
+            (
+                {
+                    "type": "http.request",
+                    "body": b"x" * 200,
+                    "more_body": True,
+                },
+                {
+                    "type": "http.request",
+                    "body": b"y" * 200,
+                    "more_body": False,
+                },
+            )
+        )
+        sent: list[dict[str, Any]] = []
+
+        async def receive() -> dict[str, Any]:
+            return next(incoming)
+
+        async def send(message: dict[str, Any]) -> None:
+            sent.append(message)
+
+        await middleware(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0"},
+                "http_version": "1.1",
+                "method": "POST",
+                "scheme": "http",
+                "path": "/api/v1/analysis",
+                "raw_path": b"/api/v1/analysis",
+                "query_string": b"",
+                "headers": [],
+                "client": ("127.0.0.1", 1234),
+                "server": ("testserver", 80),
+            },
+            receive,
+            send,
+        )
+        return downstream_called, sent
+
+    downstream_called, messages = asyncio.run(exercise_middleware())
+    response_start = next(
+        message
+        for message in messages
+        if message["type"] == "http.response.start"
+    )
+    response_body = b"".join(
+        message.get("body", b"")
+        for message in messages
+        if message["type"] == "http.response.body"
+    )
+
+    assert not downstream_called
+    assert response_start["status"] == 413
+    assert (
+        json.loads(response_body)["error"]["code"]
+        == "ANALYSIS_REQUEST_BODY_TOO_LARGE"
+    )
 
 
 def test_analysis_api_rejects_oversized_timeline_bucket_safely() -> None:
