@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from log_parser_engine.models import PluginDiscoveryResult
+
 
 class PluginError(Exception):
     """Base exception for plugin discovery and loading issues."""
@@ -23,3 +28,16 @@ class PluginValidationError(InvalidPluginError):
 
 class PluginFactoryError(PluginError):
     """Raised when a plugin factory cannot produce a parser instance."""
+
+
+class PluginStartupError(PluginError):
+    """Raised when configured startup plugins cannot be initialized safely."""
+
+    def __init__(
+        self,
+        message: str = "plugin startup failed",
+        *,
+        result: PluginDiscoveryResult | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.result = result

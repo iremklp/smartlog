@@ -78,6 +78,7 @@ from .plugin import (
     PluginError,
     PluginFactoryError,
     PluginLoadError,
+    PluginStartupError,
     PluginValidationError,
 )
 from .redis import (
@@ -186,6 +187,7 @@ __all__ = [
     "PluginDiscoveryError",
     "PluginLoadError",
     "PluginFactoryError",
+    "PluginStartupError",
     "InvalidPluginError",
     "PluginValidationError",
     # Storage

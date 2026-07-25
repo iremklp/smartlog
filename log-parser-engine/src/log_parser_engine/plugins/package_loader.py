@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+from collections.abc import Iterable
 from typing import Any
 
+from log_parser_engine.core.base_parser import BaseParser
 from log_parser_engine.exceptions import (
     InvalidPluginError,
     PluginDiscoveryError,
+    PluginError,
     PluginLoadError,
 )
 from log_parser_engine.models import PluginCandidate
@@ -24,6 +27,7 @@ class PackagePluginLoader(BasePluginLoader):
         *,
         recursive: bool = True,
         include_package_module: bool = False,
+        require_manifest: bool = False,
         object_names: tuple[str, ...] = (
             "parser",
             "PARSER",
@@ -37,6 +41,7 @@ class PackagePluginLoader(BasePluginLoader):
         self._package_name = cleaned_package_name
         self._recursive = recursive
         self._include_package_module = include_package_module
+        self._require_manifest = require_manifest
         self._object_names = self._normalize_object_names(object_names)
 
     @property
@@ -52,6 +57,8 @@ class PackagePluginLoader(BasePluginLoader):
             ) from exc
 
         allowed_module_names = self._allowed_module_names(package)
+        if self._require_manifest and allowed_module_names is None:
+            raise PluginDiscoveryError("plugin package manifest is required")
 
         package_path = getattr(package, "__path__", None)
         if package_path is None:
@@ -66,22 +73,23 @@ class PackagePluginLoader(BasePluginLoader):
                 )
             raise PluginDiscoveryError(f"{self._package_name} is not a package")
 
-        module_names = self._discover_module_names(package)
+        module_names = (
+            self._discover_module_names(package)
+            if allowed_module_names is None
+            else sorted(allowed_module_names)
+        )
         candidates: list[PluginCandidate] = []
         for module_name in module_names:
+            if not self._is_package_module(module_name):
+                continue
+            if not self._recursive and not self._is_direct_child(module_name):
+                continue
             if self._is_private_module(module_name):
                 continue
             if module_name == f"{self._package_name}.__init__":
                 continue
             if module_name == self._package_name:
                 if not self._include_package_module:
-                    continue
-            if allowed_module_names is not None:
-                module_basename = module_name.rsplit(".", 1)[-1]
-                if (
-                    module_name not in allowed_module_names
-                    and module_basename not in allowed_module_names
-                ):
                     continue
             candidates.append(
                 PluginCandidate(
@@ -95,21 +103,46 @@ class PackagePluginLoader(BasePluginLoader):
         return tuple(sorted(candidates, key=lambda candidate: candidate.module_name))
 
     def load(self, candidate: PluginCandidate) -> object:
-        if candidate.source != "package":
-            raise PluginLoadError("candidate source is not package")
+        self._validate_candidate(candidate)
+        try:
+            module = importlib.import_module(candidate.module_name)
+        except Exception as exc:  # noqa: BLE001
+            raise PluginLoadError("unable to import plugin module") from exc
 
-        module = importlib.import_module(candidate.module_name)
-        loaded_object = self._resolve_module_object(module)
-        return resolve_parser_instance(loaded_object)
+        try:
+            loaded_object = self._resolve_module_object(module)
+            return resolve_parser_instance(loaded_object)
+        except PluginError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise PluginLoadError("plugin module could not be loaded") from exc
 
     def _discover_module_names(self, package: Any) -> list[str]:
-        module_names = []
-        for module_info in pkgutil.walk_packages(
-            package.__path__,
-            prefix=f"{self._package_name}.",
-            onerror=lambda _exc: None,
-        ):
-            module_names.append(module_info.name)
+        module_names: list[str] = []
+        discovery_failed = False
+
+        def mark_discovery_failure(_module_name: str) -> None:
+            nonlocal discovery_failed
+            discovery_failed = True
+
+        try:
+            if self._recursive:
+                modules: Iterable[pkgutil.ModuleInfo] = pkgutil.walk_packages(
+                    package.__path__,
+                    prefix=f"{self._package_name}.",
+                    onerror=mark_discovery_failure,
+                )
+            else:
+                modules = pkgutil.iter_modules(
+                    package.__path__,
+                    prefix=f"{self._package_name}.",
+                )
+            module_names.extend(module_info.name for module_info in modules)
+        except Exception as exc:  # noqa: BLE001
+            raise PluginDiscoveryError("package module discovery failed") from exc
+
+        if discovery_failed:
+            raise PluginDiscoveryError("package module discovery failed")
 
         if self._include_package_module and self._package_name not in module_names:
             module_names.append(self._package_name)
@@ -127,9 +160,10 @@ class PackagePluginLoader(BasePluginLoader):
             value
             for value in module.__dict__.values()
             if isinstance(value, type)
-            and issubclass(value, object)
+            and issubclass(value, BaseParser)
+            and value is not BaseParser
             and value.__module__ == module.__name__
-            and value.__name__ != "BaseParser"
+            and not value.__name__.startswith("_")
         ]
         if len(public_subclasses) == 1:
             return public_subclasses[0]
@@ -154,17 +188,75 @@ class PackagePluginLoader(BasePluginLoader):
         raw_allowed = getattr(package, "__plugin_modules__", None)
         if raw_allowed is None:
             return None
+        if isinstance(raw_allowed, (str, bytes)) or not isinstance(
+            raw_allowed, Iterable
+        ):
+            raise PluginDiscoveryError("plugin package manifest is invalid")
 
         allowed: set[str] = set()
         for module_name in raw_allowed:
             cleaned = str(module_name).strip()
             if not cleaned:
                 continue
-            allowed.add(cleaned)
-            if not cleaned.startswith(f"{self._package_name}."):
-                allowed.add(f"{self._package_name}.{cleaned}")
-        return allowed or None
+            qualified = (
+                cleaned
+                if cleaned == self._package_name
+                or cleaned.startswith(f"{self._package_name}.")
+                else f"{self._package_name}.{cleaned}"
+            )
+            if not self._is_valid_module_name(qualified):
+                raise PluginDiscoveryError("plugin package manifest is invalid")
+            if not self._is_package_module(qualified):
+                raise PluginDiscoveryError("plugin package manifest is invalid")
+            allowed.add(qualified)
+        return allowed
 
     def _is_private_module(self, module_name: str) -> bool:
-        parts = module_name.split(".")
+        relative_name = module_name.removeprefix(self._package_name).lstrip(".")
+        parts = relative_name.split(".")
         return any(part.startswith("_") for part in parts)
+
+    def _validate_candidate(self, candidate: PluginCandidate) -> None:
+        if candidate.source != "package":
+            raise PluginLoadError("candidate source is not package")
+        if not self._is_valid_module_name(candidate.module_name):
+            raise PluginLoadError("candidate module name is invalid")
+        if not self._is_package_module(candidate.module_name):
+            raise PluginLoadError("candidate module is outside the configured package")
+        if (
+            candidate.module_name == self._package_name
+            and not self._include_package_module
+        ):
+            raise PluginLoadError("package module candidates are disabled")
+
+        try:
+            package = importlib.import_module(self._package_name)
+            allowed_module_names = self._allowed_module_names(package)
+        except PluginDiscoveryError as exc:
+            raise PluginLoadError("plugin package manifest is invalid") from exc
+        except Exception as exc:  # noqa: BLE001
+            raise PluginLoadError("unable to import plugin package") from exc
+
+        if self._require_manifest and allowed_module_names is None:
+            raise PluginLoadError("plugin package manifest is required")
+        if (
+            allowed_module_names is not None
+            and candidate.module_name not in allowed_module_names
+        ):
+            raise PluginLoadError("candidate module is not allowed by the manifest")
+
+    def _is_package_module(self, module_name: str) -> bool:
+        return module_name == self._package_name or module_name.startswith(
+            f"{self._package_name}."
+        )
+
+    def _is_direct_child(self, module_name: str) -> bool:
+        if module_name == self._package_name:
+            return True
+        relative_name = module_name.removeprefix(f"{self._package_name}.")
+        return "." not in relative_name
+
+    def _is_valid_module_name(self, module_name: str) -> bool:
+        return bool(module_name) and all(
+            segment.isidentifier() for segment in module_name.split(".")
+        )

@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from log_parser_engine.analysis import AnalysisOptions
 from log_parser_engine.batch import BatchParseOptions
+from log_parser_engine.plugins import PluginStartupOptions
 from log_parser_engine.storage import EventStoreOptions
 
 
@@ -14,6 +15,9 @@ class ApplicationOptions(BaseModel):
 
     name: str = Field(default="log-parser-engine")
     enable_builtin_parsers: bool = True
+    plugin_startup_options: PluginStartupOptions = Field(
+        default_factory=PluginStartupOptions
+    )
     parser_minimum_confidence: float = 0.60
     parser_ambiguity_margin: float = 0.05
     event_store_options: EventStoreOptions = Field(default_factory=EventStoreOptions)
