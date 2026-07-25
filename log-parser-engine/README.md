@@ -90,6 +90,19 @@ poetry run mypy src
 
 Parser implementation modules are separate from plugin entry modules. Webserver plugins are exposed only through `*_plugin.py` entry modules, and helper modules must not export `Parser` or `create_parser`.
 
+## Canonical LogEvent updates
+
+Parser enrichment after normalization must use
+`LogEvent.with_validated_updates(...)`. This method reconstructs the event
+through Pydantic validation, preserves `event_id` and `ingested_at`, and
+recursively freezes `attributes` and `tags` again.
+
+Do not use `model_copy(update=...)` to enrich canonical events. Pydantic
+intentionally skips validation for those updates, which can leak mutable
+collections into an otherwise frozen `LogEvent`. All eight built-in parsers
+are covered by fixture-based root, nested and tag immutability regression
+tests.
+
 ## Batch and Streaming Parse
 
 The batch layer adds orchestration around existing single-record parsers without changing parser contracts.
@@ -244,18 +257,18 @@ Frontend:
 
 Backend:
 
-- Tam test paketi toplanıp çalışmaktadır; son kontrolde 421 test geçmiş,
+- Tam test paketi toplanıp çalışmaktadır; son kontrolde 434 test geçmiş,
   storage sorunları nedeniyle 8 test başarısız olmuş ve
   query/aggregation fixture sorunları nedeniyle 11 test setup hatası
   vermiştir.
 - Tam paket coverage sonucu %84'tür. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
-- Redis parser testleri 7/7, built-in parser/pipeline/orchestration seçkisi
-  113/113 geçmiştir.
+- Redis parser testleri 7/7, deep-immutability dahil built-in
+  parser/pipeline/orchestration seçkisi 126/126 geçmiştir.
 - `mypy src` kontrolünde 5 eski dosyada toplam 20 tip hatası bulunmaktadır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve tanımsız isimler dahil 226 bulgu bulunmaktadır.
+  ve tanımsız isimler dahil 200 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.

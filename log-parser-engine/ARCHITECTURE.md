@@ -1,7 +1,7 @@
 # Parsel Engine Mimarisi
 
 Son güncelleme: 25 Temmuz 2026  
-Referans taban commit: `e5523f8`
+Referans taban commit: `d278339`
 
 ## Kapsam
 
@@ -18,6 +18,8 @@ açıkça “planlanan” olarak işaretlenir.
 - SQL, ORM veya harici kalıcı veri tabanı yoktur.
 - Veri process/pod-local ve geçicidir.
 - Canonical model sınırı `LogEvent`'tir.
+- Normalizasyon sonrası canonical event güncellemeleri
+  `LogEvent.with_validated_updates(...)` ile yeniden doğrulanır.
 - Parser seçimi ile parser implementasyonu ayrıdır.
 - HTTP katmanı application service üzerinden backend subsystemlerine erişir.
 - Statistical analysis, immutable `StoredEvent` snapshotı üzerinde çalışır ve
@@ -75,10 +77,10 @@ modellerini kullanır.
 
 | Modül | Gerçek sorumluluk | Durum notu |
 |---|---|---|
-| `models` | Canonical event, parse, batch, query, store ve analysis modelleri | Enum wire contractı lowercase ve geriye uyumlu inputla sabitlendi |
+| `models` | Canonical event, parse, batch, query, store ve analysis modelleri | Enum wire contractı lowercase; validated event reconstruction sözleşmesi mevcut |
 | `core` | BaseParser, context, registry, manager ve detection | Ana sözleşmeler mevcut |
 | `plugins` | Package ve entry-point aday keşfi/yüklemesi | Application startup'a bağlı değil |
-| `parsers` | IIS, JSON, Redis, webserver, syslog ve Windows XML parserları | Mevcut fixture testleri yeşil; cross-parser immutability audit'i açık |
+| `parsers` | IIS, JSON, Redis, webserver, syslog ve Windows XML parserları | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor |
 | `ingestion` | Encoding, BOM, binary, line endings, archive ve metadata | Core ingestion büyük ölçüde tamam |
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
 | `pipeline` | Detect, parse, normalize ve stage sonucu | Non-string ve errorsız non-success sonuçlar structured failure üretir |
@@ -127,7 +129,8 @@ flowchart LR
     MANAGER --> PARSER[BaseParser implementasyonu]
     PARSER --> SOURCE[Source-specific record]
     SOURCE --> NORMALIZER[LogNormalizer]
-    NORMALIZER --> EVENT[LogEvent]
+    NORMALIZER --> REBUILD[with_validated_updates]
+    REBUILD --> EVENT[Canonical LogEvent]
 ```
 
 Her parser:
@@ -138,12 +141,13 @@ Her parser:
 - güvenli wrapperlar üzerinden beklenmeyen exception'ları subsystem sonucuna
   dönüştürür.
 
-Redis parser normalizasyon sonrası enrichment birleşimini frozen collection
-üzerinde mutate etmez. Geçici plain mapping üzerinde birleştirir ve sonucu
-`LogEvent.model_validate()` ile yeniden doğrulayıp deep-freeze eder. Bu
-validated reconstruction deseni Redis için testlidir. IIS, JSON, Syslog ve
-Windows Event parserlarındaki `model_copy(update=...)` yollarının aynı
-immutability garantisine sahip olup olmadığı ayrı audit borcudur.
+Normalizasyon sonrası parser enrichment'i frozen collection üzerinde mutate
+edilmez. Parsera özgü merge işlemleri geçici plain mapping üzerinde yapılır ve
+sonuç `LogEvent.with_validated_updates(...)` üzerinden yeniden doğrulanıp
+deep-freeze edilir. IIS, JSON, Redis, RFC3164, RFC5424, Windows Event XML ve iki
+webserver parserı bu ortak yolu kullanır. Gerçek fixturelarla root/nested
+attributes, context içindeki iç içe koleksiyonlar, tags, JSON serialization ve
+round-trip sözleşmeleri test edilir.
 
 `PackagePluginLoader`, `EntryPointPluginLoader` ve discovery modelleri vardır.
 Loader/discovery/validation odak sözleşme testleri başarılıdır. Ancak güncel
@@ -434,15 +438,13 @@ Gerekli ancak henüz olmayan parçalar:
 
 1. Repository genel test, Ruff ve mypy kapıları kırmızı.
 2. Plugin discovery runtime container'a bağlı değil.
-3. Bazı built-in parser `model_copy` yollarında canonical deep-immutability
-   audit'i açık.
-4. Atomic batch write uygulanmamış.
-5. Query/aggregation test ve tip sorunları var.
-6. API versioning ve error envelope parçalı.
-7. File upload bounded değil.
-8. UI API tipleri elle kopyalanmış ve sapmış.
-9. Structured logging, Prometheus, auth, audit ve deployment yok.
-10. `node_modules` ve generated frontend dosyaları Git tarafından izleniyor.
+3. Atomic batch write uygulanmamış.
+4. Query/aggregation test ve tip sorunları var.
+5. API versioning ve error envelope parçalı.
+6. File upload bounded değil.
+7. UI API tipleri elle kopyalanmış ve sapmış.
+8. Structured logging, Prometheus, auth, audit ve deployment yok.
+9. `node_modules` ve generated frontend dosyaları Git tarafından izleniyor.
 
 ## Açıkça kapsam dışı
 

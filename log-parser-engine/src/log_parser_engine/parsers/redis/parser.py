@@ -13,7 +13,6 @@ from log_parser_engine.exceptions import (
 from log_parser_engine.models import (
     DetectionResult,
     ErrorType,
-    LogEvent,
     LogSourceType,
     ParseError,
     ParseResult,
@@ -178,8 +177,7 @@ class RedisLogParser(BaseParser):
             )
             normalized = self._normalizer.normalize(normalization_input, context)
             event = normalized.event
-            event_payload = event.model_dump(mode="python")
-            event_attributes = event_payload.get("attributes")
+            event_attributes = event.attributes
             if not isinstance(event_attributes, Mapping):
                 raise RedisMappingError("normalized attributes must be a mapping")
             normalized_attributes = dict(event_attributes)
@@ -200,13 +198,12 @@ class RedisLogParser(BaseParser):
             normalized_attributes["parser_name"] = self.name
             normalized_attributes["parser_version"] = self.version
             normalized_attributes["line_number"] = line_number
-            event_payload.update(
+            event = event.with_validated_updates(
                 {
                     "attributes": normalized_attributes,
                     "raw_message": selected_line,
                 }
             )
-            event = LogEvent.model_validate(event_payload)
             return ParseResult(status=ParseStatus.success, events=[event])
         except RedisTokenizationError as exc:
             return self._failure_result(

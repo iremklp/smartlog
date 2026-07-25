@@ -156,8 +156,8 @@ class IisW3CParser(BaseParser):
             if additional_data_count > 0:
                 event_attributes["iis"]["additional_data_lines_present"] = True
 
-            event = event.model_copy(
-                update={
+            event = event.with_validated_updates(
+                {
                     "attributes": event_attributes,
                     "http_method": mapped.get("http_method"),
                     "http_path": mapped.get("http_path"),

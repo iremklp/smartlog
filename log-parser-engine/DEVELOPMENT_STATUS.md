@@ -2,34 +2,37 @@
 
 Son kalite kontrolü: 25 Temmuz 2026  
 Branch: `main`  
-Referans taban commit: `e5523f8`
-Remote durumu: çalışma başlangıcında `main`, `origin/main` ile aynıydı.
+Referans taban commit: `d278339`
+Remote durumu: önceki iki Foundation dilimi GitHub `main` branchine
+`d278339` olarak gönderildi.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan teknik dilim **Foundation Quality Recovery — Redis Parser
-Stabilizasyonu**dur.
+Son tamamlanan teknik dilim **Foundation Quality Recovery — Built-in Parser
+Canonical Immutability**dir.
 
 Bu dilimde:
 
-- shallow `dict()` ve runtime etkisi olmayan `cast()` nedeniyle nested
-  `FrozenDict.update()` üzerinde oluşan üç Redis regresyonu kapatıldı,
-- mapping katmanındaki `category`, `matched_rule`, `parser_attributes` ve
-  wrapper metadata alanları kaybedilmeden canonical evente taşındı,
-- context metadata korunurken parser-authoritative Redis ve parser kimlik
-  alanlarının spoof edilmesi engellendi,
-- `model_copy(update=...)` doğrulama bypassı kaldırıldı; event
-  `LogEvent.model_validate()` ile yeniden doğrulanıp deep-freeze edildi,
-- root/nested attributes, `redis_event` ve tags immutability regresyon testleri
-  eklendi,
-- Redis, built-in parser, pipeline ve orchestration odak seçkileri doğrulandı.
+- Pydantic `model_copy(update=...)` validation bypassı IIS, JSON, RFC3164,
+  RFC5424 ve Windows Event fixturelarında runtime olarak yeniden üretildi,
+- `LogEvent.with_validated_updates(...)` ortak doğrulamalı reconstruction
+  sözleşmesi eklendi,
+- IIS, JSON, Redis, RFC3164, RFC5424, Windows Event XML ve iki webserver parserı
+  bu ortak yola taşındı,
+- parser-specific enrichment, `event_id`, `ingested_at`, context precedence ve
+  canonical alanlar korundu,
+- sekiz gerçek built-in factory/fixture için root ve parser-native nested
+  attributes, context iç içe mapping/list, tags, JSON serialization ve
+  round-trip regresyon testleri eklendi,
+- JSON parserın dokunulan dosya kapsamındaki eski format ve import lint borcu
+  temizlendi.
 
-Odak sonuçları: **7 Redis testi** ve **113 parser/pipeline/orchestration testi**
-geçti. Önceki domain contract seçkisi **39 passed**, Statistical Analysis
-seçkisi ise regresyonsuz **139 passed** durumundadır.
+Odak sonucu: deep-immutability dahil **126 parser/pipeline/orchestration testi**
+geçti. Redis seçkisi **7 passed**, önceki domain contract seçkisi **39 passed**
+ve Statistical Analysis seçkisi **139 passed** durumundadır.
 
 ## Repository snapshotı
 
@@ -39,7 +42,7 @@ seçkisi ise regresyonsuz **139 passed** durumundadır.
 | Python | `3.11.15` |
 | Poetry | `2.4.1` |
 | Backend kaynak dosyası | 214 Python dosyası |
-| Backend test modülü | 85 |
+| Backend test modülü | 86 |
 | Frontend paket | `log-parser-engine-ui` `0.1.0` |
 | Node.js | `24.18.0` |
 | npm | `11.16.0` |
@@ -65,6 +68,8 @@ için doğrulanmıştır.
   davranışı.
 - Redis server, Sentinel ve systemd wrapper canonical parse akışları.
 - Redis enrichment/context precedence ve revalidated deep immutability.
+- Sekiz built-in parser için ortak validated reconstruction ve
+  fixture-bazlı canonical deep-immutability sözleşmesi.
 - Package/entry-point plugin loader ve discovery/validation odak sözleşmeleri.
 - Batch record reader, parser session, stateful IIS header ve error policy
   akışları.
@@ -85,7 +90,7 @@ production-ready anlamına gelmez.
 | Parse/Pipeline contractı | ✅ | Domain/pipeline odak testleri ve güvenli failure regresyonları başarılı |
 | Plugin discovery | 🟡 | Loader/discovery odak testleri başarılı; container hâlâ yalnız built-in parserları doğrudan yükler |
 | Redis parser | ✅ | 7/7 test; server, Sentinel, systemd, enrichment ve immutability başarılı |
-| Built-in parser immutability | 🔧 | Redis düzeltildi; IIS/JSON/Syslog/Windows `model_copy` yolları audit edilmeli |
+| Built-in parser immutability | ✅ | Sekiz built-in parser root/nested attributes, context collections, tags ve JSON round-trip testlerinden geçiyor |
 | Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
 | InMemoryEventStore | 🔧 | Duplicate/collision/replace/clear/reject ve thread testleri kırık |
 | Atomic batch write | 🔧 | `storage/memory.py` içinde `atomic=True` dalı gerçek implementasyon yerine `pass` içeriyor |
@@ -105,13 +110,13 @@ production-ready anlamına gelmez.
 
 | Komut | Sonuç | Ayrıntı |
 |---|---|---|
-| `poetry run pytest -q` | Başarısız | 421 passed, 8 failed, 11 errors, 11 warnings |
+| `poetry run pytest -q` | Başarısız | 434 passed, 8 failed, 11 errors, 11 warnings |
 | `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarısız | Aynı kalan hata kümeleriyle toplam coverage %84 |
 | Domain/pipeline/plugin/API odak contract seçkisi | Başarılı | 39 passed |
 | Redis parser odak seçkisi | Başarılı | 7 passed |
-| Built-in parser/pipeline/orchestration seçkisi | Başarılı | 113 passed |
+| Built-in parser/pipeline/orchestration seçkisi | Başarılı | 126 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
-| `poetry run ruff check . --statistics` | Başarısız | 226 bulgu |
+| `poetry run ruff check . --statistics` | Başarısız | 200 bulgu |
 | `poetry run mypy src` | Başarısız | 5 dosyada 20 hata; 214 dosya kontrol edildi |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
 
@@ -124,9 +129,9 @@ Ruff dağılımı:
 
 | Kural | Adet |
 |---|---:|
-| `E501` line too long | 170 |
-| `F401` unused import | 19 |
-| `I001` import order | 18 |
+| `E501` line too long | 149 |
+| `I001` import order | 17 |
+| `F401` unused import | 15 |
 | `F821` undefined name | 15 |
 | `E701` multiple statements | 2 |
 | `F541` useless f-string | 1 |
@@ -147,8 +152,8 @@ Başarısız test kümeleri:
 - aggregation fixture'larında eksik `raw_message`,
 - query engine test fixture'ında eksik `LogEvent` importu.
 
-İlk tam paket baseline'ı 399 passed / 21 failed idi. İki Foundation dilimi
-sonunda sonuç 421 passed / 8 failed durumuna ilerlemiş, setup error sayısı
+İlk tam paket baseline'ı 399 passed / 21 failed idi. Üç Foundation dilimi
+sonunda sonuç 434 passed / 8 failed durumuna ilerlemiş, setup error sayısı
 artmamıştır. Kalan storage/query fixture hataları nedeniyle canonical
 `LogEvent.raw_message` nonblank kuralı gevşetilmemiştir.
 
@@ -228,35 +233,37 @@ yapılmalıdır.
 
 ## Sıradaki önerilen iş
 
-### Foundation Quality Recovery — Dilim 3: Built-in Parser Immutability
+### Foundation Quality Recovery — Dilim 4: Plugin Discovery Startup Lifecycle
 
 Bir sonraki çalışma:
 
-1. IIS, JSON, RFC3164/RFC5424 ve Windows Event başarılı parser çıktılarının
-   root/nested attributes ve tags immutability davranışını yeniden üretir.
-2. Pydantic `model_copy(update=...)` ile validation bypass edilen yolları
-   belirler.
-3. Parser-specific enrichment alanlarını kaybetmeden validated reconstruction
-   veya ortak, küçük bir helper uygular.
-4. Her parser için mutation, serialization ve canonical field regresyon
-   testleri ekler.
-5. Bütün built-in parser, pipeline, batch ve application container odak
-   seçkisini çalıştırır.
-6. Plugin discovery'nin yalnız contract düzeyinde yeşil, startup lifecycle
-   düzeyinde eksik olduğunu korur.
-7. Roadmap ve bu durum kaydını gerçek komut sonuçlarıyla günceller.
+1. `ApplicationContainer` için açık ve tek seferlik plugin discovery lifecycle
+   noktası tanımlar.
+2. Package ve entry-point loaderlarını yalnız allowlist/config üzerinden
+   etkinleştirir; rastgele modül taraması yapmaz.
+3. `PackagePluginLoader` aday filtresini yalnız gerçek `BaseParser`
+   implementasyonlarını kabul edecek şekilde daraltır.
+4. Built-in doğrudan kayıt ile keşfedilen plugin kayıtlarının deterministik
+   sırasını ve duplicate/replace politikasını sabitler.
+5. Import, validation ve registration hatalarını raw path, stack trace veya
+   hassas veri olmadan bounded startup warninglerine dönüştürür.
+6. Plugin discovery kapalıyken mevcut sekiz built-in parser davranışını aynen
+   korur.
+7. Container izolasyonu, startup idempotency, circular import ve güvenli
+   failure testlerini ekler.
 
 Bu dilim ve kalan Q0 kalite borçları tamamlanmadan Report Engine veya yeni ürün
 özelliği başlatılmamalıdır.
 
-### Dilim 3 kabul kriterleri
+### Dilim 4 kabul kriterleri
 
-- Bütün built-in parserların başarılı `LogEvent` çıktılarında root/nested
-  attributes ve tags mutate edilemez.
-- Parser-specific enrichment ve canonical alanlar korunur.
-- JSON serialization ve parser/pipeline contractları gerilemez.
-- Built-in parser/pipeline/orchestration odak seçkisi başarılıdır.
-- Yeni Ruff/mypy ihlali yok.
+- Discovery startup sırasında en fazla bir kez ve deterministik çalışır.
+- Yalnız `BaseParser` alt sınıfları instantiate/register edilir.
+- Duplicate parser davranışı açık policy ile testlidir.
+- Hatalı plugin diğer güvenli parserların yüklenmesini engellemez; strict
+  startup modu ayrıca açıkça test edilir.
+- Discovery devre dışıyken mevcut registry ve parser contractları gerilemez.
+- Yeni Ruff/mypy ihlali yoktur.
 - Tam test failure/error sayıları artmamıştır.
 
 ## Public contract notu

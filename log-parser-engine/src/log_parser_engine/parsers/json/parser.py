@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any
 
 from log_parser_engine.core import BaseParser, ParserContext
@@ -15,19 +14,16 @@ from log_parser_engine.exceptions import (
 from log_parser_engine.models import (
     DetectionResult,
     ErrorType,
-    LogSeverity,
     LogSourceType,
     ParseError,
     ParseResult,
-    ParseStatus,
     ParserMetadata,
+    ParseStatus,
 )
 from log_parser_engine.models.json_field_mapping import JsonFieldMapping
 from log_parser_engine.models.json_log_record import JsonLogRecord
-from log_parser_engine.models.json_profile_detection import JsonProfileDetection
 from log_parser_engine.normalization import LogNormalizer, NormalizationInput
 
-from .constants import SUPPORTED_PROFILES
 from .decoder import decode_json_object, decode_json_value
 from .mapping import map_json_record_to_normalization_fields
 from .profiles import detect_profile
@@ -70,14 +66,23 @@ class JsonLogParser(BaseParser):
             supports_batch=False,
             thread_safe=True,
             experimental=False,
-            tags=("json", "json-lines", "structured", "ecs", "opentelemetry", "serilog"),
+            tags=(
+                "json",
+                "json-lines",
+                "structured",
+                "ecs",
+                "opentelemetry",
+                "serilog",
+            ),
         )
 
     @property
     def normalizer(self) -> LogNormalizer:
         return self._normalizer
 
-    def detect(self, raw_log: str, context: ParserContext | None = None) -> DetectionResult:
+    def detect(
+        self, raw_log: str, context: ParserContext | None = None
+    ) -> DetectionResult:
         if not isinstance(raw_log, str) or not raw_log.strip():
             return DetectionResult.no_match(self.name, reason="empty input")
         text = raw_log.strip()
@@ -93,13 +98,19 @@ class JsonLogParser(BaseParser):
                     reason="JSON object detected",
                     signals=("json_object",),
                 )
-        if "\n" in text and any(line.strip().startswith("{") for line in text.splitlines() if line.strip()):
-            return DetectionResult.match(self.name, 0.8, reason="JSON Lines detected", signals=("json_lines",))
+        if "\n" in text and any(
+            line.strip().startswith("{") for line in text.splitlines() if line.strip()
+        ):
+            return DetectionResult.match(
+                self.name, 0.8, reason="JSON Lines detected", signals=("json_lines",)
+            )
         return DetectionResult.no_match(self.name, reason="JSON structure not detected")
 
     def parse(self, raw_log: str, context: ParserContext | None = None) -> ParseResult:
         if not isinstance(raw_log, str) or not raw_log.strip():
-            return self._failure_result("empty input", ErrorType.EMPTY_INPUT, context=context)
+            return self._failure_result(
+                "empty input", ErrorType.EMPTY_INPUT, context=context
+            )
 
         try:
             data = decode_json_object(raw_log)
@@ -112,7 +123,9 @@ class JsonLogParser(BaseParser):
 
         lines = [line for line in raw_log.splitlines() if line.strip()]
         if not lines:
-            return self._failure_result("empty input", ErrorType.EMPTY_INPUT, context=context)
+            return self._failure_result(
+                "empty input", ErrorType.EMPTY_INPUT, context=context
+            )
 
         valid_records: list[tuple[str, dict[str, object]]] = []
         for line in lines:
@@ -123,28 +136,49 @@ class JsonLogParser(BaseParser):
             valid_records.append((line, parsed))
 
         if not valid_records:
-            return self._failure_result("no valid JSON object records found", ErrorType.UNKNOWN_FORMAT, context=context)
+            return self._failure_result(
+                "no valid JSON object records found",
+                ErrorType.UNKNOWN_FORMAT,
+                context=context,
+            )
 
         if context is not None and context.strict and len(valid_records) > 1:
-            return self._failure_result("multiple JSON records in strict mode", ErrorType.UNKNOWN_FORMAT, context=context)
+            return self._failure_result(
+                "multiple JSON records in strict mode",
+                ErrorType.UNKNOWN_FORMAT,
+                context=context,
+            )
 
         selected_line, data = valid_records[0]
         additional_records = len(valid_records) - 1
-        record = self._build_record(data, selected_line, context=context, additional_record_count=additional_records)
+        record = self._build_record(
+            data,
+            selected_line,
+            context=context,
+            additional_record_count=additional_records,
+        )
         return self._parse_record(record, context=context)
 
-    def _parse_single_record(self, raw_json: str, *, context: ParserContext | None) -> ParseResult:
+    def _parse_single_record(
+        self, raw_json: str, *, context: ParserContext | None
+    ) -> ParseResult:
         try:
             data = decode_json_object(raw_json)
         except JsonParserError as exc:
-            return self._failure_result(str(exc), ErrorType.UNKNOWN_FORMAT, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.UNKNOWN_FORMAT, context=context
+            )
         record = self._build_record(data, raw_json, context=context)
         return self._parse_record(record, context=context)
 
-    def _parse_record(self, record: JsonLogRecord, *, context: ParserContext | None) -> ParseResult:
+    def _parse_record(
+        self, record: JsonLogRecord, *, context: ParserContext | None
+    ) -> ParseResult:
         try:
             profile = detect_profile(record.data)
-            mapped_fields = map_json_record_to_normalization_fields(record.data, profile, self._field_mapping)
+            mapped_fields = map_json_record_to_normalization_fields(
+                record.data, profile, self._field_mapping
+            )
             attributes = dict(record.attributes)
             attributes["json_lines"] = {
                 "additional_record_count": record.additional_record_count,
@@ -167,8 +201,8 @@ class JsonLogParser(BaseParser):
             )
             normalized = self._normalizer.normalize(normalization_input, context)
             event = normalized.event
-            event = event.model_copy(
-                update={
+            event = event.with_validated_updates(
+                {
                     "attributes": {
                         **event.attributes,
                         **attributes,
@@ -180,7 +214,8 @@ class JsonLogParser(BaseParser):
                     "host": mapped_fields["host"] or event.host,
                     "source": mapped_fields["source"] or event.source,
                     "trace_id": mapped_fields["trace_id"] or event.trace_id,
-                    "correlation_id": mapped_fields["correlation_id"] or event.correlation_id,
+                    "correlation_id": mapped_fields["correlation_id"]
+                    or event.correlation_id,
                     "user_id": mapped_fields["user_id"] or event.user_id,
                     "client_ip": mapped_fields["client_ip"] or event.client_ip,
                     "server_ip": mapped_fields["server_ip"] or event.server_ip,
@@ -194,19 +229,33 @@ class JsonLogParser(BaseParser):
             )
             return ParseResult(status=ParseStatus.success, events=[event])
         except JsonFieldPathError as exc:
-            return self._failure_result(str(exc), ErrorType.VALIDATION_FAILED, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.VALIDATION_FAILED, context=context
+            )
         except JsonMappingError as exc:
-            return self._failure_result(str(exc), ErrorType.VALIDATION_FAILED, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.VALIDATION_FAILED, context=context
+            )
         except JsonProfileError as exc:
-            return self._failure_result(str(exc), ErrorType.VALIDATION_FAILED, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.VALIDATION_FAILED, context=context
+            )
         except JsonDecodingError as exc:
-            return self._failure_result(str(exc), ErrorType.UNKNOWN_FORMAT, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.UNKNOWN_FORMAT, context=context
+            )
         except JsonStructureError as exc:
-            return self._failure_result(str(exc), ErrorType.UNKNOWN_FORMAT, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.UNKNOWN_FORMAT, context=context
+            )
         except JsonParserError as exc:
-            return self._failure_result(str(exc), ErrorType.PARSE_FAILED, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.PARSE_FAILED, context=context
+            )
         except Exception as exc:  # noqa: BLE001
-            return self._failure_result(str(exc), ErrorType.INTERNAL_ERROR, context=context)
+            return self._failure_result(
+                str(exc), ErrorType.INTERNAL_ERROR, context=context
+            )
 
     def _build_record(
         self,

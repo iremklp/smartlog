@@ -217,8 +217,8 @@ class ApacheNginxAccessLogParser(BaseParser):
             },
         )
         normalized = self._normalizer.normalize(normalization_input, context)
-        return normalized.event.model_copy(
-            update={
+        return normalized.event.with_validated_updates(
+            {
                 "message": message,
                 "raw_message": raw_line,
                 "service": self.vendor,

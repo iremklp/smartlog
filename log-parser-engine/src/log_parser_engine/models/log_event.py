@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
@@ -101,3 +102,18 @@ class LogEvent(BaseModel):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+    def with_validated_updates(
+        self,
+        updates: Mapping[str, Any],
+    ) -> "LogEvent":
+        """Return a fully revalidated copy with the supplied field updates.
+
+        Pydantic's ``model_copy(update=...)`` deliberately skips validation.
+        Reconstructing from a Python-mode dump ensures validators run again,
+        including the recursive freezing of attributes and tags.
+        """
+
+        payload = self.model_dump(mode="python")
+        payload.update(updates)
+        return LogEvent.model_validate(payload)

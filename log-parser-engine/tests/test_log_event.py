@@ -52,3 +52,61 @@ def test_nested_log_event_collections_are_immutable() -> None:
         event.attributes["nested"]["new"] = True
     with pytest.raises(TypeError, match="mutation"):
         event.tags.append("beta")
+
+
+def test_validated_updates_preserve_identity_and_refreeze_collections() -> None:
+    event = LogEvent(
+        timestamp=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        source_type=LogSourceType.nginx,
+        message="original",
+        raw_message="original",
+        attributes={"nested": {"value": 1}},
+        tags=["alpha"],
+    )
+
+    updated = event.with_validated_updates(
+        {
+            "message": "  updated  ",
+            "attributes": {"nested": {"value": 2}},
+            "tags": ["beta", "beta"],
+        }
+    )
+
+    assert updated.event_id == event.event_id
+    assert updated.ingested_at == event.ingested_at
+    assert updated.message == "updated"
+    assert updated.attributes["nested"]["value"] == 2
+    assert updated.tags == ["beta"]
+    assert event.message == "original"
+    assert event.attributes["nested"]["value"] == 1
+    assert event.tags == ["alpha"]
+
+    with pytest.raises(TypeError, match="mutation"):
+        updated.attributes["new"] = True
+    with pytest.raises(TypeError, match="mutation"):
+        updated.attributes["nested"]["new"] = True
+    with pytest.raises(TypeError, match="mutation"):
+        updated.tags.append("gamma")
+
+
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"message": "   "},
+        {"timestamp": datetime(2024, 1, 1, 12, 0)},
+        {"http_status": 99},
+        {"duration_ms": -0.1},
+    ],
+)
+def test_validated_updates_reject_invalid_values(
+    updates: dict[str, object],
+) -> None:
+    event = LogEvent(
+        timestamp=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        source_type=LogSourceType.nginx,
+        message="original",
+        raw_message="original",
+    )
+
+    with pytest.raises(ValidationError):
+        event.with_validated_updates(updates)

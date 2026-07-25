@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
 Son güncelleme: 25 Temmuz 2026  
-Referans taban commit: `e5523f8`
+Referans taban commit: `d278339`
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -34,10 +34,10 @@ tamamlandığında yeniden doğrulanmalıdır.
 ## Mevcut öncelik
 
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
-Recovery** tamamlanmalıdır. Domain model ve parser sözleşmesi dilimi
-ve Redis parser regresyon dilimi tamamlanmıştır. Sırada built-in parser
-immutability audit'i, plugin startup lifecycle, storage/query/aggregation,
-frontend sözleşmeleri ve repository hijyeni vardır.
+Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu ve built-in
+parser canonical immutability dilimleri tamamlanmıştır. Sırada plugin startup
+lifecycle, storage/query/aggregation, frontend sözleşmeleri ve repository
+hijyeni vardır.
 
 ## Büyük aşamalar
 
@@ -45,7 +45,7 @@ frontend sözleşmeleri ve repository hijyeni vardır.
 |---|---|---|---|---|
 | 1. Foundation | 🔧 | Poetry/src layout ve test altyapısı var; kalite kapıları kırmızı, merkezi structured logging/config eksik | Tam pytest, Ruff ve mypy başarılı; generated dosyalar izlenmiyor; config/logging sözleşmesi belgeli | Kırık temel üzerine yeni özellik eklenmesi |
 | 2. Parser Core | 🔧 | BaseParser, context, registry, manager, detection ve normalization var | Plugin loader sözleşmeleri ve startup lifecycle testleri başarılı | Plugin keşfi container'a bağlı değil |
-| 3. Built-in Parsers | 🟡 | Bütün mevcut built-in parser fixture testleri yeşil; Redis re-validation uyguluyor | Bütün parser çıktıları canonical deep-immutability testlerinden geçiyor | Diğer bazı parserlar `model_copy(update=...)` ile mutable collection sızdırabiliyor |
+| 3. Built-in Parsers | ✅ | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor | Yeni parserlar aynı validated reconstruction contract kapısından geçer | Yeni plugin parserın doğrulamayı atlayan güncelleme yapması |
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
 | 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
 | 6. In-Memory Storage | 🔧 | Store, identity, retention, eviction ve istatistik yüzeyi var | Atomic batch gerçekten atomik; duplicate/capacity/thread-safety testleri başarılı | `atomic=True` yolu uygulanmamış |
@@ -84,7 +84,7 @@ frontend sözleşmeleri ve repository hijyeni vardır.
 | Built-in Parsers | IIS W3C | ✅ | Stateful context | Header ve field mapping desteği var |
 | Built-in Parsers | JSON/JSON Lines | ✅ | JSON profiles | Structured JSON ve line profilleri var |
 | Built-in Parsers | Redis | ✅ | Canonical models | Yedi Redis testi; enrichment, context precedence ve deep immutability yeşil |
-| Built-in Parsers | Canonical immutability audit | 🔧 | LogEvent | IIS/JSON/Syslog/Windows çıktılarında validated rebuild doğrulanmalı |
+| Built-in Parsers | Canonical immutability audit | ✅ | LogEvent | Sekiz built-in parser root/nested attributes, tags ve serialization testlerinden geçiyor |
 | Built-in Parsers | Apache/Nginx access/error | ✅ | Webserver parser | Ortak parser ailesi ve plugin entry modülleri var |
 | Built-in Parsers | Windows Event XML | ✅ | `defusedxml` | Güvenli XML decoder ve mapping var |
 | Built-in Parsers | RFC3164/RFC5424 | ✅ | Syslog tokenizer | İki ayrı parser mevcut |
@@ -120,9 +120,16 @@ frontend sözleşmeleri ve repository hijyeni vardır.
      freeze ediliyor.
    - Sonuç: 7 Redis ve 113 parser/pipeline/orchestration odak testi geçti; tam
      paket 421 passed, 8 failed ve 11 setup error; coverage %84.
-3. **Built-in parser canonical immutability audit'i — sıradaki iş.**
-4. Plugin discovery'yi application startup lifecycle'ına güvenli ve testli
-   biçimde bağla.
+3. **Built-in parser canonical immutability audit'i — tamamlandı.**
+   - `LogEvent.with_validated_updates(...)` ortak doğrulama kapısı eklendi.
+   - Sekiz built-in parser bu kapıya taşındı; parser enrichment alanları ve
+     canonical kimlik/zaman alanları korundu.
+   - Root/nested attributes, context iç içe koleksiyonları, tags ve JSON
+     round-trip gerçek fixturelarla doğrulandı.
+   - Sonuç: built-in parser/pipeline/orchestration odak seçkisi 126 passed; tam
+     paket 434 passed, 8 failed ve 11 setup error; coverage %84.
+4. **Plugin discovery'yi application startup lifecycle'ına güvenli ve testli
+   biçimde bağla — sıradaki iş.**
 5. InMemoryEventStore atomic batch, duplicate, capacity ve clear davranışlarını
    tamamla.
 6. Query/aggregation test ve mypy sorunlarını gider.
@@ -132,7 +139,7 @@ frontend sözleşmeleri ve repository hijyeni vardır.
 9. `node_modules`, TypeScript build cache ve generated Vite dosyalarını
    Git takibinden çıkarıp `.gitignore` kurallarını düzelt.
 10. File upload akışını bounded/chunked yap; CORS/request ID/security header
-   davranışlarını test et.
+    davranışlarını test et.
 
 Q0 kabul kriterleri:
 
@@ -196,9 +203,8 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda yeni özellik açılmayacaktır. Redis düzeltmesi
-sırasında görünür hale gelen built-in parser canonical immutability borcu
-yeniden üretilecektir. IIS, JSON, RFC3164/RFC5424 ve Windows Event parserlarının
-`model_copy(update=...)` yolları audit edilecek; mutable collection sızıntıları
-validated reconstruction ile kapatılacak ve her parser için root/nested
-attributes ile tags mutation regresyon testleri eklenecektir.
+Bir sonraki `devam et` komutunda yeni özellik açılmayacaktır. Plugin discovery
+application startup lifecycle'ına bağlanacaktır. Yükleme allowlist'i, yalnız
+`BaseParser` sınıflarının aday olması, deterministik sıra, duplicate politikası,
+güvenli startup warningleri ve config ile kapatma davranışı odak ve container
+entegrasyon testleriyle sabitlenecektir.

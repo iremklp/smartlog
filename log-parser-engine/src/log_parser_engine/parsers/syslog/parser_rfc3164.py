@@ -133,8 +133,8 @@ class Rfc3164SyslogParser(BaseParser):
                 },
             )
             normalized = self._normalizer.normalize(normalization_input, context)
-            event = normalized.event.model_copy(
-                update={
+            event = normalized.event.with_validated_updates(
+                {
                     "attributes": {
                         **normalized.event.attributes,
                         "syslog": {
