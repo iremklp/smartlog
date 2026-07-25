@@ -8,6 +8,7 @@ import { JsonView } from "../components/JsonView";
 import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
 import {
+  addEvent,
   batchParseAndStoreText,
   batchParseText,
   listParsers,
@@ -34,6 +35,7 @@ export function AnalysisPage() {
     queryKey: ["parsers"],
     queryFn: ({ signal }) => listParsers(signal)
   });
+  const parserCount = (parsersQuery.data ?? []).length;
 
   const textForm = useForm<TextFormValues>({
     resolver: zodResolver(textSchema),
@@ -48,6 +50,9 @@ export function AnalysisPage() {
   const textMutation = useMutation({
     mutationFn: async (values: TextFormValues) => {
       const parserName = values.parserName?.trim();
+      if (values.storeResult && parserCount === 0) {
+        throw new Error("Store secenegi icin parser gerekli. Su an parser registry bos.");
+      }
       if (values.batchMode) {
         if (values.storeResult) {
           return batchParseAndStoreText({ text: values.rawLog });
@@ -57,9 +62,14 @@ export function AnalysisPage() {
       if (parserName) {
         const result = await parseWithParser(parserName, { raw_log: values.rawLog });
         if (values.storeResult) {
+          const event = result.events?.[0];
+          if (!event) {
+            throw new Error("Parser event uretmedi, bu nedenle store yazilamadi.");
+          }
+          const writeResult = await addEvent(event);
           return {
-            warning: "Parser-secili parse sonucu store icin backend tek event yazar. Gerekirse /events endpointini kullanin.",
-            result
+            result,
+            write_result: writeResult
           };
         }
         return result;
@@ -117,6 +127,11 @@ export function AnalysisPage() {
             className="grid gap-3"
             onSubmit={textForm.handleSubmit((values) => textMutation.mutate(values))}
           >
+            {parsersQuery.isSuccess && parserCount === 0 ? (
+              <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
+                Hic parser bulunamadi. Parse islemi sonuc vermeyebilir; once parser registry yukleyin.
+              </p>
+            ) : null}
             <textarea
               rows={8}
               placeholder="Ornek log satiri"
@@ -134,10 +149,10 @@ export function AnalysisPage() {
               </select>
               <div className="grid grid-cols-2 gap-3">
                 <label className="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" {...textForm.register("storeResult")} /> Store
+                  <input className="ui-checkbox" type="checkbox" {...textForm.register("storeResult")} /> Store
                 </label>
                 <label className="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" {...textForm.register("batchMode")} /> Batch
+                  <input className="ui-checkbox" type="checkbox" {...textForm.register("batchMode")} /> Batch
                 </label>
               </div>
             </div>
@@ -232,11 +247,11 @@ function FileParseForm({
       </select>
       <div className="flex gap-4">
         <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={storeResult} onChange={(event) => setStoreResult(event.target.checked)} />
+          <input className="ui-checkbox" type="checkbox" checked={storeResult} onChange={(event) => setStoreResult(event.target.checked)} />
           Store
         </label>
         <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={batchMode} onChange={(event) => setBatchMode(event.target.checked)} />
+          <input className="ui-checkbox" type="checkbox" checked={batchMode} onChange={(event) => setBatchMode(event.target.checked)} />
           Batch
         </label>
       </div>

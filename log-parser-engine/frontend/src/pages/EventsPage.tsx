@@ -94,13 +94,20 @@ export function EventsPage() {
             : "Run a query to load events"
         }
       >
+        {mutation.isPending ? <p className="mb-3 text-sm text-inkSoft">Query calisiyor...</p> : null}
         {mutation.error ? <p className="mb-3 text-sm text-err">{mutation.error.message}</p> : null}
         {result ? (
           <>
             <div className="mb-3 text-sm text-inkSoft">
               Total: {result.page.total ?? "n/a"} | Has next: {String(result.page.has_next)}
             </div>
-            <EventsTable rows={result.events} onSelect={(id) => navigate(`/events/${id}`)} />
+            {result.events.length > 0 ? (
+              <EventsTable rows={result.events} onSelect={(id) => navigate(`/events/${id}`)} />
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-6 text-sm text-inkSoft">
+                Sorgu tamamlandi ancak event bulunamadi. Analysis ekraninda Store secenegiyle veri yazip tekrar deneyin.
+              </div>
+            )}
           </>
         ) : (
           <p className="text-sm text-inkSoft">No query result yet.</p>

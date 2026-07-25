@@ -105,13 +105,20 @@ class InMemoryEventQueryEngine:
 
         q_filter = self._query.filter
 
-        # Simple indexed fields
-        simple_fields = ["severities", "source_types", "event_types", "parser_names", "hosts", "services"]
-        for field in simple_fields:
-            values = getattr(q_filter, field)
+        # Simple indexed fields: map query filter names to index keys on stored events.
+        filter_to_index_field = {
+            "severities": "severity",
+            "source_types": "source_type",
+            "event_types": "event_type",
+            "parser_names": "parser_name",
+            "hosts": "host",
+            "services": "service",
+        }
+        for filter_field, index_field in filter_to_index_field.items():
+            values = getattr(q_filter, filter_field)
             if values:
                 ids = set()
-                index = self._indexes.get(field.rstrip('s'), {})
+                index = self._indexes.get(index_field, {})
                 for val in values:
                     ids.update(index.get(val.value if hasattr(val, 'value') else val, set()))
                 candidate_sets.append(ids)

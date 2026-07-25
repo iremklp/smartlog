@@ -110,7 +110,10 @@ async def parse_file(
         return parse_result
 
     if store_result:
-        return service.parse_and_store_text(ingestion.text, context=context)
+        try:
+            return service.parse_and_store_text(ingestion.text, context=context)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     return service.parse_text(ingestion.text, context=context)
 
 
@@ -133,11 +136,14 @@ def parse_and_store_text(
     payload: ParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> EventWriteResult:
-    return service.parse_and_store_text(
-        payload.raw_log,
-        context=payload.context,
-        options=payload.options,
-    )
+    try:
+        return service.parse_and_store_text(
+            payload.raw_log,
+            context=payload.context,
+            options=payload.options,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/batch/parse")

@@ -16,6 +16,7 @@ import type {
   ParserRegistration,
   PipelineResult,
   RuntimeStatistics,
+  LogEvent,
   StoredEvent
 } from "./types";
 
@@ -59,6 +60,14 @@ export function parseAndStoreText(payload: ParseRequest, signal?: AbortSignal) {
   return requestJson<EventWriteResult>(
     "/parse/store",
     { method: "POST", body: JSON.stringify(payload) },
+    signal
+  );
+}
+
+export function addEvent(event: LogEvent, signal?: AbortSignal) {
+  return requestJson<EventWriteResult>(
+    "/events",
+    { method: "POST", body: JSON.stringify({ event }) },
     signal
   );
 }
