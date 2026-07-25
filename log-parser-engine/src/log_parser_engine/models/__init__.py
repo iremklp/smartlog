@@ -11,7 +11,8 @@ from .detection_candidate import DetectionCandidate
 from .detection_decision import DetectionDecision
 from .detection_result import DetectionResult
 from .encoding_detection import EncodingDetection
-from .enums import LogSeverity, LogSourceType
+from .enums import ErrorType, LogSeverity, LogSourceType, ParseStatus
+from .normalization import NormalizationInput, NormalizationResult, NormalizationWarning
 from .event_aggregation import (
     AggregationBucket,
     EventAggregationRequest,
@@ -32,8 +33,12 @@ from .ingestion_warning import IngestionWarning
 from .log_event import LogEvent
 from .parse_error import ParseError
 from .parse_result import ParseResult
+from .pipeline_options import PipelineOptions
+from .pipeline_result import PipelineResult
+from .pipeline_stage_result import PipelineStageResult
 from .parser_metadata import ParserMetadata
 from .parser_registration import ParserRegistration
+from .parser_session_info import ParserSessionInfo
 from .parser_selection import ParserSelection
 from .stored_event import StoredEvent
 
@@ -50,6 +55,11 @@ __all__ = [
     "EncodingDetection",
     "LogSeverity",
     "LogSourceType",
+    "ErrorType",
+    "ParseStatus",
+    "NormalizationInput",
+    "NormalizationResult",
+    "NormalizationWarning",
     "IngestionMetadata",
     "IngestionResult",
     "IngestionSource",
@@ -57,8 +67,12 @@ __all__ = [
     "LogEvent",
     "ParseError",
     "ParseResult",
+    "PipelineOptions",
+    "PipelineResult",
+    "PipelineStageResult",
     "ParserMetadata",
     "ParserRegistration",
+    "ParserSessionInfo",
     "ParserSelection",
     # Event Store Models
     "StoredEvent",

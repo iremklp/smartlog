@@ -17,5 +17,9 @@ class InvalidPluginError(PluginError):
     """Raised when a loaded object does not satisfy the plugin contract."""
 
 
+class PluginValidationError(InvalidPluginError):
+    """Backward-compatible alias for plugin validation failures."""
+
+
 class PluginFactoryError(PluginError):
     """Raised when a plugin factory cannot produce a parser instance."""

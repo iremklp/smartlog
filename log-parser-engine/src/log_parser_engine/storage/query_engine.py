@@ -92,7 +92,7 @@ class InMemoryEventQueryEngine:
             query_duration_ms=duration_ms,
             snapshot_size=len(self._all_events),
             index_used=index_used,
-            candidate_count=len(candidate_ids),
+            candidate_count=len(candidate_ids) if candidate_ids is not None else len(self._all_events),
             warnings=tuple(),
         )
 

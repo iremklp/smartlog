@@ -9,6 +9,10 @@ class InputSourceError(IngestionError):
     """Raised when the input source is invalid or unsupported."""
 
 
+class SourceReaderError(InputSourceError):
+    """Backward-compatible alias for source reader failures."""
+
+
 class InputNotFoundError(InputSourceError):
     """Raised when a path source cannot be found."""
 

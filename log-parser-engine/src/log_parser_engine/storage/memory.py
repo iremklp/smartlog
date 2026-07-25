@@ -25,6 +25,7 @@ from log_parser_engine.models import (
 )
 
 from .base import EventStore
+from .query_engine import InMemoryEventQueryEngine
 from .helpers import estimate_event_size_bytes, get_canonical_json_bytes
 from .identity import compute_event_content_hash, generate_event_id
 from .options import BatchWriteOptions, EventStoreOptions, EventWriteOptions

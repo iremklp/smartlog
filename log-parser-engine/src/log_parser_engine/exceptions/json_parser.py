@@ -5,6 +5,10 @@ class JsonParserError(Exception):
     """Base exception for JSON parser failures."""
 
 
+class JsonParseError(JsonParserError):
+    """Backward-compatible alias for parse failures."""
+
+
 class JsonDecodingError(JsonParserError):
     """Raised when the JSON input cannot be decoded."""
 
