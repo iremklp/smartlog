@@ -1,7 +1,11 @@
 # log-parser-engine
 
-This project provides the initial scaffold for a plugin-oriented log parser engine.
-The focus of this stage is project structure, dependency configuration, and a minimal smoke test. No parser implementations or runtime logic have been added yet.
+This project provides a production-oriented plugin-based log parser engine with:
+
+- application service layer
+- FastAPI REST API
+- in-memory event store with query/facet/aggregation support
+- optional React Web UI in [frontend](frontend)
 
 ## Purpose
 
@@ -17,11 +21,56 @@ The long-term goal is to build a flexible log analysis platform that can parse l
 poetry install
 ```
 
+## Run API
+
+```bash
+poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
+```
+
+### API Notes
+
+- Default base URL: `http://localhost:8000`
+- Request ID header is returned as `X-Request-ID`
+- Dev CORS defaults to `http://localhost:5173` and `http://127.0.0.1:5173`
+- Override CORS with: `LOG_PARSER_CORS_ORIGINS=http://my-ui.example.com,http://localhost:4173`
+
+### Main Endpoints
+
+- `GET /health`
+- `GET /runtime/statistics`
+- `GET /store/statistics`
+- `GET /parsers`
+- `POST /parse`
+- `POST /parse/{parser_name}`
+- `POST /parse/file` (multipart)
+- `POST /parse/store`
+- `POST /batch/parse`
+- `POST /batch/parse/store`
+- `POST /query`
+- `POST /aggregate`
+- `GET /events/{event_id}`
+- `DELETE /events/{event_id}`
+
 ## Running tests
 
 ```bash
 poetry run pytest
 ```
+
+## Web UI (frontend)
+
+UI source lives in [frontend](frontend).
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Environment:
+
+- Copy `.env.example` to `.env`
+- Set `VITE_API_BASE_URL=http://localhost:8000`
 
 ## Linting
 

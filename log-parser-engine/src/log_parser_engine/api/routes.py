@@ -1,9 +1,19 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from log_parser_engine.application import LogAnalysisApplicationService
-from log_parser_engine.models import EventAggregationResult, EventQueryResult, EventWriteResult
+from log_parser_engine.core import ParserContext
+from log_parser_engine.models import (
+    BatchParseResult,
+    BatchWriteResult,
+    EventAggregationResult,
+    EventQueryResult,
+    EventStoreStatistics,
+    EventWriteResult,
+    ParseResult,
+    PipelineResult,
+)
 
 from .dependencies import get_service
 from .schemas import (
@@ -30,6 +40,13 @@ def runtime_statistics(service: LogAnalysisApplicationService = Depends(get_serv
     return service.runtime_statistics()
 
 
+@router.get("/store/statistics")
+def store_statistics(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> EventStoreStatistics:
+    return service.store_statistics()
+
+
 @router.get("/parsers")
 def list_parsers(service: LogAnalysisApplicationService = Depends(get_service)):
     return service.list_parsers()
@@ -49,6 +66,52 @@ def parse_text(
     service: LogAnalysisApplicationService = Depends(get_service),
 ):
     return service.parse_text(payload.raw_log, context=payload.context, options=payload.options)
+
+
+@router.post("/parse/file")
+async def parse_file(
+    file: UploadFile = File(...),
+    source_name: str | None = Form(default=None),
+    parser_name: str | None = Form(default=None),
+    store_result: bool = Form(default=False),
+    batch_mode: bool = Form(default=False),
+    allow_disabled_parser: bool = Form(default=False),
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> PipelineResult | ParseResult | BatchParseResult | EventWriteResult | BatchWriteResult:
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="uploaded file is empty")
+
+    source_label = source_name or file.filename
+    ingestion = service.ingest_bytes(payload, source_name=source_label)
+    context = ParserContext(
+        source_name=source_label,
+        file_path=file.filename,
+        content_type=file.content_type,
+        attributes=ingestion.parser_context_attributes,
+    )
+
+    if batch_mode:
+        if store_result:
+            return service.batch_parse_and_store_text(ingestion.text, context=context)
+        return service.batch_parse_text(ingestion.text, context=context)
+
+    if parser_name:
+        parse_result = service.parse_with_parser(
+            parser_name,
+            ingestion.text,
+            context=context,
+            allow_disabled_parser=allow_disabled_parser,
+        )
+        if store_result:
+            if not parse_result.events:
+                raise HTTPException(status_code=400, detail="parser did not produce an event to store")
+            return service.add_event(parse_result.events[0])
+        return parse_result
+
+    if store_result:
+        return service.parse_and_store_text(ingestion.text, context=context)
+    return service.parse_text(ingestion.text, context=context)
 
 
 @router.post("/parse/{parser_name}")

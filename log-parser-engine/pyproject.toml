@@ -14,6 +14,7 @@ charset-normalizer = "^3.4.9"
 fastapi = "^0.115.6"
 uvicorn = { version = "^0.32.1", extras = ["standard"], optional = true }
 httpx = "^0.28.1"
+python-multipart = "^0.0.20"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
