@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Final
 
-from log_parser_engine.exceptions import RedisTokenizationError, RedisTimestampError
+from log_parser_engine.exceptions import RedisTimestampError, RedisTokenizationError
 from log_parser_engine.models import RedisLogRecord
 
 from .constants import LEVEL_MARKER_SEVERITY, ROLE_CODES

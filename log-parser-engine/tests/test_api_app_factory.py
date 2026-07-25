@@ -206,4 +206,4 @@ def test_api_query_severity_filter_returns_matching_events() -> None:
     body = query_response.json()
     assert body["page"]["total"] == 1
     assert len(body["events"]) == 1
-    assert body["events"][0]["event"]["severity"] == "ERROR"
+    assert body["events"][0]["event"]["severity"] == "error"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
-from typing import cast
 
 from log_parser_engine.core import BaseParser, ParserContext
 from log_parser_engine.exceptions import (
@@ -13,6 +13,7 @@ from log_parser_engine.exceptions import (
 from log_parser_engine.models import (
     DetectionResult,
     ErrorType,
+    LogEvent,
     LogSourceType,
     ParseError,
     ParseResult,
@@ -161,20 +162,13 @@ class RedisLogParser(BaseParser):
                 record,
                 classification,
             )
-            normalization_attributes = {
+            mapped_attributes = mapped_fields.get("attributes")
+            if not isinstance(mapped_attributes, Mapping):
+                raise RedisMappingError("mapped Redis attributes must be a mapping")
+            normalization_attributes: dict[str, object] = {
+                **dict(mapped_attributes),
                 "parser_name": self.name,
                 "parser_version": self.version,
-                "redis": {
-                    "role": record.role,
-                    "role_code": record.role_code,
-                    "pid": record.pid,
-                    "level_marker": record.level_marker,
-                    "timestamp_source": record.timestamp_source,
-                    "outer_host": record.outer_host,
-                    "outer_process": record.outer_process,
-                    "raw_line": record.raw_line,
-                },
-                "redis_event": dict(classification.attributes),
                 "line_number": line_number,
             }
             normalization_input = NormalizationInput(
@@ -184,36 +178,35 @@ class RedisLogParser(BaseParser):
             )
             normalized = self._normalizer.normalize(normalization_input, context)
             event = normalized.event
-            normalized_attributes = dict(event.attributes)
-            redis_attributes = cast(
-                dict[str, object],
-                normalized_attributes.get("redis", {}),
-            )
-            redis_payload = cast(
-                dict[str, object],
-                normalization_attributes["redis"],
-            )
-            redis_attributes.update(redis_payload)
-            normalized_attributes["redis"] = redis_attributes
-            normalized_attributes["redis_event"] = cast(
-                dict[str, object],
-                normalization_attributes["redis_event"],
-            )
-            event = event.model_copy(
-                update={
+            event_payload = event.model_dump(mode="python")
+            event_attributes = event_payload.get("attributes")
+            if not isinstance(event_attributes, Mapping):
+                raise RedisMappingError("normalized attributes must be a mapping")
+            normalized_attributes = dict(event_attributes)
+            for attribute_name in ("redis", "redis_event"):
+                mapped_value = mapped_attributes.get(attribute_name)
+                if not isinstance(mapped_value, Mapping):
+                    raise RedisMappingError(
+                        f"mapped {attribute_name} attributes must be a mapping"
+                    )
+                existing_value = normalized_attributes.get(attribute_name)
+                merged_value = (
+                    dict(existing_value)
+                    if isinstance(existing_value, Mapping)
+                    else {}
+                )
+                merged_value.update(mapped_value)
+                normalized_attributes[attribute_name] = merged_value
+            normalized_attributes["parser_name"] = self.name
+            normalized_attributes["parser_version"] = self.version
+            normalized_attributes["line_number"] = line_number
+            event_payload.update(
+                {
                     "attributes": normalized_attributes,
-                    "timestamp": mapped_fields["timestamp"],
-                    "severity": mapped_fields["severity"],
-                    "event_type": mapped_fields["event_type"],
-                    "message": mapped_fields["message"],
                     "raw_message": selected_line,
-                    "service": mapped_fields["service"],
-                    "application": mapped_fields["application"],
-                    "host": mapped_fields["host"],
-                    "source": mapped_fields["source"],
-                    "tags": mapped_fields["tags"],
                 }
             )
+            event = LogEvent.model_validate(event_payload)
             return ParseResult(status=ParseStatus.success, events=[event])
         except RedisTokenizationError as exc:
             return self._failure_result(

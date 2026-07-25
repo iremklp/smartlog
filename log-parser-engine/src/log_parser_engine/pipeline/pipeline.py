@@ -56,11 +56,22 @@ class LogProcessingPipeline:
         options: PipelineOptions | None = None,
     ) -> PipelineResult:
         if not isinstance(raw_log, str):
-            return self._failure_result(
-                error_type=ErrorType.EMPTY_INPUT,
-                message="raw_log must be a string",
+            stage = PipelineStageResult.failed(
+                stage=PipelineStage.INPUT_VALIDATION,
                 duration_ms=0.0,
-                stages=(),
+                error_type=ErrorType.EMPTY_INPUT.value,
+                message="raw_log must be a string",
+            )
+            error = ParseError(
+                message="raw_log must be a string",
+                status=ParseStatus.failed,
+                error_type=ErrorType.EMPTY_INPUT,
+                details={"stage": PipelineStage.INPUT_VALIDATION.value},
+            )
+            return self._failure_result(
+                errors=(error,),
+                duration_ms=0.0,
+                stages=(stage,),
             )
         if options is None:
             options = PipelineOptions()
@@ -221,8 +232,18 @@ class LogProcessingPipeline:
                 metadata={"error_count": len(parse_result.errors)},
             )
             stages.append(stage)
+            parse_errors = tuple(parse_result.errors)
+            if not parse_errors:
+                parse_errors = (
+                    ParseError(
+                        message="parser returned a failure result without errors",
+                        status=ParseStatus.failed,
+                        error_type=ErrorType.PARSE_FAILED,
+                        details={"stage": PipelineStage.PARSING.value},
+                    ),
+                )
             return self._failure_result(
-                errors=tuple(parse_result.errors),
+                errors=parse_errors,
                 duration_ms=self._duration_ms(started_at),
                 stages=tuple(stages),
                 parse_result=parse_result,

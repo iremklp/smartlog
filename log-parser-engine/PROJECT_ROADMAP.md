@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
 Son güncelleme: 25 Temmuz 2026  
-Referans commit: `64d604c`
+Referans taban commit: `e5523f8`
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -34,9 +34,10 @@ tamamlandığında yeniden doğrulanmalıdır.
 ## Mevcut öncelik
 
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
-Recovery** tamamlanmalıdır. İlk teknik dilim domain model ve parser sözleşmesi
-kaymalarını gidermektir. Ardından plugin/Redis, storage/query/aggregation,
-frontend sözleşmeleri ve repository hijyeni ele alınır.
+Recovery** tamamlanmalıdır. Domain model ve parser sözleşmesi dilimi
+ve Redis parser regresyon dilimi tamamlanmıştır. Sırada built-in parser
+immutability audit'i, plugin startup lifecycle, storage/query/aggregation,
+frontend sözleşmeleri ve repository hijyeni vardır.
 
 ## Büyük aşamalar
 
@@ -44,7 +45,7 @@ frontend sözleşmeleri ve repository hijyeni ele alınır.
 |---|---|---|---|---|
 | 1. Foundation | 🔧 | Poetry/src layout ve test altyapısı var; kalite kapıları kırmızı, merkezi structured logging/config eksik | Tam pytest, Ruff ve mypy başarılı; generated dosyalar izlenmiyor; config/logging sözleşmesi belgeli | Kırık temel üzerine yeni özellik eklenmesi |
 | 2. Parser Core | 🔧 | BaseParser, context, registry, manager, detection ve normalization var | Plugin loader sözleşmeleri ve startup lifecycle testleri başarılı | Plugin keşfi container'a bağlı değil |
-| 3. Built-in Parsers | 🔧 | Sekiz built-in parser ailesi kayıtlı | Bütün parser contract/fixture testleri başarılı; Redis regresyonları kapalı | Model enum/sözleşme kayması parser sonuçlarını etkiliyor |
+| 3. Built-in Parsers | 🟡 | Bütün mevcut built-in parser fixture testleri yeşil; Redis re-validation uyguluyor | Bütün parser çıktıları canonical deep-immutability testlerinden geçiyor | Diğer bazı parserlar `model_copy(update=...)` ile mutable collection sızdırabiliyor |
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
 | 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
 | 6. In-Memory Storage | 🔧 | Store, identity, retention, eviction ve istatistik yüzeyi var | Atomic batch gerçekten atomik; duplicate/capacity/thread-safety testleri başarılı | `atomic=True` yolu uygulanmamış |
@@ -71,18 +72,19 @@ frontend sözleşmeleri ve repository hijyeni ele alınır.
 | Katman | Subsystem | Durum | Bağımlılık | Not |
 |---|---|---|---|---|
 | Foundation | Repository/package yapısı | 🟡 | Yok | Python ve frontend paketleri var; yaklaşık 9.928 `node_modules` dosyası izleniyor |
-| Foundation | Domain models | 🔧 | Pydantic v2 | Enum JSON değerleri ile test/UI beklentileri uyuşmuyor |
+| Foundation | Domain models | ✅ | Pydantic v2 | Canonical enum çıktıları lowercase; legacy uppercase input kabul ediliyor |
 | Foundation | Exception hierarchy | 🟡 | Domain models | Geniş hiyerarşi var; storage ve API mapping tutarlılığı eksik |
 | Foundation | Configuration | 🟡 | Application container | Bazı options/env kullanımları var; merkezi ve doğrulanmış config yüzeyi yok |
 | Foundation | Logging conventions | ⏳ | Request ID | Structured logging ve redaction standardı yok |
 | Foundation | Quality tooling | 🔧 | Poetry/npm | Backend Ruff/mypy ve frontend ESLint/Prettier başarısız |
 | Parser Core | BaseParser/metadata/context | ✅ | Domain models | Sözleşme ve güvenli wrapperlar mevcut |
 | Parser Core | Registry/manager/detection | ✅ | BaseParser | Confidence, ambiguity ve registry yüzeyleri mevcut |
-| Parser Core | Plugin discovery | 🔧 | Registry | Loaderlar var; testler kırık ve application startup'a bağlı değil |
-| Parser Core | Normalization/pipeline | 🔧 | Parser manager | Uygulama var; eski ParseResult/Pipeline beklentileri kaymış |
+| Parser Core | Plugin discovery | 🟡 | Registry | Loader/discovery odak testleri yeşil; application startup'a bağlı değil |
+| Parser Core | Normalization/pipeline | ✅ | Parser manager | Domain/pipeline odak sözleşme testleri yeşil; non-string input güvenli failure döndürüyor |
 | Built-in Parsers | IIS W3C | ✅ | Stateful context | Header ve field mapping desteği var |
 | Built-in Parsers | JSON/JSON Lines | ✅ | JSON profiles | Structured JSON ve line profilleri var |
-| Built-in Parsers | Redis | 🔧 | Canonical models | Üç Redis parser testi başarısız |
+| Built-in Parsers | Redis | ✅ | Canonical models | Yedi Redis testi; enrichment, context precedence ve deep immutability yeşil |
+| Built-in Parsers | Canonical immutability audit | 🔧 | LogEvent | IIS/JSON/Syslog/Windows çıktılarında validated rebuild doğrulanmalı |
 | Built-in Parsers | Apache/Nginx access/error | ✅ | Webserver parser | Ortak parser ailesi ve plugin entry modülleri var |
 | Built-in Parsers | Windows Event XML | ✅ | `defusedxml` | Güvenli XML decoder ve mapping var |
 | Built-in Parsers | RFC3164/RFC5424 | ✅ | Syslog tokenizer | İki ayrı parser mevcut |
@@ -103,21 +105,33 @@ frontend sözleşmeleri ve repository hijyeni ele alınır.
 
 ### Q0 — Foundation Quality Recovery
 
-1. **Domain model ve parser sözleşmesi stabilizasyonu — sıradaki iş**
+1. **Domain model ve parser sözleşmesi stabilizasyonu — tamamlandı**
    - Enum serialization kararını tek sözleşmede sabitle.
    - `LogEvent`, `ParseError`, `ParseResult` ve `PipelineResult` beklentilerini
      kod/test/API/UI arasında eşleştir.
    - İlgili odak testlerini ve ardından tam backend test paketini çalıştır.
-2. Plugin discovery ve Redis parser regresyonlarını gider.
-3. InMemoryEventStore atomic batch, duplicate, capacity ve clear davranışlarını
+   - Sonuç: 39 odak test geçti; tam paket 399/21 baseline'ından 417 passed,
+     11 failed ve 11 setup error durumuna ilerledi; coverage %84 kaldı.
+2. **Redis parser regresyonlarını gider — tamamlandı.**
+   - Server, Sentinel ve systemd wrapper fixture'ları canonical event üretiyor.
+   - Mapping enrichment alanları korunuyor; context parser alanlarını spoof
+     edemiyor.
+   - `LogEvent.model_validate()` ile attributes/tags yeniden doğrulanıp
+     freeze ediliyor.
+   - Sonuç: 7 Redis ve 113 parser/pipeline/orchestration odak testi geçti; tam
+     paket 421 passed, 8 failed ve 11 setup error; coverage %84.
+3. **Built-in parser canonical immutability audit'i — sıradaki iş.**
+4. Plugin discovery'yi application startup lifecycle'ına güvenli ve testli
+   biçimde bağla.
+5. InMemoryEventStore atomic batch, duplicate, capacity ve clear davranışlarını
    tamamla.
-4. Query/aggregation test ve mypy sorunlarını gider.
-5. Backend Ruff ve mypy borcunu sıfırla.
-6. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
+6. Query/aggregation test ve mypy sorunlarını gider.
+7. Backend Ruff ve mypy borcunu sıfırla.
+8. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
    konfigürasyonunu ve temel component/contract testlerini ekle.
-7. `node_modules`, TypeScript build cache ve generated Vite dosyalarını
+9. `node_modules`, TypeScript build cache ve generated Vite dosyalarını
    Git takibinden çıkarıp `.gitignore` kurallarını düzelt.
-8. File upload akışını bounded/chunked yap; CORS/request ID/security header
+10. File upload akışını bounded/chunked yap; CORS/request ID/security header
    davranışlarını test et.
 
 Q0 kabul kriterleri:
@@ -182,9 +196,9 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda yeni özellik açılmayacaktır. Önce domain model
-ve parser sözleşmesi kaymaları yeniden üretilecek; beklenen public JSON
-sözleşmesi kod, test ve mevcut frontend kullanımı karşılaştırılarak
-sabitlenecektir. En küçük uyumlu düzeltmeler uygulanacak, odak testleri ve tam
-backend kalite kontrolleri çalıştırılacak, ardından bu belge ile
-`DEVELOPMENT_STATUS.md` güncellenecektir.
+Bir sonraki `devam et` komutunda yeni özellik açılmayacaktır. Redis düzeltmesi
+sırasında görünür hale gelen built-in parser canonical immutability borcu
+yeniden üretilecektir. IIS, JSON, RFC3164/RFC5424 ve Windows Event parserlarının
+`model_copy(update=...)` yolları audit edilecek; mutable collection sızıntıları
+validated reconstruction ile kapatılacak ve her parser için root/nested
+attributes ile tags mutation regresyon testleri eklenecektir.

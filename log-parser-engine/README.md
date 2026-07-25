@@ -33,6 +33,8 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 - Request ID header is returned as `X-Request-ID`
 - Dev CORS defaults to `http://localhost:5173` and `http://127.0.0.1:5173`
 - Override CORS with: `LOG_PARSER_CORS_ORIGINS=http://my-ui.example.com,http://localhost:4173`
+- Enum values in JSON responses use lowercase/snake_case. Legacy uppercase and
+  case-insensitive enum inputs remain accepted.
 
 ### Main Endpoints
 
@@ -242,14 +244,18 @@ Frontend:
 
 Backend:
 
-- Tam test paketi toplanıp çalışmaktadır; son kontrolde 399 test geçmiş,
-  analiz katmanı dışındaki eski test/fixture uyumsuzlukları nedeniyle 21 test
-  başarısız olmuş ve 11 test setup hatası vermiştir.
+- Tam test paketi toplanıp çalışmaktadır; son kontrolde 421 test geçmiş,
+  storage sorunları nedeniyle 8 test başarısız olmuş ve
+  query/aggregation fixture sorunları nedeniyle 11 test setup hatası
+  vermiştir.
 - Tam paket coverage sonucu %84'tür. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
+- Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
+- Redis parser testleri 7/7, built-in parser/pipeline/orchestration seçkisi
+  113/113 geçmiştir.
 - `mypy src` kontrolünde 5 eski dosyada toplam 20 tip hatası bulunmaktadır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve tanımsız isimler dahil 229 bulgu bulunmaktadır.
+  ve tanımsız isimler dahil 226 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.

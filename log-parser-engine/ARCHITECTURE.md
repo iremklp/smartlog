@@ -1,7 +1,7 @@
 # Parsel Engine Mimarisi
 
 Son güncelleme: 25 Temmuz 2026  
-Referans commit: `64d604c`
+Referans taban commit: `e5523f8`
 
 ## Kapsam
 
@@ -75,13 +75,13 @@ modellerini kullanır.
 
 | Modül | Gerçek sorumluluk | Durum notu |
 |---|---|---|
-| `models` | Canonical event, parse, batch, query, store ve analysis modelleri | Bazı enum ve eski test sözleşmeleri uyuşmuyor |
+| `models` | Canonical event, parse, batch, query, store ve analysis modelleri | Enum wire contractı lowercase ve geriye uyumlu inputla sabitlendi |
 | `core` | BaseParser, context, registry, manager ve detection | Ana sözleşmeler mevcut |
 | `plugins` | Package ve entry-point aday keşfi/yüklemesi | Application startup'a bağlı değil |
-| `parsers` | IIS, JSON, Redis, webserver, syslog ve Windows XML parserları | Redis regresyonları açık |
+| `parsers` | IIS, JSON, Redis, webserver, syslog ve Windows XML parserları | Mevcut fixture testleri yeşil; cross-parser immutability audit'i açık |
 | `ingestion` | Encoding, BOM, binary, line endings, archive ve metadata | Core ingestion büyük ölçüde tamam |
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
-| `pipeline` | Detect, parse, normalize ve stage sonucu | Model sözleşmesi stabilizasyonu gerekiyor |
+| `pipeline` | Detect, parse, normalize ve stage sonucu | Non-string ve errorsız non-success sonuçlar structured failure üretir |
 | `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; mypy borcu var |
 | `storage` | EventStore protocol, in-memory yazma, retention ve query | Atomic batch/query sorunları açık |
 | `analysis` | Summary, dağılım, timeline, percentile, latency, HTTP ve comparison | Backend kapsamı odak testlerinde yeşil |
@@ -111,8 +111,10 @@ Store, eventin immutable referansını `StoredEvent` ile sarar. Stored event:
 
 taşır.
 
-Mevcut açık sözleşme borcu: enumların JSON'da uppercase serialize edilmesi,
-backenddeki bazı eski testler ve frontenddeki lowercase değerlerle uyuşmuyor.
+Canonical public enum sözleşmesi lowercase/snake_case JSON değerleridir.
+Uppercase member adları, eski uppercase wire değerleri ve karışık case inputlar
+trim edilerek geriye uyumlu kabul edilir. `LogEvent.raw_message` zorunlu ve
+nonblank kalır; bozuk storage/query fixture'ları için model gevşetilmez.
 
 ## Parser ve plugin mimarisi
 
@@ -136,10 +138,18 @@ Her parser:
 - güvenli wrapperlar üzerinden beklenmeyen exception'ları subsystem sonucuna
   dönüştürür.
 
+Redis parser normalizasyon sonrası enrichment birleşimini frozen collection
+üzerinde mutate etmez. Geçici plain mapping üzerinde birleştirir ve sonucu
+`LogEvent.model_validate()` ile yeniden doğrulayıp deep-freeze eder. Bu
+validated reconstruction deseni Redis için testlidir. IIS, JSON, Syslog ve
+Windows Event parserlarındaki `model_copy(update=...)` yollarının aynı
+immutability garantisine sahip olup olmadığı ayrı audit borcudur.
+
 `PackagePluginLoader`, `EntryPointPluginLoader` ve discovery modelleri vardır.
-Ancak güncel `ApplicationContainer` startup'ta bunları çalıştırmaz; sekiz
-built-in parserı doğrudan import edip registry'ye kaydeder. Bu nedenle plugin
-altyapısı mevcut olsa da runtime plugin lifecycle tamamlanmış sayılmaz.
+Loader/discovery/validation odak sözleşme testleri başarılıdır. Ancak güncel
+`ApplicationContainer` startup'ta bunları çalıştırmaz; sekiz built-in parserı
+doğrudan import edip registry'ye kaydeder. Bu nedenle plugin altyapısı mevcut
+olsa da runtime plugin lifecycle tamamlanmış sayılmaz.
 
 ## Tek kayıt ingestion ve parse akışı
 
@@ -331,8 +341,9 @@ Bilinen contract farkları:
 - UI `raw_log`, backend `raw_message` kullanıyor.
 - UI `page.has_next` bekliyor; backend modeli `has_more` property taşıyor ve
   JSON response sözleşmesi bu alanı garanti etmiyor.
-- UI severity filtrelerini lowercase gönderiyor; güncel backend enum değerleri
-  uppercase.
+- UI severity filtreleri ve backend canonical enum wire değerleri lowercase
+  olarak hizalanmıştır; elle tutulan TypeScript tipleri yine de generated
+  contract değildir.
 - UI `/api/v1/analysis` ve comparison endpointlerini çağırmıyor.
 - Mutation sonrası query invalidation ve runtime response validation yok.
 
@@ -422,16 +433,16 @@ Gerekli ancak henüz olmayan parçalar:
 ## Bilinen mimari borçlar
 
 1. Repository genel test, Ruff ve mypy kapıları kırmızı.
-2. Domain enum/parse sözleşmeleri testler ve UI ile kaymış.
-3. Plugin discovery runtime container'a bağlı değil.
-4. Redis parser regresyonları açık.
-5. Atomic batch write uygulanmamış.
-6. Query/aggregation test ve tip sorunları var.
-7. API versioning ve error envelope parçalı.
-8. File upload bounded değil.
-9. UI API tipleri elle kopyalanmış ve sapmış.
-10. Structured logging, Prometheus, auth, audit ve deployment yok.
-11. `node_modules` ve generated frontend dosyaları Git tarafından izleniyor.
+2. Plugin discovery runtime container'a bağlı değil.
+3. Bazı built-in parser `model_copy` yollarında canonical deep-immutability
+   audit'i açık.
+4. Atomic batch write uygulanmamış.
+5. Query/aggregation test ve tip sorunları var.
+6. API versioning ve error envelope parçalı.
+7. File upload bounded değil.
+8. UI API tipleri elle kopyalanmış ve sapmış.
+9. Structured logging, Prometheus, auth, audit ve deployment yok.
+10. `node_modules` ve generated frontend dosyaları Git tarafından izleniyor.
 
 ## Açıkça kapsam dışı
 

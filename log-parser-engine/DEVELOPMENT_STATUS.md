@@ -2,32 +2,34 @@
 
 Son kalite kontrolü: 25 Temmuz 2026  
 Branch: `main`  
-Referans commit: `64d604c`  
-Remote durumu: keşif başlangıcında `main`, `origin/main` ile aynıydı.
+Referans taban commit: `e5523f8`
+Remote durumu: çalışma başlangıcında `main`, `origin/main` ile aynıydı.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan ürün dilimi Statistical Analysis Engine ile application/API
-entegrasyonudur. Sonraki hardening commit'i analysis request gövdesi limitini
-`Content-Length` olmayan chunked body'lerde de tutarlı `413` davranışına
-getirmiştir.
+Son tamamlanan teknik dilim **Foundation Quality Recovery — Redis Parser
+Stabilizasyonu**dur.
 
-Odak analiz kapsamı:
+Bu dilimde:
 
-- summary ve dağılımlar,
-- timeline,
-- percentile ve latency,
-- HTTP breakdown,
-- baseline/comparison,
-- deterministik insight,
-- bounded request/response,
-- güvenli public group alanları,
-- eşzamanlı analysis slot limiti.
+- shallow `dict()` ve runtime etkisi olmayan `cast()` nedeniyle nested
+  `FrozenDict.update()` üzerinde oluşan üç Redis regresyonu kapatıldı,
+- mapping katmanındaki `category`, `matched_rule`, `parser_attributes` ve
+  wrapper metadata alanları kaybedilmeden canonical evente taşındı,
+- context metadata korunurken parser-authoritative Redis ve parser kimlik
+  alanlarının spoof edilmesi engellendi,
+- `model_copy(update=...)` doğrulama bypassı kaldırıldı; event
+  `LogEvent.model_validate()` ile yeniden doğrulanıp deep-freeze edildi,
+- root/nested attributes, `redis_event` ve tags immutability regresyon testleri
+  eklendi,
+- Redis, built-in parser, pipeline ve orchestration odak seçkileri doğrulandı.
 
-Odak test sonucu: **139 passed**.
+Odak sonuçları: **7 Redis testi** ve **113 parser/pipeline/orchestration testi**
+geçti. Önceki domain contract seçkisi **39 passed**, Statistical Analysis
+seçkisi ise regresyonsuz **139 passed** durumundadır.
 
 ## Repository snapshotı
 
@@ -37,7 +39,7 @@ Odak test sonucu: **139 passed**.
 | Python | `3.11.15` |
 | Poetry | `2.4.1` |
 | Backend kaynak dosyası | 214 Python dosyası |
-| Backend test modülü | 84 |
+| Backend test modülü | 85 |
 | Frontend paket | `log-parser-engine-ui` `0.1.0` |
 | Node.js | `24.18.0` |
 | npm | `11.16.0` |
@@ -46,9 +48,9 @@ Odak test sonucu: **139 passed**.
 | SQL/harici DB | Yok |
 | Ayrı CI/deployment | Yok |
 
-Keşif başlangıcında çalışma ağacı temizdi. Bu keşif turu yalnız
-`PROJECT_ROADMAP.md`, `ARCHITECTURE.md` ve bu dosyayı ekler; commit veya push
-yapmaz.
+Çalışma başlangıcında kaynak repository temizdi. Foundation Quality Recovery
+dilimleri ayrı bir yazılabilir çalışma kopyasında uygulanmış ve `main` branch
+için doğrulanmıştır.
 
 ## Tamamlanmış veya odak kapsamında doğrulanmış bileşenler
 
@@ -58,6 +60,12 @@ yapmaz.
 - Text/byte/path ingestion, encoding, BOM, binary, line ending, gzip/zip ve
   archive güvenliği.
 - Canonical normalization.
+- Lowercase enum wire contractı ve legacy uppercase input uyumluluğu.
+- Pipeline non-string ve errorsız non-success sonuçlarının güvenli failure
+  davranışı.
+- Redis server, Sentinel ve systemd wrapper canonical parse akışları.
+- Redis enrichment/context precedence ve revalidated deep immutability.
+- Package/entry-point plugin loader ve discovery/validation odak sözleşmeleri.
 - Batch record reader, parser session, stateful IIS header ve error policy
   akışları.
 - FastAPI application factory ve temel parse/store/query endpointleri.
@@ -73,10 +81,11 @@ production-ready anlamına gelmez.
 
 | Alan | Durum | Kanıt |
 |---|---|---|
-| Domain model contractı | 🔧 | `LogSourceType` JSON'da uppercase; eski test ve UI lowercase bekliyor |
-| Parse/Pipeline contractı | 🔧 | `ParseError`, `ParseResult` ve empty-input test beklentileri kaymış |
-| Plugin discovery | 🔧 | Loader/discovery testleri başarısız; container yalnız built-in parserları doğrudan yükler |
-| Redis parser | 🔧 | Server, Sentinel ve systemd wrapper testleri başarısız |
+| Domain model contractı | ✅ | Enum çıktıları lowercase; uppercase/case-insensitive legacy input kabul ediliyor |
+| Parse/Pipeline contractı | ✅ | Domain/pipeline odak testleri ve güvenli failure regresyonları başarılı |
+| Plugin discovery | 🟡 | Loader/discovery odak testleri başarılı; container hâlâ yalnız built-in parserları doğrudan yükler |
+| Redis parser | ✅ | 7/7 test; server, Sentinel, systemd, enrichment ve immutability başarılı |
+| Built-in parser immutability | 🔧 | Redis düzeltildi; IIS/JSON/Syslog/Windows `model_copy` yolları audit edilmeli |
 | Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
 | InMemoryEventStore | 🔧 | Duplicate/collision/replace/clear/reject ve thread testleri kırık |
 | Atomic batch write | 🔧 | `storage/memory.py` içinde `atomic=True` dalı gerçek implementasyon yerine `pass` içeriyor |
@@ -84,7 +93,7 @@ production-ready anlamına gelmez.
 | Aggregation | 🔧 | Fixture/model validator/type sorunları var |
 | Application service | 🟡 | Ana orchestration var; plugin lifecycle/config/response mapping tam değil |
 | REST API | 🟡 | Çoğu endpoint versiyonsuz; file upload tüm body'yi tek seferde okuyor |
-| Frontend contractı | 🔧 | `raw_log/raw_message`, `has_next/has_more`, lowercase/uppercase farkları var |
+| Frontend contractı | 🔧 | `raw_log/raw_message`, `has_next/has_more` ve elle tutulan tip farkları var |
 | Frontend testing | 🟡 | Yalnız bir smoke testi var |
 | Dashboard | 🟡 | Tek severity bar chart ve parser facet listesi var |
 | Analysis UI | ⏳ | Yeni Statistical Analysis ve Comparison API'leri tüketilmiyor |
@@ -96,20 +105,28 @@ production-ready anlamına gelmez.
 
 | Komut | Sonuç | Ayrıntı |
 |---|---|---|
-| `poetry run pytest -q` | Başarısız | 399 passed, 21 failed, 11 errors, 11 warnings |
-| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarısız | Test sonucu aynı; toplam coverage %84 |
+| `poetry run pytest -q` | Başarısız | 421 passed, 8 failed, 11 errors, 11 warnings |
+| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarısız | Aynı kalan hata kümeleriyle toplam coverage %84 |
+| Domain/pipeline/plugin/API odak contract seçkisi | Başarılı | 39 passed |
+| Redis parser odak seçkisi | Başarılı | 7 passed |
+| Built-in parser/pipeline/orchestration seçkisi | Başarılı | 113 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
-| `poetry run ruff check . --statistics` | Başarısız | 229 bulgu |
+| `poetry run ruff check . --statistics` | Başarısız | 226 bulgu |
 | `poetry run mypy src` | Başarısız | 5 dosyada 20 hata; 214 dosya kontrol edildi |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
+
+Sandbox yazılabilir sparse clone içinde yeni Poetry virtualenv oluşturamadığı
+için bu dilimin pytest/Ruff/mypy kontrolleri mevcut Poetry virtualenv
+binaryleri ve `PYTHONPATH=src` ile çalıştırılmıştır. Tablodaki komutlar
+repository için canonical tekrar komutlarıdır.
 
 Ruff dağılımı:
 
 | Kural | Adet |
 |---|---:|
-| `E501` line too long | 171 |
-| `F401` unused import | 20 |
-| `I001` import order | 19 |
+| `E501` line too long | 170 |
+| `F401` unused import | 19 |
+| `I001` import order | 18 |
 | `F821` undefined name | 15 |
 | `E701` multiple statements | 2 |
 | `F541` useless f-string | 1 |
@@ -125,14 +142,15 @@ Mypy hata dosyaları:
 
 Başarısız test kümeleri:
 
-- entry-point/package plugin loading ve discovery/validation,
-- `LogEvent` enum serialization,
-- ParseError/ParseResult/Pipeline eski sözleşmeleri,
-- Redis parser,
 - InMemoryEventStore duplicate/collision/replace/clear/reject politikaları,
 - thread-safety fixture'larında boş `raw_message`,
 - aggregation fixture'larında eksik `raw_message`,
 - query engine test fixture'ında eksik `LogEvent` importu.
+
+İlk tam paket baseline'ı 399 passed / 21 failed idi. İki Foundation dilimi
+sonunda sonuç 421 passed / 8 failed durumuna ilerlemiş, setup error sayısı
+artmamıştır. Kalan storage/query fixture hataları nedeniyle canonical
+`LogEvent.raw_message` nonblank kuralı gevşetilmemiştir.
 
 ### Frontend
 
@@ -187,7 +205,8 @@ yapılmalıdır.
   başarısız olduğu için ürün henüz production-ready değildir.
 - Frontend README analysis/comparison API'lerini listelemiyor.
 - README upload akışının boundsuz `UploadFile.read()` kullandığını söylemiyor.
-- Plugin discovery notları vardır; runtime container discovery'yi çağırmaz.
+- Plugin discovery odak testleri başarılıdır; runtime container discovery'yi
+  hâlâ çağırmaz.
 - Frontend README API contractı ile elle yazılmış TypeScript modellerinin bazı
   alanları gerçek backendden sapmıştır.
 - Repository kök README'si yalnız başlık seviyesindedir; gerçek dokümantasyon
@@ -209,29 +228,48 @@ yapılmalıdır.
 
 ## Sıradaki önerilen iş
 
-### Foundation Quality Recovery — Dilim 1
+### Foundation Quality Recovery — Dilim 3: Built-in Parser Immutability
 
 Bir sonraki çalışma:
 
-1. Public enum serialization kararını sabitler.
-2. `LogEvent`, `ParseError`, `ParseResult` ve `PipelineResult` sözleşmelerini
-   kod, test ve mevcut API/UI tüketimiyle karşılaştırır.
-3. Geriye uyumlu en küçük düzeltmeleri uygular.
-4. Domain/pipeline/plugin odak testlerini çalıştırır.
-5. Tam backend test paketini yeniden çalıştırır.
-6. Yeni kalan hata kümelerini kaydeder.
-7. `PROJECT_ROADMAP.md` ve bu dosyayı günceller.
+1. IIS, JSON, RFC3164/RFC5424 ve Windows Event başarılı parser çıktılarının
+   root/nested attributes ve tags immutability davranışını yeniden üretir.
+2. Pydantic `model_copy(update=...)` ile validation bypass edilen yolları
+   belirler.
+3. Parser-specific enrichment alanlarını kaybetmeden validated reconstruction
+   veya ortak, küçük bir helper uygular.
+4. Her parser için mutation, serialization ve canonical field regresyon
+   testleri ekler.
+5. Bütün built-in parser, pipeline, batch ve application container odak
+   seçkisini çalıştırır.
+6. Plugin discovery'nin yalnız contract düzeyinde yeşil, startup lifecycle
+   düzeyinde eksik olduğunu korur.
+7. Roadmap ve bu durum kaydını gerçek komut sonuçlarıyla günceller.
 
-Bu dilim tamamlanmadan Report Engine veya yeni ürün özelliği başlatılmamalıdır.
+Bu dilim ve kalan Q0 kalite borçları tamamlanmadan Report Engine veya yeni ürün
+özelliği başlatılmamalıdır.
 
-### Dilim 1 kabul kriterleri
+### Dilim 3 kabul kriterleri
 
-- Enum JSON sözleşmesi tek ve belgeli.
-- Domain/parse/pipeline odak testleri başarılı.
-- Bu sözleşmeye bağlı plugin testlerinin kırık nedeni ayrıştırılmış.
+- Bütün built-in parserların başarılı `LogEvent` çıktılarında root/nested
+  attributes ve tags mutate edilemez.
+- Parser-specific enrichment ve canonical alanlar korunur.
+- JSON serialization ve parser/pipeline contractları gerilemez.
+- Built-in parser/pipeline/orchestration odak seçkisi başarılıdır.
 - Yeni Ruff/mypy ihlali yok.
-- Tam test başarısızlık sayısı artmamış ve mümkün olan ilgili kümeler kapanmış.
-- Public API/UI etkisi açıkça kaydedilmiş.
+- Tam test failure/error sayıları artmamıştır.
+
+## Public contract notu
+
+- API/model JSON çıktılarında enum değerleri lowercase/snake_case'tir.
+- Eski uppercase inputlar, member adları ve karışık case değerler trim edilerek
+  kabul edilir.
+- `ParseStatus.FAILURE`, `FAILED`, `failure` ve `failed` aynı canonical
+  `"failed"` değeridir.
+- `LogEvent.raw_message` zorunlu ve nonblank kalır.
+- Content hash ve index anahtarları canonical lowercase değerleri kullanır.
+  Store yalnız process belleğinde olduğu için kalıcı veri migrasyonu yoktur;
+  yine de bu wire normalization release notunda belirtilmelidir.
 
 ## Tekrarlanabilir kalite komutları
 
