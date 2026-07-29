@@ -20,6 +20,7 @@ def test_event_store_options_defaults():
     assert options.identity_mode == "existing_or_generated"
     assert options.default_page_size == 100
     assert options.max_page_size == 1_000
+    assert options.max_facet_buckets == 100
     assert options.strict is True
 
 
@@ -48,6 +49,9 @@ def test_event_store_options_validation():
 
     with pytest.raises(ValidationError):
         EventStoreOptions(max_query_limit=99, max_page_size=100)
+
+    with pytest.raises(ValidationError):
+        EventStoreOptions(max_facet_buckets=0)
 
     with pytest.raises(ValidationError):
         EventStoreOptions(eviction_policy="invalid_policy")

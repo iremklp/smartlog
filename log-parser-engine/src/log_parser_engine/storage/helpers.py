@@ -1,39 +1,47 @@
-
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from datetime import date, datetime
+from enum import Enum
 from typing import Any
+from uuid import UUID
 
 from log_parser_engine.models import LogEvent
 
-# A rough estimate for the overhead of a StoredEvent object in memory,
-# including dictionary overhead, references, etc.
 STORED_EVENT_METADATA_OVERHEAD_BYTES = 256
 
 
-def _canonical_json_serializer(obj: Any) -> Any:
-    """Custom JSON serializer for deterministic output."""
-    if hasattr(obj, "isoformat"):  # Works for datetime
-        return obj.isoformat()
-    if hasattr(obj, "value"):  # Works for enums
-        return obj.value
-    if isinstance(obj, set):  # Handle sets by sorting them
-        return sorted(list(obj))
-    # Let Pydantic handle UUIDs, etc.
-    if isinstance(obj, (str, int, float, bool, type(None))):
-        return obj
-    if isinstance(obj, (dict, list, tuple)):
-         # The default json.dumps recursion will handle these
-        return obj
-    # For other types, we rely on Pydantic's serialization or raise an error
-    try:
-        # Fallback to a standard representation
-        return str(obj)
-    except Exception:
-        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+def _canonical_json_serializer(value: object) -> object:
+    """Serialize only deterministic, JSON-compatible extension values."""
+
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, (set, frozenset)):
+        return sorted(value, key=_canonical_collection_sort_key)
+    raise TypeError(
+        f"Object of type {type(value).__name__} is not JSON serializable"
+    )
+
+
+def _canonical_collection_sort_key(value: object) -> str:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+        default=_canonical_json_serializer,
+    )
+
 
 def get_hashable_data(event: LogEvent) -> dict[str, Any]:
-    """Returns the dictionary of data used for content hashing."""
+    """Return the explicit canonical fields used for content identity."""
+
     return {
         "timestamp": event.timestamp,
         "severity": event.severity.value,
@@ -51,58 +59,61 @@ def get_hashable_data(event: LogEvent) -> dict[str, Any]:
         "attributes": event.attributes,
     }
 
-def get_canonical_json_bytes(event: LogEvent, for_hashing: bool = False) -> bytes:
-    """
-    Serializes a LogEvent to its canonical JSON representation in UTF-8 bytes.
-    """
+
+def get_canonical_json_bytes(
+    event: LogEvent,
+    for_hashing: bool = False,
+) -> bytes:
+    """Serialize canonical event identity/size data to deterministic UTF-8."""
+
     data_to_serialize = get_hashable_data(event)
     if not for_hashing:
-        # raw_message is included for size estimation but not for content hash
         data_to_serialize["raw_message"] = event.raw_message
 
-    # Use pydantic's model_dump_json which is fast and handles types correctly
     canonical_json = json.dumps(
         data_to_serialize,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
+        allow_nan=False,
         default=_canonical_json_serializer,
     )
     return canonical_json.encode("utf-8")
 
 
 def estimate_event_size_bytes(canonical_json_bytes: bytes) -> int:
-    """
-    Estimates the memory usage of a `LogEvent` based on its canonical
-    JSON representation, plus a fixed overhead for `StoredEvent` metadata.
-    """
-    return len(canonical_json_bytes) + STORED_EVENT_METADATA_OVERHEAD_BYTES
+    """Estimate logical store size from serialized bytes plus fixed overhead."""
+
+    return (
+        len(canonical_json_bytes)
+        + STORED_EVENT_METADATA_OVERHEAD_BYTES
+    )
 
 
-def resolve_attribute_path(event: LogEvent, path: str) -> tuple[bool, Any | None]:
-    """
-    Safely resolves a dot-notation path within an event's attributes.
+def resolve_attribute_path(
+    event: LogEvent,
+    path: str,
+) -> tuple[bool, object | None]:
+    """Resolve a safe dot path only through the event attributes mapping."""
 
-    Returns a tuple of (found, value).
-    """
-    if not path or path.startswith(".") or path.endswith(".") or ".." in path:
+    if (
+        not path
+        or len(path) > 256
+        or path.startswith(".")
+        or path.endswith(".")
+        or ".." in path
+    ):
         return False, None
 
-    segments = path.split('.')
-    if len(segments) > 10:  # Max depth
+    segments = path.split(".")
+    if len(segments) > 10:
         return False, None
 
-    current: Any = event.attributes
+    current: object = event.attributes
     for segment in segments:
-        if not segment or segment.startswith("__"):  # Disallow empty and dunder segments
+        if not segment or segment.startswith("__"):
             return False, None
-
-        if isinstance(current, dict):
-            if segment not in current:
-                return False, None
-            current = current.get(segment)
-        else:
-            # Cannot traverse further
+        if not isinstance(current, Mapping) or segment not in current:
             return False, None
-
+        current = current[segment]
     return True, current

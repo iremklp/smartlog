@@ -9,6 +9,7 @@ from log_parser_engine.exceptions import (
     DuplicateEventError,
     EventIdCollisionError,
     EventStoreCapacityError,
+    InvalidEventError,
 )
 from log_parser_engine.models import (
     LogEvent,
@@ -340,3 +341,21 @@ def test_atomic_capacity_failure_restores_evictions_and_sequence(
 
     next_result = store.add(make_log_event("after rollback"))
     assert next_result.stored_event.sequence == 2
+
+
+def test_non_serializable_event_is_rejected_without_state_change(
+    make_log_event,
+) -> None:
+    """Invalid canonical data produces a typed error and no partial write."""
+
+    store = InMemoryEventStore()
+    event = make_log_event(
+        "invalid",
+        attributes={"unsupported": object()},
+    )
+
+    with pytest.raises(InvalidEventError, match="non-serializable"):
+        store.add(event)
+
+    assert store.count() == 0
+    assert store.statistics().write_count == 0

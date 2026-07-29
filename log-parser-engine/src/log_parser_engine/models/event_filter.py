@@ -152,9 +152,21 @@ class EventFilter(BaseModel):
 
     @model_validator(mode="after")
     def _validate_time_range_and_tz(self) -> "EventFilter":
-        if self.start_time and self.start_time.tzinfo is None:
+        if (
+            self.start_time
+            and (
+                self.start_time.tzinfo is None
+                or self.start_time.utcoffset() is None
+            )
+        ):
             raise ValueError("start_time must be timezone-aware")
-        if self.end_time and self.end_time.tzinfo is None:
+        if (
+            self.end_time
+            and (
+                self.end_time.tzinfo is None
+                or self.end_time.utcoffset() is None
+            )
+        ):
             raise ValueError("end_time must be timezone-aware")
 
         if self.start_time and self.end_time and self.start_time >= self.end_time:

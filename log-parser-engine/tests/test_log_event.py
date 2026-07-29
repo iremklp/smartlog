@@ -96,6 +96,8 @@ def test_validated_updates_preserve_identity_and_refreeze_collections() -> None:
         {"timestamp": datetime(2024, 1, 1, 12, 0)},
         {"http_status": 99},
         {"duration_ms": -0.1},
+        {"duration_ms": float("nan")},
+        {"duration_ms": float("inf")},
     ],
 )
 def test_validated_updates_reject_invalid_values(

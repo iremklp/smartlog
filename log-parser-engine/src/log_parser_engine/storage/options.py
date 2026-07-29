@@ -88,15 +88,24 @@ class EventStoreOptions(BaseModel):
     )
     max_query_limit: int = Field(
         default=10_000,
+        ge=1,
         description="Maximum number of events a single query can return.",
     )
     default_page_size: int = Field(
         default=100,
+        ge=1,
         description="Default number of events per page in query results.",
     )
     max_page_size: int = Field(
         default=1_000,
+        ge=1,
         description="Maximum number of events per page a user can request.",
+    )
+    max_facet_buckets: int = Field(
+        default=100,
+        ge=1,
+        le=1_000,
+        description="Maximum buckets returned for each requested facet.",
     )
     max_batch_events: int = Field(
         default=10_000,

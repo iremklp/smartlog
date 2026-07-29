@@ -2,34 +2,35 @@
 
 Son kalite kontrolü: 29 Temmuz 2026
 Branch: `main`
-Referans taban commit: `3e18481`
-Remote durumu: Plugin startup lifecycle dilimi GitHub `main` branchine
-`3e18481` olarak gönderildi.
+Referans taban commit: `28d5ace`
+Remote durumu: InMemoryEventStore atomicity dilimi GitHub `main` branchine
+`28d5ace` olarak gönderildi. Bu dosyadaki query/aggregation dilimi henüz bu
+tabanın üzerinde doğrulanmıştır.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan teknik dilim **Foundation Quality Recovery — InMemoryEventStore
-Atomicity ve Contract Recovery**dir.
+Son tamamlanan teknik dilim **Foundation Quality Recovery — Query ve
+Aggregation Contract Recovery**dir.
 
 Bu dilimde:
 
-- single write typed duplicate, collision ve capacity exceptionlarını korur,
-- duplicate kararı eviction öncesinde verilir,
-- replace store ID'sini ve monoton sequence'i korur,
-- atomic batch başarısızlıkta event, index, sayaç ve sequence state'ini geri
-  yükler,
-- clear store yaşam döngüsü boyunca sequence'i sıfırlamaz,
-- query nested index setlerinin defensive snapshotını kullanır,
-- concurrent add/query/delete fixture'ları canonical nonblank `raw_message`
-  sözleşmesine taşınmıştır,
-- query ve aggregation fixture setup hataları canonical modeli gevşetmeden
-  giderilmiştir.
+- Pydantic v2 query ve aggregation validator sözleşmeleri düzeltildi,
+- query engine yalnız yapılandırılmış indexleri kullanır ve eksik indexte
+  full-scan fallback uygular,
+- parser name filtre, facet ve aggregation yollarında aynı canonical extractor
+  üzerinden okunur,
+- optional sort alanları deterministik ve `None` değerleri sonda olacak biçimde
+  sıralanır,
+- facet sonuçları bounded'dır,
+- sabit zaman bucketları UTC Unix epoch'a hizalanır,
+- duration örneği olmayan average bucketı `None` üretir,
+- canonical serialization desteklenmeyen nesneleri stringe çevirmek yerine
+  typed storage hatasına dönüştürür.
 
-Odak store/query/aggregation seçkisi **35 passed**, tam backend paketi
-**505 passed** ve toplam coverage **%85** durumundadır.
+Tam backend paketi **521 passed** ve toplam coverage **%85** durumundadır.
 
 ## Repository snapshotı
 
@@ -91,8 +92,8 @@ production-ready anlamına gelmez.
 | Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
 | InMemoryEventStore | ✅ | Typed write, duplicate/collision/capacity/clear ve thread testleri yeşil |
 | Atomic batch write | ✅ | Gerçek state/index/counter/sequence rollback uygulanmış ve testli |
-| Query engine | 🟡 | Davranış testleri yeşil; query engine mypy/lint borcu taşıyor |
-| Aggregation | 🔧 | Davranış testleri yeşil; model validator ve bucket typing sorunları var |
+| Query engine | ✅ | Index fallback, parser dimensionları, optional sort, page limitleri ve deterministic output testli |
+| Aggregation | ✅ | Typed modeller, bounded facet/bucket sonuçları ve UTC fixed-bucket davranışı testli |
 | Application service | 🟡 | Ana orchestration var; plugin lifecycle/config/response mapping tam değil |
 | REST API | 🟡 | Çoğu endpoint versiyonsuz; file upload tüm body'yi tek seferde okuyor |
 | Frontend contractı | 🔧 | `raw_log/raw_message`, `has_next/has_more` ve elle tutulan tip farkları var |
@@ -107,14 +108,14 @@ production-ready anlamına gelmez.
 
 | Komut | Sonuç | Ayrıntı |
 |---|---|---|
-| `poetry run pytest -q` | Başarılı | 505 passed |
-| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarılı | 505 passed; toplam coverage %85 |
+| `poetry run pytest -q` | Başarılı | 521 passed |
+| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarılı | 521 passed; toplam coverage %85 |
 | Domain/pipeline/plugin/API odak contract seçkisi | Başarılı | 39 passed |
 | Redis parser odak seçkisi | Başarılı | 7 passed |
 | Built-in parser/pipeline/orchestration seçkisi | Başarılı | 126 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
-| `poetry run ruff check . --statistics` | Başarısız | 102 bulgu |
-| `poetry run mypy src` | Başarısız | 3 dosyada 11 hata; 216 dosya kontrol edildi |
+| `poetry run ruff check . --statistics` | Başarısız | 61 bulgu |
+| `poetry run mypy src` | Başarısız | 1 dosyada 3 hata |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
 
 Sandbox yazılabilir sparse clone içinde yeni Poetry virtualenv oluşturamadığı
@@ -126,20 +127,17 @@ Ruff dağılımı:
 
 | Kural | Adet |
 |---|---:|
-| `E501` line too long | 78 |
+| `E501` line too long | 43 |
 | `I001` import order | 12 |
-| `F401` unused import | 9 |
-| `E701` multiple statements | 2 |
+| `F401` unused import | 5 |
 | `F841` unused variable | 1 |
 
 Mypy hata dosyaları:
 
-- `models/event_aggregation.py`
-- `storage/query_engine.py`
 - `batch/orchestrator.py`
 
 Başarısız backend testi kalmamıştır. İlk tam paket baseline'ı 399 passed /
-21 failed idi. Beş Foundation dilimi sonunda sonuç 505 passed durumuna
+21 failed idi. Altı Foundation dilimi sonunda sonuç 521 passed durumuna
 ilerlemiştir. Canonical `LogEvent.raw_message` nonblank kuralı fixture hataları
 için gevşetilmemiştir.
 
@@ -162,7 +160,7 @@ Frontend build:
 
 ## Stub ve kalıntı taraması
 
-`TODO`, `FIXME`, `HACK` veya `XXX` etiketi bulunmadı. Üç `pass` sonucu bulundu:
+`TODO`, `FIXME`, `HACK` veya `XXX` etiketi bulunmadı. İki `pass` sonucu bulundu:
 
 - `storage/memory.py`: atomic batch dalı — gerçek eksik implementasyon.
 - `models/pipeline_result.py`: validator içindeki etkisiz `pass` — sözleşme
@@ -295,17 +293,58 @@ Sonuç:
 - Concurrent add/query/delete testleri geçer.
 - Tam backend test ve coverage komutları başarılıdır.
 
-## Sıradaki önerilen iş
+## Tamamlanan son dilim
 
 ### Foundation Quality Recovery — Dilim 6: Query ve Aggregation Typing
 
-1. Pydantic v2 validator imzaları `ValidationInfo` ile düzeltilecek.
-2. Aggregation bucket internal sayaç tipleri açık ve güvenli hale getirilecek.
-3. Query engine facet/index/sort davranışı deterministik kalacak.
-4. Query ve aggregation source dosyalarının Ruff/mypy borcu sıfırlanacak.
-5. Mevcut 505 test gerilemeden tam paket yeniden çalıştırılacak.
+Tamamlanan çalışma:
+
+1. Pydantic v2 query/aggregation validatorları geçerli model validator
+   sözleşmelerine taşındı.
+2. Aggregation bucket sayaçları ve metric optionality açık tiplerle modellendi.
+3. Query engine yalnız etkin index snapshotlarını kullanıyor ve gerektiğinde
+   full-scan fallback yapıyor.
+4. Parser name filter/facet/aggregation davranışı canonical attributes
+   extractor üzerinden birleştirildi.
+5. Optional sort alanları, NOTICE/FATAL severity sırası ve final sequence
+   tie-break deterministik hale getirildi.
+6. Facet bucket limitleri ve runtime query page limitleri uygulanıyor.
+7. UTC epoch-aligned time bucket ve duration örneği olmayan average davranışı
+   testlendi.
+8. Canonical JSON serializer desteklenmeyen runtime nesnelerini reddediyor.
+
+Sonuç:
+
+- Tam backend paketi: `521 passed`.
+- Coverage: `%85`.
+- Query/storage odak source Ruff kontrolü: başarılı.
+- Query/storage odak source mypy kontrolü: başarılı.
+- Proje geneli Ruff: 61 bulgu.
+- Proje geneli mypy: 3 hata / 1 dosya.
+
+### Dilim 6 kabul kriterleri — karşılandı
+
+- Model validatorları Pydantic v2 ile import ve runtime sırasında geçerlidir.
+- Index açık/kapalı ve fallback yolları aynı filtre sonucunu üretir.
+- Parser dimensionı filter, facet ve aggregation sonuçlarında tutarlıdır.
+- Sorting, pagination, facet ve aggregation çıktıları deterministiktir.
+- Query/aggregation kaynaklarında mypy veya Ruff borcu kalmamıştır.
+- Tam test ve coverage komutları başarılıdır.
 
 SQL, Redis, Elasticsearch veya başka bir harici kalıcı store eklenmeyecektir.
+
+## Sıradaki önerilen iş
+
+### Foundation Quality Recovery — Dilim 7: Backend Type ve Lint Gate
+
+1. `batch/orchestrator.py` ile batch exception constructor sözleşmesi
+   eşleştirilecek.
+2. Kalan üç mypy hatası test davranışını değiştirmeden giderilecek.
+3. Import sırası ve kullanılmayan import/değişken bulguları mekanik olarak
+   temizlenecek.
+4. Satır uzunluğu bulguları küçük, gözden geçirilebilir gruplar halinde
+   düzeltilecek.
+5. Tam pytest, coverage, Ruff, mypy ve build kapıları yeniden çalıştırılacak.
 
 ## Public contract notu
 

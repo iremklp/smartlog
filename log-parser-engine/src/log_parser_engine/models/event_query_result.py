@@ -1,45 +1,48 @@
-
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .event_aggregation import EventAggregationResult
 from .event_page import EventPage
+from .immutable import FrozenDict
 from .stored_event import StoredEvent
 
 
 class FacetBucket(BaseModel):
-    """Represents a single bucket within a facet result."""
+    """Represent one value/count pair in a facet."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     value: str
-    count: int
+    count: int = Field(ge=0)
 
 
 class EventQueryResult(BaseModel):
-    """Represents the complete result of an `EventQuery`."""
+    """Represent an immutable result for one event snapshot query."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    events: tuple[StoredEvent, ...] = Field(description="The sequence of events matching the query for the given page.")
-    page: EventPage = Field(description="Pagination details for the result set.")
-    
+    events: tuple[StoredEvent, ...] = Field(default_factory=tuple)
+    page: EventPage
     facets: dict[str, tuple[FacetBucket, ...]] = Field(
-        default_factory=dict,
-        description="Facet results, keyed by field name."
+        default_factory=FrozenDict,
     )
-    aggregation: EventAggregationResult | None = Field(
-        default=None,
-        description="Aggregation results, if requested."
-    )
-    
-    query_duration_ms: float = Field(description="The total time taken to execute the query in milliseconds.")
-    snapshot_size: int = Field(description="The number of events in the data snapshot processed by the query.")
-    index_used: bool = Field(description="Indicates if secondary indexes were used to optimize the query.")
-    candidate_count: int = Field(description="Number of potential candidates after initial filtering (e.g., from indexes).")
-    
-    warnings: tuple[str, ...] = Field(
-        default_factory=tuple,
-        description="Any warnings generated during query execution."
-    )
+    aggregation: EventAggregationResult | None = None
+    query_duration_ms: float = Field(ge=0)
+    snapshot_size: int = Field(ge=0)
+    index_used: bool
+    candidate_count: int = Field(ge=0)
+    warnings: tuple[str, ...] = Field(default_factory=tuple)
+
+    @field_validator("facets")
+    @classmethod
+    def _freeze_facets(
+        cls,
+        value: dict[str, tuple[FacetBucket, ...]],
+    ) -> dict[str, tuple[FacetBucket, ...]]:
+        return FrozenDict(
+            {
+                field: tuple(buckets)
+                for field, buckets in value.items()
+            }
+        )

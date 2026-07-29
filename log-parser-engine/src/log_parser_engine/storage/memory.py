@@ -330,7 +330,14 @@ class InMemoryEventStore(EventStore):
         if not isinstance(event, LogEvent):
             raise InvalidEventError("event must be a LogEvent")
 
-        canonical_bytes = get_canonical_json_bytes(event)
+        try:
+            canonical_bytes = get_canonical_json_bytes(event)
+            content_hash = compute_event_content_hash(event)
+        except (TypeError, ValueError) as exc:
+            raise InvalidEventError(
+                "event contains non-serializable canonical data"
+            ) from exc
+
         estimated_size = estimate_event_size_bytes(canonical_bytes)
         memory_limit = self._options.max_estimated_memory_bytes
         if memory_limit is not None and estimated_size > memory_limit:
@@ -338,7 +345,6 @@ class InMemoryEventStore(EventStore):
                 "event exceeds the configured store memory limit"
             )
 
-        content_hash = compute_event_content_hash(event)
         existing_id = options.event_id or str(event.event_id)
         event_id, generated_hash = generate_event_id(
             event,
@@ -562,22 +568,28 @@ class InMemoryEventStore(EventStore):
         if not self._options.enable_indexes:
             return
         for field in self._options.indexed_fields:
-            value = getattr(event.event, field, None)
-            if value is None:
-                continue
-            if field == "tags" and isinstance(value, Iterable) and not isinstance(
-                value,
-                (str, bytes),
-            ):
-                for tag in value:
-                    self._update_index_value(field, tag, event.id, action)
-                continue
-            if isinstance(value, (str, int, float, bool)) or hasattr(
-                value,
-                "value",
-            ):
+            for value in self._index_values(event, field):
                 key = value.value if hasattr(value, "value") else value
                 self._update_index_value(field, key, event.id, action)
+
+    @staticmethod
+    def _index_values(
+        event: StoredEvent,
+        field: str,
+    ) -> tuple[object, ...]:
+        if field == "parser_name":
+            parser_name = event.event.attributes.get("parser_name")
+            return (parser_name,) if isinstance(parser_name, str) else ()
+        if field == "tags":
+            return tuple(event.event.tags)
+
+        value = getattr(event.event, field, None)
+        if isinstance(value, (str, int, float, bool)) or hasattr(
+            value,
+            "value",
+        ):
+            return (value,)
+        return ()
 
     def _update_index_value(
         self,

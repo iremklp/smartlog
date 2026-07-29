@@ -1,11 +1,11 @@
-
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-GROUP_BY_FIELDS = Literal[
+GroupByField = Literal[
     "severity",
     "source_type",
     "event_type",
@@ -16,7 +16,7 @@ GROUP_BY_FIELDS = Literal[
     "time_bucket",
 ]
 
-METRIC_TYPES = Literal[
+MetricType = Literal[
     "count",
     "average_duration_ms",
     "sum_duration_ms",
@@ -24,59 +24,76 @@ METRIC_TYPES = Literal[
 
 
 class EventAggregationRequest(BaseModel):
-    """Defines a request for aggregating data from a query result."""
+    """Define one bounded aggregation over a filtered event snapshot."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    group_by: GROUP_BY_FIELDS
-    metric: METRIC_TYPES
-    time_bucket_seconds: int | None = Field(default=None)
-    limit: int = 100
+    group_by: GroupByField
+    metric: MetricType
+    time_bucket_seconds: int | None = Field(
+        default=None,
+        ge=1,
+        le=86_400,
+    )
+    limit: int = Field(default=100, ge=1, le=1_000)
 
-    @field_validator("time_bucket_seconds")
-    @classmethod
-    def _validate_time_bucket(cls, value: int | None, values: "dict[str, Any]") -> int | None:
-        if values.data.get("group_by") == "time_bucket":
-            if value is None or not (1 <= value <= 86400):
-                raise ValueError("time_bucket_seconds must be between 1 and 86400 when grouping by time_bucket")
-        elif value is not None:
-            raise ValueError("time_bucket_seconds can only be set when grouping by time_bucket")
-        return value
+    @model_validator(mode="after")
+    def _validate_combination(self) -> EventAggregationRequest:
+        if self.group_by == "time_bucket":
+            if self.time_bucket_seconds is None:
+                raise ValueError(
+                    "time_bucket_seconds is required when grouping by "
+                    "time_bucket"
+                )
+        elif self.time_bucket_seconds is not None:
+            raise ValueError(
+                "time_bucket_seconds can only be set when grouping by "
+                "time_bucket"
+            )
 
-    @field_validator("metric")
-    @classmethod
-    def _validate_metric_for_duration(cls, value: str, values: "dict[str, Any]") -> str:
-        if "duration" in value and values.data.get("group_by") == "tag":
-            # This is a semantic limitation for the first version to keep things simple.
-            # Aggregating duration by tags can be complex if an event has multiple tags.
-            raise ValueError("Duration metrics (average, sum) cannot be grouped by 'tag'")
-        return value
-
-    @field_validator("limit")
-    @classmethod
-    def _validate_limit(cls, value: int) -> int:
-        if not (1 <= value <= 1000):
-            raise ValueError("limit must be between 1 and 1000")
-        return value
+        if self.group_by == "tag" and self.metric != "count":
+            raise ValueError(
+                "duration metrics cannot be grouped by tag"
+            )
+        return self
 
 
 class AggregationBucket(BaseModel):
-    """Represents a single bucket in an aggregation result."""
-    
+    """Represent one deterministic aggregation bucket."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     group_value: str | int
-    event_count: int
-    metric_value: float | None = None
-    sample_count: int | None = None
-    bucket_start_time: str | None = None # ISO 8601 string
-    bucket_end_time: str | None = None # ISO 8601 string
+    event_count: int = Field(ge=0)
+    metric_value: float | None = Field(default=None, ge=0)
+    sample_count: int | None = Field(default=None, ge=0)
+    bucket_start_time: datetime | None = None
+    bucket_end_time: datetime | None = None
+
+    @model_validator(mode="after")
+    def _validate_time_bounds(self) -> AggregationBucket:
+        if (self.bucket_start_time is None) != (self.bucket_end_time is None):
+            raise ValueError(
+                "bucket_start_time and bucket_end_time must be set together"
+            )
+        if self.bucket_start_time is None or self.bucket_end_time is None:
+            return self
+        if (
+            self.bucket_start_time.tzinfo is None
+            or self.bucket_end_time.tzinfo is None
+        ):
+            raise ValueError("time bucket bounds must be timezone-aware")
+        if self.bucket_start_time >= self.bucket_end_time:
+            raise ValueError(
+                "bucket_start_time must be before bucket_end_time"
+            )
+        return self
 
 
 class EventAggregationResult(BaseModel):
-    """The result of an event aggregation query."""
+    """Represent the aggregation produced for an event query."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     request: EventAggregationRequest
-    buckets: tuple[AggregationBucket, ...]
+    buckets: tuple[AggregationBucket, ...] = Field(default_factory=tuple)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
@@ -67,8 +68,8 @@ class LogEvent(BaseModel):
     @field_validator("duration_ms")
     @classmethod
     def validate_duration(cls, value: float | None) -> float | None:
-        if value is not None and value < 0:
-            raise ValueError("duration_ms must not be negative")
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError("duration_ms must be finite and non-negative")
         return value
 
     @field_validator("tags")

@@ -4,6 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from log_parser_engine.models import (
+    AggregationBucket,
+    EventAggregationRequest,
     EventFilter,
     EventPage,
     EventQuery,
@@ -88,6 +90,61 @@ def test_event_query_model():
             )
         )
 
+    with pytest.raises(ValidationError):
+        EventQuery(limit=0)
+
+    with pytest.raises(ValidationError):
+        EventQuery(facet_fields=("not_a_facet",))
+
+
+def test_event_aggregation_request_validates_field_combinations() -> None:
+    """Aggregation options reject ambiguous or unsupported combinations."""
+
+    request = EventAggregationRequest(
+        group_by="time_bucket",
+        metric="count",
+        time_bucket_seconds=60,
+    )
+    assert request.time_bucket_seconds == 60
+
+    with pytest.raises(ValidationError, match="required"):
+        EventAggregationRequest(group_by="time_bucket", metric="count")
+
+    with pytest.raises(ValidationError, match="only be set"):
+        EventAggregationRequest(
+            group_by="severity",
+            metric="count",
+            time_bucket_seconds=60,
+        )
+
+    with pytest.raises(ValidationError, match="cannot be grouped"):
+        EventAggregationRequest(
+            group_by="tag",
+            metric="average_duration_ms",
+        )
+
+
+def test_aggregation_bucket_validates_time_bounds() -> None:
+    """Time bucket bounds are paired, aware and increasing."""
+
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValidationError, match="set together"):
+        AggregationBucket(
+            group_value="bucket",
+            event_count=1,
+            metric_value=1,
+            bucket_start_time=now,
+        )
+
+    with pytest.raises(ValidationError, match="timezone-aware"):
+        AggregationBucket(
+            group_value="bucket",
+            event_count=1,
+            metric_value=1,
+            bucket_start_time=datetime.now(),
+            bucket_end_time=datetime.now() + timedelta(seconds=1),
+        )
+
 
 def test_event_page_model():
     """Tests the EventPage model and its properties."""
@@ -120,3 +177,5 @@ def test_event_page_model():
         EventPage(offset=0, limit=10, returned=11, total=20)
     with pytest.raises(ValidationError):
         EventPage(offset=0, limit=10, returned=5, total=4)
+    with pytest.raises(ValidationError):
+        EventPage(offset=0, limit=0, returned=0, total=0)

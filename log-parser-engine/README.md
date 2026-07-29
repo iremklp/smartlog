@@ -314,16 +314,18 @@ Frontend:
 
 Backend:
 
-- Tam backend paketi başarılıdır: **505 test geçti**.
+- Tam backend paketi başarılıdır: **521 test geçti**.
 - Tam paket coverage sonucu **%85**'tir. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
 - Redis parser testleri 7/7, deep-immutability dahil built-in
   parser/pipeline/orchestration seçkisi 126/126 geçmiştir.
-- In-memory store, query ve aggregation odak seçkisinde 35/35 test geçmiştir.
-- `mypy src` kontrolünde 3 eski dosyada toplam 11 tip hatası bulunmaktadır.
+- In-memory query, aggregation ve storage contract testleri başarılıdır.
+- Query/aggregation source kapsamı Ruff ve mypy kontrollerinden geçmektedir.
+- `mypy src` kontrolünde yalnız `batch/orchestrator.py` dosyasında 3 tip hatası
+  bulunmaktadır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve tek satırlı statement borçları dahil 102 bulgu bulunmaktadır.
+  ve kullanılmayan değişken borçları dahil 61 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.

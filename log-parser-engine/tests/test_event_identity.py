@@ -2,7 +2,9 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from log_parser_engine.models import LogEvent, LogSeverity, LogSourceType
+import pytest
+
+from log_parser_engine.models import LogEvent, LogSourceType
 from log_parser_engine.storage.helpers import (
     estimate_event_size_bytes,
     get_canonical_json_bytes,
@@ -33,7 +35,15 @@ def test_compute_event_content_hash():
         attributes={"key1": "val1", "key2": "val2"}, # Order should not matter
     )
     event3 = LogEvent(
-        timestamp=datetime(2023, 1, 1, 12, 0, 1, tzinfo=timezone.utc), # Different timestamp
+        timestamp=datetime(
+            2023,
+            1,
+            1,
+            12,
+            0,
+            1,
+            tzinfo=timezone.utc,
+        ),
         source_type=LogSourceType.FILE,
         message="message",
         raw_message="raw",
@@ -52,15 +62,30 @@ def test_compute_event_content_hash():
 
 def test_generate_event_id():
     """Tests the different event ID generation modes."""
-    event = LogEvent(timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message="m", raw_message="r")
-    
+    event = LogEvent(
+        timestamp=datetime.now(timezone.utc),
+        source_type=LogSourceType.FILE,
+        message="m",
+        raw_message="r",
+    )
+
     # existing_or_generated
-    event_with_id = LogEvent(event_id=UUID("12345678-1234-5678-1234-567812345678"), timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message="m", raw_message="r")
-    id1, hash1 = generate_event_id(event_with_id, mode="existing_or_generated", existing_id=str(event_with_id.event_id))
+    event_with_id = LogEvent(
+        event_id=UUID("12345678-1234-5678-1234-567812345678"),
+        timestamp=datetime.now(timezone.utc),
+        source_type=LogSourceType.FILE,
+        message="m",
+        raw_message="r",
+    )
+    id1, _ = generate_event_id(
+        event_with_id,
+        mode="existing_or_generated",
+        existing_id=str(event_with_id.event_id),
+    )
     assert id1 == f"evt_{event_with_id.event_id}"
 
     # generated
-    id2, hash2 = generate_event_id(event, mode="generated")
+    id2, _ = generate_event_id(event, mode="generated")
     assert id2.startswith("evt_")
     assert len(id2) == 32 + 4
 
@@ -70,11 +95,16 @@ def test_generate_event_id():
 
 def test_estimate_event_size():
     """Tests the event size estimation."""
-    event = LogEvent(timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message="a", raw_message="b")
+    event = LogEvent(
+        timestamp=datetime.now(timezone.utc),
+        source_type=LogSourceType.FILE,
+        message="a",
+        raw_message="b",
+    )
     canonical_bytes = get_canonical_json_bytes(event)
     size = estimate_event_size_bytes(canonical_bytes)
     assert size > len(canonical_bytes)
-    assert size == len(canonical_bytes) + 256 # Check against constant
+    assert size == len(canonical_bytes) + 256
 
 def test_resolve_attribute_path():
     """Tests the attribute path resolver."""
@@ -115,3 +145,17 @@ def test_resolve_attribute_path():
     found, val = resolve_attribute_path(event, "user..id")
     assert not found
 
+
+def test_canonical_serialization_rejects_arbitrary_objects() -> None:
+    """Content identity must not depend on an object's runtime repr."""
+
+    event = LogEvent(
+        timestamp=datetime.now(timezone.utc),
+        source_type=LogSourceType.FILE,
+        message="message",
+        raw_message="message",
+        attributes={"unsafe": object()},
+    )
+
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        get_canonical_json_bytes(event)

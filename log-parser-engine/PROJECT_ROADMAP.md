@@ -36,9 +36,9 @@ tamamlandığında yeniden doğrulanmalıdır.
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
 Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-in
 parser canonical immutability ve plugin startup lifecycle dilimleri
-tamamlanmıştır. In-memory store write/atomicity dilimi de bitmiştir. Sırada
-query/aggregation typing, backend lint, frontend sözleşmeleri ve repository
-hijyeni vardır.
+tamamlanmıştır. In-memory store write/atomicity ve query/aggregation contract
+dilimleri de bitmiştir. Sırada batch orchestrator type borcu, backend lint,
+frontend sözleşmeleri ve repository hijyeni vardır.
 
 ## Büyük aşamalar
 
@@ -50,7 +50,7 @@ hijyeni vardır.
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
 | 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
 | 6. In-Memory Storage | ✅ | Typed single write, gerçek atomic rollback, retention, eviction, monoton sequence ve snapshot query var | Yeni write politikaları aynı rollback/index/thread testlerinden geçer | Process/pod restartında veri kaybı tasarım gereğidir |
-| 7. Query Engine | 🔧 | Typed filter, sort, pagination, facet ve aggregation testleri geçiyor | Query/aggregation mypy ve Ruff başarılı; API/UI contractı sabit | Model validator ve bucket typing borcu |
+| 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory ve temel endpointler var | Versioned contract, bounded upload, güvenli error mapping, readiness ve limit testleri tamam | Çoğu endpoint versiyonsuz; file upload boundsuz |
 | 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa ve temel akışlar var | Backend contractlarıyla uyumlu, erişilebilir, testli ve lint/typecheck/build kapıları yeşil | Elle tutulan tipler backendden sapmış |
@@ -154,7 +154,15 @@ hijyeni vardır.
    - Query ve aggregation fixture'ları canonical nonblank `raw_message`
      sözleşmesine taşındı.
    - Sonuç: tam backend paketi 505 passed; coverage %85.
-6. Query/aggregation test ve mypy sorunlarını gider.
+6. **Query/aggregation test ve mypy sorunlarını gider — tamamlandı.**
+   - Pydantic v2 model validatorları ve aggregation bucket sözleşmeleri
+     düzeltildi.
+   - Yalnız yapılandırılmış indexler kullanılıyor; eksik indexte full-scan
+     fallback uygulanıyor.
+   - Parser filter/facet/aggregation, optional sort, bounded facet ve UTC time
+     bucket davranışları testlendi.
+   - Sonuç: tam backend paketi 521 passed; coverage %85; query/storage source
+     Ruff ve mypy kontrolleri başarılı.
 7. Backend Ruff ve mypy borcunu sıfırla.
 8. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
    konfigürasyonunu ve temel component/contract testlerini ekle.
@@ -225,7 +233,8 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q0'ın altıncı dilimi uygulanacaktır:
-query/aggregation Pydantic validator ve bucket typing sorunları giderilecek,
-query engine deterministik davranışı korunarak mypy/Ruff temizlenecektir.
+Bir sonraki `devam et` komutunda Q0'ın yedinci dilimi uygulanacaktır:
+önce `batch/orchestrator.py` içindeki son üç mypy hatası giderilecek, ardından
+repository geneli Ruff bulguları davranış değiştirmeyen küçük gruplar halinde
+temizlenecektir.
 SQL veya harici kalıcı veri tabanı eklenmeyecektir.

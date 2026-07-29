@@ -86,7 +86,7 @@ modellerini kullanır.
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
 | `pipeline` | Detect, parse, normalize ve stage sonucu | Non-string ve errorsız non-success sonuçlar structured failure üretir |
 | `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; mypy borcu var |
-| `storage` | EventStore protocol, atomik in-memory yazma, retention ve query snapshotı | Write/rollback sözleşmesi testli; query typing borcu açık |
+| `storage` | EventStore protocol, atomik in-memory yazma, retention ve query snapshotı | Write/rollback ile typed query/aggregation sözleşmeleri testli |
 | `analysis` | Summary, dağılım, timeline, percentile, latency, HTTP ve comparison | Backend kapsamı odak testlerinde yeşil |
 | `application` | Bağımlılık lifecycle'ı ve use-case orchestration | API ile domain arasında sınır |
 | `api` | FastAPI app, routes, middleware, schemas ve safe errors | API versioning ve upload sınırı eksik |
@@ -268,6 +268,17 @@ Query SQL veya metin DSL kullanmaz. `EventFilter`, `EventSort`, pagination,
 facet ve aggregation modelleri typed'dır. Attribute path traversal yalnız
 mapping üzerinde çalışmalı; object attribute, dunder, regex ve `eval`
 desteklenmez.
+
+Query engine yalnız gerçekten yapılandırılmış secondary indexleri aday
+daraltmak için kullanır; ilgili index yoksa tam snapshot taramasına güvenli
+biçimde geri döner. `parser_name` canonical olarak event attributes içinden
+çıkarılır ve filtre, facet ile aggregation yollarında aynı extractor
+kullanılır. Optional sort alanlarında `None` değerleri her iki yönde de sona
+yerleştirilir; eşitlikler monoton sequence ile deterministik çözülür.
+
+Facet bucket sayısı store seçeneğiyle bounded'dır. Sabit zaman aggregation
+bucketları UTC Unix epoch'a hizalanır ve kronolojik sıralanır. Duration örneği
+bulunmayan ortalama bucketı `None` üretir; yapay `0.0` metriği oluşturmaz.
 
 ## Statistical analysis akışı
 
