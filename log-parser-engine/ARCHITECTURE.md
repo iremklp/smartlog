@@ -86,7 +86,7 @@ modellerini kullanır.
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
 | `pipeline` | Detect, parse, normalize ve stage sonucu | Non-string ve errorsız non-success sonuçlar structured failure üretir |
 | `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; mypy borcu var |
-| `storage` | EventStore protocol, in-memory yazma, retention ve query | Atomic batch/query sorunları açık |
+| `storage` | EventStore protocol, atomik in-memory yazma, retention ve query snapshotı | Write/rollback sözleşmesi testli; query typing borcu açık |
 | `analysis` | Summary, dağılım, timeline, percentile, latency, HTTP ve comparison | Backend kapsamı odak testlerinde yeşil |
 | `application` | Bağımlılık lifecycle'ı ve use-case orchestration | API ile domain arasında sınır |
 | `api` | FastAPI app, routes, middleware, schemas ve safe errors | API versioning ve upload sınırı eksik |
@@ -258,9 +258,11 @@ flowchart LR
 - duplicate, retention ve eviction seçenekleri sunar,
 - query için lock altında immutable referans snapshotı alır.
 
-Bilinen kritik boşluk: `add_many(..., atomic=True)` gerçek atomik plan/rollback
-uygulamaz. Store, duplicate/capacity/clear ve thread-safety sözleşmeleri tam test
-paketinde kırmızıdır.
+`add_many(..., atomic=True)` store state, index, sayaç ve monoton sequence
+snapshotını geri yükleyen gerçek all-or-nothing rollback uygular. Duplicate
+kararı capacity eviction'dan önce verilir; replace mevcut ID ve sequence'i
+korur. Single write typed storage exceptionlarını sarmalamadan dışarı taşır.
+Store write, clear ve thread-safety sözleşmeleri tam test paketinde yeşildir.
 
 Query SQL veya metin DSL kullanmaz. `EventFilter`, `EventSort`, pagination,
 facet ve aggregation modelleri typed'dır. Attribute path traversal yalnız
@@ -376,9 +378,10 @@ Bilinen contract farkları:
 - Batch stream ve parser session request/call-local olmalıdır.
 - UI fetch istekleri TanStack Query tarafından yönetilir.
 
-Store thread-safety testlerinin bir bölümü geçersiz fixture nedeniyle, bir bölümü
-de store sözleşmesi nedeniyle kırmızıdır. Bu yüzden sadece lock varlığı
-production thread-safety kanıtı değildir.
+Store concurrency testleri concurrent add, query ve delete akışlarında geçer.
+Query başlangıcında nested index setleri dahil defensively copied snapshot
+alınır. Bu kanıt process-local davranış içindir; podlar arası paylaşım veya
+kalıcılık garantisi vermez.
 
 ## Güvenlik ve trust boundary'leri
 

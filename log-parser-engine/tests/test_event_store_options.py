@@ -26,7 +26,13 @@ def test_event_store_options_defaults():
 def test_event_store_options_validation():
     """Tests various validation rules for EventStoreOptions."""
     # Test valid configuration
-    EventStoreOptions(max_events=1, retention_seconds=1, default_page_size=50, max_page_size=100, max_query_limit=100)
+    EventStoreOptions(
+        max_events=1,
+        retention_seconds=1,
+        default_page_size=50,
+        max_page_size=100,
+        max_query_limit=100,
+    )
 
     with pytest.raises(ValidationError):
         EventStoreOptions(max_events=0)  # Must be >= 1
@@ -46,7 +52,10 @@ def test_event_store_options_validation():
     with pytest.raises(ValidationError):
         EventStoreOptions(eviction_policy="invalid_policy")
 
-    with pytest.raises(ValidationError, match="Unknown indexed_fields in strict mode: unknown"):
+    with pytest.raises(
+        ValidationError,
+        match="Unknown indexed_fields in strict mode: unknown",
+    ):
         EventStoreOptions(indexed_fields=("host", "unknown"), strict=True)
     
     # Non-strict mode should allow unknown fields
@@ -83,3 +92,10 @@ def test_batch_write_options_defaults():
     assert options.atomic is True
     assert options.stop_on_error is True
     assert options.max_events is None
+
+
+def test_batch_write_options_reject_non_positive_limit() -> None:
+    """A per-operation batch limit must be positive when provided."""
+
+    with pytest.raises(ValidationError):
+        BatchWriteOptions(max_events=0)

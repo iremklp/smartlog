@@ -29,7 +29,10 @@ class BatchWriteResult(BaseModel):
     ignored_event_ids: tuple[str, ...] = Field(default_factory=tuple)
     replaced: tuple[StoredEvent, ...] = Field(default_factory=tuple)
     evicted_event_ids: tuple[str, ...] = Field(default_factory=tuple)
-    errors: tuple[str, ...] = Field(default_factory=tuple) # Storing only error messages for security
+    errors: tuple[str, ...] = Field(
+        default_factory=tuple,
+        description="Safe error codes that never include event payloads.",
+    )
     atomic: bool
 
     @property
@@ -39,33 +42,39 @@ class BatchWriteResult(BaseModel):
 
     @property
     def was_partial_success(self) -> bool:
-        """
-        Returns true if there were no errors in a non-atomic operation,
-        or if there were some successes alongside errors.
-        """
-        return self.inserted_count > 0 and not self.errors
+        """Return whether successes and errors occurred in the same batch."""
+
+        successful_count = (
+            self.inserted_count + self.replaced_count + self.ignored_count
+        )
+        return successful_count > 0 and bool(self.errors)
 
     @property
     def inserted_count(self) -> int:
         """Number of new events inserted."""
+
         return len(self.inserted)
-    
+
     @property
     def replaced_count(self) -> int:
         """Number of events that were replaced."""
+
         return len(self.replaced)
 
     @property
     def error_count(self) -> int:
         """Number of errors encountered."""
+
         return len(self.errors)
 
     @property
     def ignored_count(self) -> int:
         """Number of duplicate events that were ignored."""
+
         return len(self.ignored_event_ids)
-    
+
     @property
     def evicted_count(self) -> int:
         """Number of events that were evicted to make space."""
+
         return len(self.evicted_event_ids)

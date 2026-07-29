@@ -41,7 +41,11 @@ def generate_event_id(
 
     if mode == "existing_or_generated":
         if existing_id:
-            event_id = f"evt_{existing_id}"
+            event_id = (
+                existing_id
+                if existing_id.startswith("evt_")
+                else f"evt_{existing_id}"
+            )
         else:
             event_id = f"evt_{uuid4().hex}"
     elif mode == "generated":

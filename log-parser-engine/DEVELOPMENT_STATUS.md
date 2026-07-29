@@ -1,38 +1,35 @@
 # Parsel Engine Geliştirme Durumu
 
-Son kalite kontrolü: 25 Temmuz 2026  
-Branch: `main`  
-Referans taban commit: `d278339`
-Remote durumu: önceki iki Foundation dilimi GitHub `main` branchine
-`d278339` olarak gönderildi.
+Son kalite kontrolü: 29 Temmuz 2026
+Branch: `main`
+Referans taban commit: `3e18481`
+Remote durumu: Plugin startup lifecycle dilimi GitHub `main` branchine
+`3e18481` olarak gönderildi.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan teknik dilim **Foundation Quality Recovery — Built-in Parser
-Canonical Immutability**dir.
+Son tamamlanan teknik dilim **Foundation Quality Recovery — InMemoryEventStore
+Atomicity ve Contract Recovery**dir.
 
 Bu dilimde:
 
-- Pydantic `model_copy(update=...)` validation bypassı IIS, JSON, RFC3164,
-  RFC5424 ve Windows Event fixturelarında runtime olarak yeniden üretildi,
-- `LogEvent.with_validated_updates(...)` ortak doğrulamalı reconstruction
-  sözleşmesi eklendi,
-- IIS, JSON, Redis, RFC3164, RFC5424, Windows Event XML ve iki webserver parserı
-  bu ortak yola taşındı,
-- parser-specific enrichment, `event_id`, `ingested_at`, context precedence ve
-  canonical alanlar korundu,
-- sekiz gerçek built-in factory/fixture için root ve parser-native nested
-  attributes, context iç içe mapping/list, tags, JSON serialization ve
-  round-trip regresyon testleri eklendi,
-- JSON parserın dokunulan dosya kapsamındaki eski format ve import lint borcu
-  temizlendi.
+- single write typed duplicate, collision ve capacity exceptionlarını korur,
+- duplicate kararı eviction öncesinde verilir,
+- replace store ID'sini ve monoton sequence'i korur,
+- atomic batch başarısızlıkta event, index, sayaç ve sequence state'ini geri
+  yükler,
+- clear store yaşam döngüsü boyunca sequence'i sıfırlamaz,
+- query nested index setlerinin defensive snapshotını kullanır,
+- concurrent add/query/delete fixture'ları canonical nonblank `raw_message`
+  sözleşmesine taşınmıştır,
+- query ve aggregation fixture setup hataları canonical modeli gevşetmeden
+  giderilmiştir.
 
-Odak sonucu: deep-immutability dahil **126 parser/pipeline/orchestration testi**
-geçti. Redis seçkisi **7 passed**, önceki domain contract seçkisi **39 passed**
-ve Statistical Analysis seçkisi **139 passed** durumundadır.
+Odak store/query/aggregation seçkisi **35 passed**, tam backend paketi
+**505 passed** ve toplam coverage **%85** durumundadır.
 
 ## Repository snapshotı
 
@@ -92,10 +89,10 @@ production-ready anlamına gelmez.
 | Redis parser | ✅ | 7/7 test; server, Sentinel, systemd, enrichment ve immutability başarılı |
 | Built-in parser immutability | ✅ | Sekiz built-in parser root/nested attributes, context collections, tags ve JSON round-trip testlerinden geçiyor |
 | Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
-| InMemoryEventStore | 🔧 | Duplicate/collision/replace/clear/reject ve thread testleri kırık |
-| Atomic batch write | 🔧 | `storage/memory.py` içinde `atomic=True` dalı gerçek implementasyon yerine `pass` içeriyor |
-| Query engine | 🔧 | Test fixture `LogEvent` importu eksik; query engine 4 mypy hatası taşıyor |
-| Aggregation | 🔧 | Fixture/model validator/type sorunları var |
+| InMemoryEventStore | ✅ | Typed write, duplicate/collision/capacity/clear ve thread testleri yeşil |
+| Atomic batch write | ✅ | Gerçek state/index/counter/sequence rollback uygulanmış ve testli |
+| Query engine | 🟡 | Davranış testleri yeşil; query engine mypy/lint borcu taşıyor |
+| Aggregation | 🔧 | Davranış testleri yeşil; model validator ve bucket typing sorunları var |
 | Application service | 🟡 | Ana orchestration var; plugin lifecycle/config/response mapping tam değil |
 | REST API | 🟡 | Çoğu endpoint versiyonsuz; file upload tüm body'yi tek seferde okuyor |
 | Frontend contractı | 🔧 | `raw_log/raw_message`, `has_next/has_more` ve elle tutulan tip farkları var |
@@ -110,14 +107,14 @@ production-ready anlamına gelmez.
 
 | Komut | Sonuç | Ayrıntı |
 |---|---|---|
-| `poetry run pytest -q` | Başarısız | 434 passed, 8 failed, 11 errors, 11 warnings |
-| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarısız | Aynı kalan hata kümeleriyle toplam coverage %84 |
+| `poetry run pytest -q` | Başarılı | 505 passed |
+| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarılı | 505 passed; toplam coverage %85 |
 | Domain/pipeline/plugin/API odak contract seçkisi | Başarılı | 39 passed |
 | Redis parser odak seçkisi | Başarılı | 7 passed |
 | Built-in parser/pipeline/orchestration seçkisi | Başarılı | 126 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
-| `poetry run ruff check . --statistics` | Başarısız | 200 bulgu |
-| `poetry run mypy src` | Başarısız | 5 dosyada 20 hata; 214 dosya kontrol edildi |
+| `poetry run ruff check . --statistics` | Başarısız | 102 bulgu |
+| `poetry run mypy src` | Başarısız | 3 dosyada 11 hata; 216 dosya kontrol edildi |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
 
 Sandbox yazılabilir sparse clone içinde yeni Poetry virtualenv oluşturamadığı
@@ -129,33 +126,22 @@ Ruff dağılımı:
 
 | Kural | Adet |
 |---|---:|
-| `E501` line too long | 149 |
-| `I001` import order | 17 |
-| `F401` unused import | 15 |
-| `F821` undefined name | 15 |
+| `E501` line too long | 78 |
+| `I001` import order | 12 |
+| `F401` unused import | 9 |
 | `E701` multiple statements | 2 |
-| `F541` useless f-string | 1 |
 | `F841` unused variable | 1 |
 
 Mypy hata dosyaları:
 
-- `exceptions/storage.py`
 - `models/event_aggregation.py`
 - `storage/query_engine.py`
-- `storage/memory.py`
 - `batch/orchestrator.py`
 
-Başarısız test kümeleri:
-
-- InMemoryEventStore duplicate/collision/replace/clear/reject politikaları,
-- thread-safety fixture'larında boş `raw_message`,
-- aggregation fixture'larında eksik `raw_message`,
-- query engine test fixture'ında eksik `LogEvent` importu.
-
-İlk tam paket baseline'ı 399 passed / 21 failed idi. Üç Foundation dilimi
-sonunda sonuç 434 passed / 8 failed durumuna ilerlemiş, setup error sayısı
-artmamıştır. Kalan storage/query fixture hataları nedeniyle canonical
-`LogEvent.raw_message` nonblank kuralı gevşetilmemiştir.
+Başarısız backend testi kalmamıştır. İlk tam paket baseline'ı 399 passed /
+21 failed idi. Beş Foundation dilimi sonunda sonuç 505 passed durumuna
+ilerlemiştir. Canonical `LogEvent.raw_message` nonblank kuralı fixture hataları
+için gevşetilmemiştir.
 
 ### Frontend
 
@@ -228,8 +214,8 @@ yapılmalıdır.
   kendi başına abort etmez.
 - React Query Devtools production buildinde koşulsuz mount edilir.
 - UI'da runtime response doğrulaması ve generated API client yoktur.
-- Query/store kapasite ve concurrency davranışı kırık testler nedeniyle henüz
-  production kanıtına sahip değildir.
+- Query/store kapasite ve process-local concurrency davranışı testlidir;
+  kalıcılık ve podlar arası paylaşım tasarım gereği yoktur.
 
 ## Tamamlanan son iş
 
@@ -276,18 +262,48 @@ başlatılmamalıdır.
 - Yeni Ruff/mypy ihlali yoktur.
 - Tam test failure/error sayıları artmamıştır.
 
-## Sıradaki önerilen iş
-
 ### Foundation Quality Recovery — Dilim 5: InMemoryEventStore
 
-1. `add()` typed domain exceptionlarını `ValueError` olarak sarmalamayacak.
-2. Duplicate reject/replace ve explicit ID collision sözleşmeleri sabitlenecek.
-3. `atomic=True` batch write gerçekten all-or-nothing çalışacak.
-4. Capacity/eviction/retention planı commit öncesinde doğrulanacak.
-5. `clear()` sonrasında sequence monotonluğu korunacak.
-6. Thread-safety fixture'ları canonical `LogEvent.raw_message` sözleşmesine
-   uyarlanacak; model gevşetilmeyecek.
-7. Query/aggregation fixture setup hataları ayrı ve görünür tutulacak.
+Tamamlanan çalışma:
+
+1. `add()` typed domain exceptionlarını korur.
+2. Duplicate reject/ignore/replace ve explicit ID collision sözleşmeleri
+   testlidir.
+3. `atomic=True` batch write gerçek all-or-nothing rollback uygular.
+4. Capacity ve duplicate kararı mutation öncesinde planlanır.
+5. `clear()` sonrasında sequence monotonluğu korunur.
+6. Nested query indexleri lock altında defensive snapshot olarak kopyalanır.
+7. Thread-safety, query ve aggregation fixture'ları canonical
+   `LogEvent.raw_message` sözleşmesine uyar.
+
+Sonuç:
+
+- Store/query/aggregation odak seçkisi: `35 passed`.
+- Tam backend paketi: `505 passed`.
+- Coverage: `%85`.
+- Dokunulan source/test Ruff seçkisi: başarılı.
+- Dokunulan store source mypy seçkisi: başarılı.
+- Proje geneli Ruff: 102 bulgu.
+- Proje geneli mypy: 11 hata / 3 dosya.
+
+### Dilim 5 kabul kriterleri — karşılandı
+
+- Başarısız atomic batch store/index/counter/sequence değişikliği bırakmaz.
+- Duplicate ignore dolu store'dan event çıkarmaz.
+- Replace ID ve sequence'i korur.
+- Typed duplicate/collision/capacity hataları dışarı taşınır.
+- Concurrent add/query/delete testleri geçer.
+- Tam backend test ve coverage komutları başarılıdır.
+
+## Sıradaki önerilen iş
+
+### Foundation Quality Recovery — Dilim 6: Query ve Aggregation Typing
+
+1. Pydantic v2 validator imzaları `ValidationInfo` ile düzeltilecek.
+2. Aggregation bucket internal sayaç tipleri açık ve güvenli hale getirilecek.
+3. Query engine facet/index/sort davranışı deterministik kalacak.
+4. Query ve aggregation source dosyalarının Ruff/mypy borcu sıfırlanacak.
+5. Mevcut 505 test gerilemeden tam paket yeniden çalıştırılacak.
 
 SQL, Redis, Elasticsearch veya başka bir harici kalıcı store eklenmeyecektir.
 

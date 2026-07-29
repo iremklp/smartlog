@@ -285,6 +285,14 @@ Mevcut built-in parserlar:
 
 Eventler yalnızca çalışan process belleğinde tutulur:
 
+- Single write işlemleri typed duplicate, collision, capacity ve oversized
+  event hatalarını korur.
+- `add_many(..., atomic=True)` gerçek all-or-nothing rollback uygular;
+  başarısız batch event, index, sayaç veya sequence değişikliği bırakmaz.
+- Duplicate kararı capacity eviction'dan önce verilir; ignore edilen duplicate
+  dolu store'dan geçerli event çıkarmaz.
+- Replace işlemi mevcut store ID'sini ve monoton sequence değerini korur.
+- Query işlemleri lock altında alınan event ve index snapshotı üzerinde çalışır.
 - Uygulama veya pod yeniden başladığında veriler kaybolur.
 - Birden fazla replica çalıştığında her pod kendi bağımsız event store'una
   sahiptir.
@@ -294,7 +302,7 @@ Eventler yalnızca çalışan process belleğinde tutulur:
 
 ### Güncel Geliştirme Durumu
 
-> Durum notu: 25 Temmuz 2026 tarihinde yapılan yerel kalite kontrolünün
+> Durum notu: 29 Temmuz 2026 tarihinde yapılan yerel kalite kontrolünün
 > özetidir. Sonraki değişikliklerden sonra komutlar yeniden çalıştırılmalıdır.
 
 Frontend:
@@ -306,18 +314,16 @@ Frontend:
 
 Backend:
 
-- Tam test paketi toplanıp çalışmaktadır; son kontrolde 434 test geçmiş,
-  storage sorunları nedeniyle 8 test başarısız olmuş ve
-  query/aggregation fixture sorunları nedeniyle 11 test setup hatası
-  vermiştir.
-- Tam paket coverage sonucu %84'tür. Yalnız istatistiksel analiz modülünün
+- Tam backend paketi başarılıdır: **505 test geçti**.
+- Tam paket coverage sonucu **%85**'tir. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
 - Redis parser testleri 7/7, deep-immutability dahil built-in
   parser/pipeline/orchestration seçkisi 126/126 geçmiştir.
-- `mypy src` kontrolünde 5 eski dosyada toplam 20 tip hatası bulunmaktadır.
+- In-memory store, query ve aggregation odak seçkisinde 35/35 test geçmiştir.
+- `mypy src` kontrolünde 3 eski dosyada toplam 11 tip hatası bulunmaktadır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve tanımsız isimler dahil 200 bulgu bulunmaktadır.
+  ve tek satırlı statement borçları dahil 102 bulgu bulunmaktadır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.

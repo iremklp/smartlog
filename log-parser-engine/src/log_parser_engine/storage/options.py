@@ -116,7 +116,10 @@ class EventStoreOptions(BaseModel):
     )
     strict: bool = Field(
         default=True,
-        description="If true, enforce strict validation and raise errors for potential issues.",
+        description=(
+            "If true, enforce strict validation and raise errors for "
+            "potential issues."
+        ),
     )
 
     @field_validator("max_events", "max_batch_events")
@@ -158,7 +161,10 @@ class EventStoreOptions(BaseModel):
             # In strict mode, all indexed_fields must be known default fields
             unknown_fields = set(self.indexed_fields) - set(DEFAULT_INDEXED_FIELDS)
             if unknown_fields:
-                raise ValueError(f"Unknown indexed_fields in strict mode: {', '.join(sorted(list(unknown_fields)))}")
+                fields = ", ".join(sorted(unknown_fields))
+                raise ValueError(
+                    f"Unknown indexed_fields in strict mode: {fields}"
+                )
         return self
 
 
@@ -173,7 +179,9 @@ class EventWriteOptions(BaseModel):
     )
     deduplicate: bool | None = Field(
         default=None,
-        description="Whether to perform content-hash based deduplication for this event.",
+        description=(
+            "Whether to perform content-hash based deduplication for this event."
+        ),
     )
     duplicate_policy: DUPLICATE_POLICIES | None = Field(
         default=None,
@@ -181,7 +189,9 @@ class EventWriteOptions(BaseModel):
     )
     apply_retention_before_write: bool = Field(
         default=True,
-        description="If true, the retention policy is applied before this write operation.",
+        description=(
+            "If true, apply the retention policy before this write operation."
+        ),
     )
     source_batch_id: str | None = Field(
         default=None,
@@ -223,5 +233,6 @@ class BatchWriteOptions(BaseModel):
     )
     max_events: int | None = Field(
         default=None,
+        ge=1,
         description="Override the store's max_batch_events for this operation.",
     )

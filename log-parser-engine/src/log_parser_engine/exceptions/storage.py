@@ -1,6 +1,10 @@
 
 """Custom exceptions for the event store subsystem."""
 
+from __future__ import annotations
+
+from collections.abc import Iterable
+
 
 class EventStoreError(Exception):
     """Base exception for all event store errors."""
@@ -64,18 +68,16 @@ class EventSnapshotError(EventStoreError):
 
 
 class BatchWriteError(EventStoreError):
-    """
-    Raised during a batch write operation, often containing partial results.
-    
-    Attributes:
-        message (str): A summary of the batch failure.
-        successful_writes (tuple): A tuple of events that were successfully written.
-        failed_writes (tuple): A tuple of events that failed.
-        errors (list[Exception]): A list of underlying exceptions for each failure.
-    """
-    def __init__(self, message, successful_writes=None, failed_writes=None, errors=None):
-        super().__init__(message)
-        self.successful_writes = successful_writes or ()
-        self.failed_writes = failed_writes or ()
-        self.errors = errors or []
+    """Raised when a batch cannot be prepared or safely processed."""
 
+    def __init__(
+        self,
+        message: str,
+        successful_writes: Iterable[object] | None = None,
+        failed_writes: Iterable[object] | None = None,
+        errors: Iterable[Exception] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.successful_writes = tuple(successful_writes or ())
+        self.failed_writes = tuple(failed_writes or ())
+        self.errors = tuple(errors or ())

@@ -1,18 +1,22 @@
-
 from __future__ import annotations
 
 import bisect
 import threading
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any, Literal
 
 from log_parser_engine.exceptions import (
+    BatchWriteError,
     DuplicateEventError,
     EventIdCollisionError,
     EventStoreCapacityError,
     EventStoreConfigurationError,
+    EventStoreError,
     EventTooLargeForStoreError,
+    InvalidEventError,
 )
 from log_parser_engine.models import (
     BatchWriteResult,
@@ -25,38 +29,55 @@ from log_parser_engine.models import (
 )
 
 from .base import EventStore
-from .query_engine import InMemoryEventQueryEngine
 from .helpers import estimate_event_size_bytes, get_canonical_json_bytes
 from .identity import compute_event_content_hash, generate_event_id
 from .options import BatchWriteOptions, EventStoreOptions, EventWriteOptions
+from .query_engine import InMemoryEventQueryEngine
 from .retention import determine_expired_event_ids, get_eviction_candidates
 
 
+@dataclass(slots=True)
+class _StoreStateSnapshot:
+    events_by_id: dict[str, StoredEvent]
+    sequence_ids: OrderedDict[str, None]
+    timestamp_index: list[tuple[datetime, int, str]]
+    hash_to_ids: dict[str, set[str]]
+    indexes: dict[str, dict[Any, set[str]]]
+    total_estimated_bytes: int
+    next_sequence: int
+    write_count: int
+    query_count: int
+    delete_count: int
+    clear_count: int
+    duplicate_ignored_count: int
+    replaced_count: int
+    evicted_count: int
+    retention_removed_count: int
+    last_write_at: datetime | None
+    last_query_at: datetime | None
+    last_retention_at: datetime | None
+
+
 class InMemoryEventStore(EventStore):
-    """
-    An in-memory, thread-safe implementation of the EventStore protocol.
-    """
+    """Thread-safe, bounded and process-local event store."""
 
-    def __init__(self, options: EventStoreOptions | None = None):
-        self._options = options or EventStoreOptions()
-        if not isinstance(self._options, EventStoreOptions):
-            raise EventStoreConfigurationError("options must be an instance of EventStoreOptions")
+    def __init__(self, options: EventStoreOptions | None = None) -> None:
+        resolved_options = options if options is not None else EventStoreOptions()
+        if not isinstance(resolved_options, EventStoreOptions):
+            raise EventStoreConfigurationError(
+                "options must be an EventStoreOptions instance"
+            )
+        self._options = resolved_options
 
-        # Core data structures
         self._events_by_id: dict[str, StoredEvent] = {}
         self._sequence_ids: OrderedDict[str, None] = OrderedDict()
         self._timestamp_index: list[tuple[datetime, int, str]] = []
-
-        # Indexes
-        self._hash_to_ids: defaultdict[str, set[str]] = defaultdict(set)
-        self._indexes: defaultdict[str, defaultdict[Any, set[str]]] = defaultdict(lambda: defaultdict(set))
-
-        # Statistics and state
-        self._total_estimated_bytes: int = 0
-        self._next_sequence: int = 1
+        self._hash_to_ids: dict[str, set[str]] = {}
+        self._indexes: dict[str, dict[Any, set[str]]] = {}
+        self._total_estimated_bytes = 0
+        self._next_sequence = 1
         self._lock = threading.RLock()
 
-        # Counters
         self._created_at = datetime.now(timezone.utc)
         self._write_count = 0
         self._query_count = 0
@@ -70,30 +91,46 @@ class InMemoryEventStore(EventStore):
         self._last_query_at: datetime | None = None
         self._last_retention_at: datetime | None = None
 
+    @property
+    def options(self) -> EventStoreOptions:
+        """Return the immutable store options."""
+
+        return self._options
+
     def add(
         self,
         event: LogEvent,
         *,
         options: EventWriteOptions | None = None,
     ) -> EventWriteResult:
-        batch_result = self.add_many([event], options=options)
-        
-        if batch_result.errors:
-             # Errors in a single-add batch should raise an exception
-            raise ValueError(f"Failed to add event: {batch_result.errors[0]}")
+        """Add one event and preserve typed storage exceptions."""
 
-        if batch_result.inserted:
-            return EventWriteResult(status="inserted", stored_event=batch_result.inserted[0], evicted_event_ids=batch_result.evicted_event_ids)
-        if batch_result.replaced:
-            return EventWriteResult(status="replaced", stored_event=batch_result.replaced[0], evicted_event_ids=batch_result.evicted_event_ids)
-        
-        # This must be an ignored duplicate
-        ignored_id = batch_result.ignored_event_ids[0]
-        existing_event = self.get(ignored_id)
-        if existing_event:
-            return EventWriteResult(status="ignored_duplicate", stored_event=existing_event, evicted_event_ids=batch_result.evicted_event_ids)
-        
-        raise RuntimeError("Internal error in add method: unexpected batch result")
+        write_options = self._resolve_write_options(options)
+        with self._lock:
+            snapshot = self._snapshot_state_unsafe()
+            retention_ids: tuple[str, ...] = ()
+            try:
+                if (
+                    write_options.apply_retention_before_write
+                    and self._options.retention_seconds is not None
+                ):
+                    retention_ids = self._apply_retention_unsafe()
+                result = self._add_one_unsafe(event, write_options)
+            except Exception:
+                self._restore_state_unsafe(snapshot)
+                raise
+
+            if result.status in {"inserted", "replaced"}:
+                self._write_count += 1
+                self._last_write_at = datetime.now(timezone.utc)
+            return result.model_copy(
+                update={
+                    "evicted_event_ids": self._merge_ids(
+                        retention_ids,
+                        result.evicted_event_ids,
+                    )
+                }
+            )
 
     def add_many(
         self,
@@ -102,204 +139,138 @@ class InMemoryEventStore(EventStore):
         options: EventWriteOptions | None = None,
         batch_options: BatchWriteOptions | None = None,
     ) -> BatchWriteResult:
-        write_opts = options or EventWriteOptions()
-        batch_opts = batch_options or BatchWriteOptions()
-        
-        # Non-atomic implementation for now
-        if batch_opts.atomic:
-            # Full atomic implementation is complex and will be added later.
-            pass
+        """Add a bounded batch, optionally with all-or-nothing semantics."""
 
-        inserted_events, ignored_ids, replaced_events, errors = [], [], [], []
-        evicted_ids = set()
+        write_options = self._resolve_write_options(options)
+        resolved_batch_options = self._resolve_batch_options(batch_options)
+        materialized = self._materialize_events(events, resolved_batch_options)
+        if not materialized:
+            return BatchWriteResult(atomic=resolved_batch_options.atomic)
 
         with self._lock:
-            if write_opts.apply_retention_before_write and self._options.retention_seconds:
-                expired_ids = self._apply_retention_unsafe()
-                evicted_ids.update(expired_ids)
+            snapshot = (
+                self._snapshot_state_unsafe()
+                if resolved_batch_options.atomic
+                else None
+            )
+            inserted: list[StoredEvent] = []
+            replaced: list[StoredEvent] = []
+            ignored_ids: list[str] = []
+            evicted_ids: list[str] = []
+            errors: list[str] = []
 
-            for event in events:
+            if (
+                write_options.apply_retention_before_write
+                and self._options.retention_seconds is not None
+            ):
+                self._extend_unique(
+                    evicted_ids,
+                    self._apply_retention_unsafe(),
+                )
+
+            for event in materialized:
                 try:
-                    evicted_in_loop = self._add_one_unsafe(event, write_opts)
-                    evicted_ids.update(evicted_in_loop.evicted_event_ids)
-                    
-                    if evicted_in_loop.status == "inserted":
-                        inserted_events.append(evicted_in_loop.stored_event)
-                    elif evicted_in_loop.status == "replaced":
-                        replaced_events.append(evicted_in_loop.stored_event)
-                    else: # ignored_duplicate
-                        ignored_ids.append(evicted_in_loop.stored_event.id)
-
-                except Exception as e:
-                    errors.append(str(e))
-                    if batch_opts.stop_on_error:
+                    result = self._add_one_unsafe(event, write_options)
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(self._safe_error_code(exc))
+                    if resolved_batch_options.atomic:
+                        if snapshot is None:
+                            raise RuntimeError(
+                                "atomic batch snapshot is unavailable"
+                            )
+                        self._restore_state_unsafe(snapshot)
+                        return BatchWriteResult(
+                            errors=tuple(errors),
+                            atomic=True,
+                        )
+                    if resolved_batch_options.stop_on_error:
                         break
-        
-        self._last_write_at = datetime.now(timezone.utc)
-        self._write_count += len(inserted_events) + len(replaced_events)
-        
-        return BatchWriteResult(
-            inserted=tuple(inserted_events),
-            ignored_event_ids=tuple(ignored_ids),
-            replaced=tuple(replaced_events),
-            evicted_event_ids=tuple(sorted(list(evicted_ids))),
-            errors=tuple(errors),
-            atomic=batch_opts.atomic,
-        )
+                    continue
 
-    def _add_one_unsafe(self, event: LogEvent, options: EventWriteOptions) -> EventWriteResult:
-        """Adds a single event. Must be called within a lock."""
-        canonical_bytes = get_canonical_json_bytes(event)
-        estimated_size = estimate_event_size_bytes(canonical_bytes)
+                self._extend_unique(evicted_ids, result.evicted_event_ids)
+                if result.status == "inserted":
+                    inserted.append(result.stored_event)
+                elif result.status == "replaced":
+                    replaced.append(result.stored_event)
+                else:
+                    ignored_ids.append(result.stored_event.id)
 
-        # Eviction plan
-        evicted_this_turn: list[str] = []
-        if self._options.eviction_policy == "reject_new":
-            if len(self._events_by_id) >= self._options.max_events:
-                raise EventStoreCapacityError(f"Store at max events capacity ({self._options.max_events})")
-            if self._options.max_estimated_memory_bytes and (self._total_estimated_bytes + estimated_size) > self._options.max_estimated_memory_bytes:
-                raise EventStoreCapacityError(f"Store at max memory capacity")
-        else:
-            # Regular eviction
-            num_to_evict = 0
-            # Check event count limit
-            if len(self._events_by_id) >= self._options.max_events:
-                num_to_evict = len(self._events_by_id) - self._options.max_events + 1
-            
-            # Check memory limit
-            if self._options.max_estimated_memory_bytes:
-                mem_overflow = (self._total_estimated_bytes + estimated_size) - self._options.max_estimated_memory_bytes
-                if mem_overflow > 0:
-                    # Find how many oldest events we need to evict to free enough space
-                    space_needed = mem_overflow
-                    space_freed = 0
-                    eviction_candidates = self._get_eviction_candidates(len(self._events_by_id))
-                    
-                    evicted_count_for_mem = 0
-                    for candidate_id in eviction_candidates:
-                        if space_freed >= space_needed:
-                            break
-                        space_freed += self._events_by_id[candidate_id].estimated_size_bytes
-                        evicted_count_for_mem += 1
-                    
-                    num_to_evict = max(num_to_evict, evicted_count_for_mem)
+            successful_writes = len(inserted) + len(replaced)
+            if successful_writes:
+                self._write_count += successful_writes
+                self._last_write_at = datetime.now(timezone.utc)
 
-            if num_to_evict > 0:
-                candidates = self._get_eviction_candidates(num_to_evict)
-                for event_id in candidates:
-                    self._delete_unsafe(event_id)
-                    evicted_this_turn.append(event_id)
-                self._evicted_count += len(evicted_this_turn)
-
-        event_id, content_hash = generate_event_id(event, mode=self._options.identity_mode, existing_id=str(event.event_id))
-        duplicate_policy = options.duplicate_policy or self._options.duplicate_policy
-
-        if event_id in self._events_by_id and self._events_by_id[event_id].content_hash != content_hash:
-            raise EventIdCollisionError(f"Event ID '{event_id}' collision detected.")
-
-        if content_hash in self._hash_to_ids:
-            if duplicate_policy == "reject":
-                raise DuplicateEventError(f"Duplicate event with hash {content_hash} rejected.")
-            elif duplicate_policy == "ignore":
-                self._duplicate_ignored_count += 1
-                existing_id = next(iter(self._hash_to_ids[content_hash]))
-                return EventWriteResult(status="ignored_duplicate", stored_event=self._events_by_id[existing_id], evicted_event_ids=tuple(evicted_this_turn))
-
-        stored_event = StoredEvent(
-            id=event_id, event=event, inserted_at=datetime.now(timezone.utc),
-            sequence=self._next_sequence, content_hash=content_hash, estimated_size_bytes=estimated_size,
-            source_batch_id=options.source_batch_id, metadata=options.metadata
-        )
-
-        status: Literal["inserted", "replaced"] = "inserted"
-        if event_id in self._events_by_id:
-            self._replace_event_unsafe(self._events_by_id[event_id], stored_event)
-            self._replaced_count += 1
-            status = "replaced"
-        else:
-            self._insert_event_unsafe(stored_event)
-        
-        self._next_sequence += 1
-        return EventWriteResult(status=status, stored_event=stored_event, evicted_event_ids=tuple(evicted_this_turn))
-
-    def _insert_event_unsafe(self, event: StoredEvent):
-        """Inserts a new event. Must be called within a lock."""
-        self._events_by_id[event.id] = event
-        self._sequence_ids[event.id] = None
-        bisect.insort(self._timestamp_index, (event.timestamp, event.sequence, event.id))
-        self._hash_to_ids[event.content_hash].add(event.id)
-        self._total_estimated_bytes += event.estimated_size_bytes
-        self._update_indexes_for_event(event, "add")
-
-    def _replace_event_unsafe(self, old_event: StoredEvent, new_event: StoredEvent):
-        """Replaces an event. Must be called within a lock."""
-        new_event = new_event.model_copy(update={"sequence": old_event.sequence})
-        self._events_by_id[new_event.id] = new_event
-        
-        self._update_indexes_for_event(old_event, "remove")
-        self._timestamp_index.remove((old_event.timestamp, old_event.sequence, old_event.id))
-        self._hash_to_ids[old_event.content_hash].discard(old_event.id)
-        if not self._hash_to_ids[old_event.content_hash]:
-            del self._hash_to_ids[old_event.content_hash]
-        
-        bisect.insort(self._timestamp_index, (new_event.timestamp, new_event.sequence, new_event.id))
-        self._hash_to_ids[new_event.content_hash].add(new_event.id)
-        self._update_indexes_for_event(new_event, "add")
-
-        self._total_estimated_bytes += (new_event.estimated_size_bytes - old_event.estimated_size_bytes)
-
-    def _delete_unsafe(self, event_id: str) -> bool:
-        """Deletes an event. Must be called within a lock."""
-        event_to_delete = self._events_by_id.pop(event_id, None)
-        if not event_to_delete:
-            return False
-
-        del self._sequence_ids[event_id]
-        self._timestamp_index.remove((event_to_delete.timestamp, event_to_delete.sequence, event_to_delete.id))
-        
-        self._hash_to_ids[event_to_delete.content_hash].discard(event_id)
-        if not self._hash_to_ids[event_to_delete.content_hash]:
-            del self._hash_to_ids[event_to_delete.content_hash]
-
-        self._total_estimated_bytes -= event_to_delete.estimated_size_bytes
-        self._update_indexes_for_event(event_to_delete, "remove")
-        return True
-
-    def delete(self, event_id: str) -> bool:
-        with self._lock:
-            was_deleted = self._delete_unsafe(event_id)
-            if was_deleted:
-                self._delete_count += 1
-        return was_deleted
+            return BatchWriteResult(
+                inserted=tuple(inserted),
+                ignored_event_ids=tuple(ignored_ids),
+                replaced=tuple(replaced),
+                evicted_event_ids=tuple(evicted_ids),
+                errors=tuple(errors),
+                atomic=resolved_batch_options.atomic,
+            )
 
     def get(self, event_id: str) -> StoredEvent | None:
         with self._lock:
             return self._events_by_id.get(event_id)
+
+    def delete(self, event_id: str) -> bool:
+        with self._lock:
+            deleted = self._delete_unsafe(event_id)
+            if deleted:
+                self._delete_count += 1
+            return deleted
 
     def count(self) -> int:
         with self._lock:
             return len(self._events_by_id)
 
     def clear(self) -> int:
+        """Clear event data while preserving lifecycle counters and sequence."""
+
         with self._lock:
             removed_count = len(self._events_by_id)
             if removed_count == 0:
                 return 0
-            self.__init__(self._options) # Re-initialize to clear state
+            self._events_by_id.clear()
+            self._sequence_ids.clear()
+            self._timestamp_index.clear()
+            self._hash_to_ids.clear()
+            self._indexes.clear()
+            self._total_estimated_bytes = 0
             self._clear_count += 1
-        return removed_count
+            return removed_count
 
     def statistics(self) -> EventStoreStatistics:
         with self._lock:
+            oldest_id = next(iter(self._sequence_ids), None)
+            newest_id = next(reversed(self._sequence_ids), None)
             return EventStoreStatistics(
                 event_count=len(self._events_by_id),
                 estimated_memory_bytes=self._total_estimated_bytes,
                 max_events=self._options.max_events,
-                max_estimated_memory_bytes=self._options.max_estimated_memory_bytes,
-                oldest_inserted_at=self._events_by_id[next(iter(self._sequence_ids))].inserted_at if self._sequence_ids else None,
-                newest_inserted_at=self._events_by_id[next(reversed(self._sequence_ids))].inserted_at if self._sequence_ids else None,
-                earliest_event_timestamp=self._timestamp_index[0][0] if self._timestamp_index else None,
-                latest_event_timestamp=self._timestamp_index[-1][0] if self._timestamp_index else None,
+                max_estimated_memory_bytes=(
+                    self._options.max_estimated_memory_bytes
+                ),
+                oldest_inserted_at=(
+                    self._events_by_id[oldest_id].inserted_at
+                    if oldest_id is not None
+                    else None
+                ),
+                newest_inserted_at=(
+                    self._events_by_id[newest_id].inserted_at
+                    if newest_id is not None
+                    else None
+                ),
+                earliest_event_timestamp=(
+                    self._timestamp_index[0][0]
+                    if self._timestamp_index
+                    else None
+                ),
+                latest_event_timestamp=(
+                    self._timestamp_index[-1][0]
+                    if self._timestamp_index
+                    else None
+                ),
                 index_enabled=self._options.enable_indexes,
                 indexed_field_count=len(self._options.indexed_fields),
                 duplicate_ignored_count=self._duplicate_ignored_count,
@@ -316,76 +287,24 @@ class InMemoryEventStore(EventStore):
                 last_retention_at=self._last_retention_at,
             )
 
-    def _update_indexes_for_event(self, event: StoredEvent, action: Literal["add", "remove"]):
-        if not self._options.enable_indexes:
-            return
-
-        for field in self._options.indexed_fields:
-            value = getattr(event.event, field, None)
-            if value is None:
-                continue
-
-            if field == "tags" and isinstance(value, list):
-                for tag in value:
-                    if action == "add":
-                        self._indexes[field][tag].add(event.id)
-                    else:
-                        self._indexes[field][tag].discard(event.id)
-            elif isinstance(value, (str, int, float, bool)) or hasattr(value, "value"):
-                key = value.value if hasattr(value, "value") else value
-                if action == "add":
-                    self._indexes[field][key].add(event.id)
-                else:
-                    self._indexes[field][key].discard(event.id)
-
-    def _get_eviction_candidates(self, num_to_evict: int) -> tuple[str, ...]:
-        return get_eviction_candidates(
-            num_to_evict=num_to_evict,
-            policy=self._options.eviction_policy,
-            sequence_ids=list(self._sequence_ids.keys()),
-            timestamp_index=self._timestamp_index,
-        )
-    
-    def _apply_retention_unsafe(self) -> list[str]:
-        """Applies retention policy. Must be called within a lock."""
-        if not self._options.retention_seconds:
-            return []
-            
-        now = datetime.now(timezone.utc)
-        all_events = list(self._events_by_id.values())
-
-        expired_ids = determine_expired_event_ids(
-            events=all_events,
-            now=now,
-            retention_seconds=self._options.retention_seconds,
-            basis=self._options.retention_basis
-        )
-        
-        for event_id in expired_ids:
-            self._delete_unsafe(event_id)
-        
-        if expired_ids:
-            self._retention_removed_count += len(expired_ids)
-            self._last_retention_at = now
-        
-        return list(expired_ids)
-
     def query(self, query: EventQuery | None = None) -> EventQueryResult:
-        q = query or EventQuery()
-
+        resolved_query = query if query is not None else EventQuery()
         with self._lock:
-            # Snapshot consistency: Copy references to data structures under a lock.
-            # The query engine will operate on this immutable snapshot.
-            snapshot_events = self._events_by_id.copy()
-            snapshot_indexes = self._indexes.copy() # Shallow copy is enough
+            snapshot_events = dict(self._events_by_id)
+            snapshot_indexes = {
+                field: {
+                    value: set(event_ids)
+                    for value, event_ids in values.items()
+                }
+                for field, values in self._indexes.items()
+            }
             snapshot_timestamp_index = list(self._timestamp_index)
             self._query_count += 1
             self._last_query_at = datetime.now(timezone.utc)
 
-        # The lock is released here, so writes don't block the query.
         engine = InMemoryEventQueryEngine(
             options=self._options,
-            query=q,
+            query=resolved_query,
             events=snapshot_events,
             indexes=snapshot_indexes,
             timestamp_index=snapshot_timestamp_index,
@@ -393,6 +312,448 @@ class InMemoryEventStore(EventStore):
         return engine.execute()
 
     def snapshot_events(self) -> tuple[StoredEvent, ...]:
-        """Return a consistent sequence-ordered snapshot without holding the lock."""
+        """Return a consistent sequence-ordered immutable-reference snapshot."""
+
         with self._lock:
-            return tuple(sorted(self._events_by_id.values(), key=lambda item: item.sequence))
+            return tuple(
+                sorted(
+                    self._events_by_id.values(),
+                    key=lambda item: item.sequence,
+                )
+            )
+
+    def _add_one_unsafe(
+        self,
+        event: LogEvent,
+        options: EventWriteOptions,
+    ) -> EventWriteResult:
+        if not isinstance(event, LogEvent):
+            raise InvalidEventError("event must be a LogEvent")
+
+        canonical_bytes = get_canonical_json_bytes(event)
+        estimated_size = estimate_event_size_bytes(canonical_bytes)
+        memory_limit = self._options.max_estimated_memory_bytes
+        if memory_limit is not None and estimated_size > memory_limit:
+            raise EventTooLargeForStoreError(
+                "event exceeds the configured store memory limit"
+            )
+
+        content_hash = compute_event_content_hash(event)
+        existing_id = options.event_id or str(event.event_id)
+        event_id, generated_hash = generate_event_id(
+            event,
+            mode=self._options.identity_mode,
+            existing_id=existing_id,
+        )
+        if generated_hash != content_hash:
+            raise RuntimeError("event hash generation is inconsistent")
+
+        existing_by_id = self._events_by_id.get(event_id)
+        if (
+            existing_by_id is not None
+            and existing_by_id.content_hash != content_hash
+        ):
+            raise EventIdCollisionError("event ID collision detected")
+
+        duplicate_policy = (
+            options.duplicate_policy or self._options.duplicate_policy
+        )
+        duplicate_target = self._find_duplicate_target_unsafe(
+            content_hash=content_hash,
+            existing_by_id=existing_by_id,
+            deduplicate=options.deduplicate is not False,
+        )
+        if duplicate_target is not None:
+            if duplicate_policy == "reject":
+                raise DuplicateEventError("duplicate event rejected")
+            if duplicate_policy == "ignore":
+                self._duplicate_ignored_count += 1
+                return EventWriteResult(
+                    status="ignored_duplicate",
+                    stored_event=duplicate_target,
+                )
+            return self._replace_duplicate_unsafe(
+                target=duplicate_target,
+                event=event,
+                content_hash=content_hash,
+                estimated_size=estimated_size,
+                options=options,
+            )
+
+        evicted_ids = self._plan_capacity_unsafe(
+            new_size=estimated_size,
+            replacing_id=None,
+        )
+        self._execute_evictions_unsafe(evicted_ids)
+        stored_event = StoredEvent(
+            id=event_id,
+            event=event,
+            inserted_at=datetime.now(timezone.utc),
+            sequence=self._next_sequence,
+            content_hash=content_hash,
+            estimated_size_bytes=estimated_size,
+            source_batch_id=options.source_batch_id,
+            metadata=options.metadata,
+        )
+        self._insert_event_unsafe(stored_event)
+        self._next_sequence += 1
+        return EventWriteResult(
+            status="inserted",
+            stored_event=stored_event,
+            evicted_event_ids=evicted_ids,
+        )
+
+    def _replace_duplicate_unsafe(
+        self,
+        *,
+        target: StoredEvent,
+        event: LogEvent,
+        content_hash: str,
+        estimated_size: int,
+        options: EventWriteOptions,
+    ) -> EventWriteResult:
+        evicted_ids = self._plan_capacity_unsafe(
+            new_size=estimated_size,
+            replacing_id=target.id,
+        )
+        self._execute_evictions_unsafe(evicted_ids)
+        replacement = StoredEvent(
+            id=target.id,
+            event=event,
+            inserted_at=datetime.now(timezone.utc),
+            sequence=target.sequence,
+            content_hash=content_hash,
+            estimated_size_bytes=estimated_size,
+            source_batch_id=options.source_batch_id,
+            metadata=options.metadata,
+        )
+        self._replace_event_unsafe(target, replacement)
+        self._replaced_count += 1
+        return EventWriteResult(
+            status="replaced",
+            stored_event=replacement,
+            evicted_event_ids=evicted_ids,
+        )
+
+    def _find_duplicate_target_unsafe(
+        self,
+        *,
+        content_hash: str,
+        existing_by_id: StoredEvent | None,
+        deduplicate: bool,
+    ) -> StoredEvent | None:
+        if existing_by_id is not None:
+            return existing_by_id
+        if not deduplicate:
+            return None
+        candidate_ids = self._hash_to_ids.get(content_hash, set())
+        if not candidate_ids:
+            return None
+        return min(
+            (self._events_by_id[event_id] for event_id in candidate_ids),
+            key=lambda stored: stored.sequence,
+        )
+
+    def _plan_capacity_unsafe(
+        self,
+        *,
+        new_size: int,
+        replacing_id: str | None,
+    ) -> tuple[str, ...]:
+        replaced = (
+            self._events_by_id.get(replacing_id)
+            if replacing_id is not None
+            else None
+        )
+        projected_count = len(self._events_by_id) + (0 if replaced else 1)
+        projected_bytes = (
+            self._total_estimated_bytes
+            - (replaced.estimated_size_bytes if replaced else 0)
+            + new_size
+        )
+        if self._fits_capacity(projected_count, projected_bytes):
+            return ()
+        if self._options.eviction_policy == "reject_new":
+            raise EventStoreCapacityError("event store capacity exceeded")
+
+        candidates = self._get_eviction_candidates(len(self._events_by_id))
+        planned: list[str] = []
+        for candidate_id in candidates:
+            if candidate_id == replacing_id:
+                continue
+            candidate = self._events_by_id[candidate_id]
+            planned.append(candidate_id)
+            projected_count -= 1
+            projected_bytes -= candidate.estimated_size_bytes
+            if self._fits_capacity(projected_count, projected_bytes):
+                return tuple(planned)
+        raise EventStoreCapacityError("event store capacity cannot be satisfied")
+
+    def _fits_capacity(self, event_count: int, estimated_bytes: int) -> bool:
+        if event_count > self._options.max_events:
+            return False
+        memory_limit = self._options.max_estimated_memory_bytes
+        return memory_limit is None or estimated_bytes <= memory_limit
+
+    def _execute_evictions_unsafe(self, event_ids: tuple[str, ...]) -> None:
+        for event_id in event_ids:
+            if self._delete_unsafe(event_id):
+                self._evicted_count += 1
+
+    def _insert_event_unsafe(self, event: StoredEvent) -> None:
+        self._events_by_id[event.id] = event
+        self._sequence_ids[event.id] = None
+        bisect.insort(
+            self._timestamp_index,
+            (event.timestamp, event.sequence, event.id),
+        )
+        self._hash_to_ids.setdefault(event.content_hash, set()).add(event.id)
+        self._total_estimated_bytes += event.estimated_size_bytes
+        self._update_indexes_for_event(event, "add")
+
+    def _replace_event_unsafe(
+        self,
+        old_event: StoredEvent,
+        new_event: StoredEvent,
+    ) -> None:
+        self._update_indexes_for_event(old_event, "remove")
+        self._timestamp_index.remove(
+            (old_event.timestamp, old_event.sequence, old_event.id)
+        )
+        old_hash_ids = self._hash_to_ids[old_event.content_hash]
+        old_hash_ids.discard(old_event.id)
+        if not old_hash_ids:
+            del self._hash_to_ids[old_event.content_hash]
+
+        self._events_by_id[new_event.id] = new_event
+        bisect.insort(
+            self._timestamp_index,
+            (new_event.timestamp, new_event.sequence, new_event.id),
+        )
+        self._hash_to_ids.setdefault(new_event.content_hash, set()).add(
+            new_event.id
+        )
+        self._update_indexes_for_event(new_event, "add")
+        self._total_estimated_bytes += (
+            new_event.estimated_size_bytes - old_event.estimated_size_bytes
+        )
+
+    def _delete_unsafe(self, event_id: str) -> bool:
+        event = self._events_by_id.pop(event_id, None)
+        if event is None:
+            return False
+        self._sequence_ids.pop(event_id, None)
+        self._timestamp_index.remove(
+            (event.timestamp, event.sequence, event.id)
+        )
+        hash_ids = self._hash_to_ids[event.content_hash]
+        hash_ids.discard(event_id)
+        if not hash_ids:
+            del self._hash_to_ids[event.content_hash]
+        self._total_estimated_bytes -= event.estimated_size_bytes
+        self._update_indexes_for_event(event, "remove")
+        return True
+
+    def _update_indexes_for_event(
+        self,
+        event: StoredEvent,
+        action: Literal["add", "remove"],
+    ) -> None:
+        if not self._options.enable_indexes:
+            return
+        for field in self._options.indexed_fields:
+            value = getattr(event.event, field, None)
+            if value is None:
+                continue
+            if field == "tags" and isinstance(value, Iterable) and not isinstance(
+                value,
+                (str, bytes),
+            ):
+                for tag in value:
+                    self._update_index_value(field, tag, event.id, action)
+                continue
+            if isinstance(value, (str, int, float, bool)) or hasattr(
+                value,
+                "value",
+            ):
+                key = value.value if hasattr(value, "value") else value
+                self._update_index_value(field, key, event.id, action)
+
+    def _update_index_value(
+        self,
+        field: str,
+        value: Any,
+        event_id: str,
+        action: Literal["add", "remove"],
+    ) -> None:
+        if action == "add":
+            self._indexes.setdefault(field, {}).setdefault(value, set()).add(
+                event_id
+            )
+            return
+        field_index = self._indexes.get(field)
+        if field_index is None:
+            return
+        ids = field_index.get(value)
+        if ids is None:
+            return
+        ids.discard(event_id)
+        if not ids:
+            del field_index[value]
+        if not field_index:
+            del self._indexes[field]
+
+    def _get_eviction_candidates(
+        self,
+        num_to_evict: int,
+    ) -> tuple[str, ...]:
+        return get_eviction_candidates(
+            num_to_evict=num_to_evict,
+            policy=self._options.eviction_policy,
+            sequence_ids=list(self._sequence_ids),
+            timestamp_index=self._timestamp_index,
+        )
+
+    def _apply_retention_unsafe(self) -> tuple[str, ...]:
+        retention_seconds = self._options.retention_seconds
+        if retention_seconds is None:
+            return ()
+        now = datetime.now(timezone.utc)
+        expired_ids = determine_expired_event_ids(
+            events=self._events_by_id.values(),
+            now=now,
+            retention_seconds=retention_seconds,
+            basis=self._options.retention_basis,
+        )
+        removed: list[str] = []
+        for event_id in expired_ids:
+            if self._delete_unsafe(event_id):
+                removed.append(event_id)
+        if removed:
+            self._retention_removed_count += len(removed)
+            self._last_retention_at = now
+        return tuple(removed)
+
+    def _materialize_events(
+        self,
+        events: Iterable[LogEvent],
+        options: BatchWriteOptions,
+    ) -> tuple[LogEvent, ...]:
+        if isinstance(events, (str, bytes)):
+            raise BatchWriteError("events must be an iterable of LogEvent values")
+        configured_limit = self._options.max_batch_events
+        requested_limit = options.max_events or configured_limit
+        if requested_limit > configured_limit:
+            raise BatchWriteError(
+                "batch max_events cannot exceed the configured store limit"
+            )
+
+        materialized: list[LogEvent] = []
+        try:
+            for event in events:
+                if len(materialized) >= requested_limit:
+                    raise BatchWriteError("batch event limit exceeded")
+                if not isinstance(event, LogEvent):
+                    raise InvalidEventError(
+                        "batch contains a value that is not a LogEvent"
+                    )
+                materialized.append(event)
+        except EventStoreError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise BatchWriteError("event iterable failed") from exc
+        return tuple(materialized)
+
+    def _resolve_write_options(
+        self,
+        options: EventWriteOptions | None,
+    ) -> EventWriteOptions:
+        if options is None:
+            return EventWriteOptions()
+        if not isinstance(options, EventWriteOptions):
+            raise TypeError("options must be EventWriteOptions")
+        return options
+
+    def _resolve_batch_options(
+        self,
+        options: BatchWriteOptions | None,
+    ) -> BatchWriteOptions:
+        if options is None:
+            return BatchWriteOptions()
+        if not isinstance(options, BatchWriteOptions):
+            raise TypeError("batch_options must be BatchWriteOptions")
+        return options
+
+    def _snapshot_state_unsafe(self) -> _StoreStateSnapshot:
+        return _StoreStateSnapshot(
+            events_by_id=dict(self._events_by_id),
+            sequence_ids=OrderedDict(self._sequence_ids),
+            timestamp_index=list(self._timestamp_index),
+            hash_to_ids={
+                content_hash: set(event_ids)
+                for content_hash, event_ids in self._hash_to_ids.items()
+            },
+            indexes={
+                field: {
+                    value: set(event_ids)
+                    for value, event_ids in values.items()
+                }
+                for field, values in self._indexes.items()
+            },
+            total_estimated_bytes=self._total_estimated_bytes,
+            next_sequence=self._next_sequence,
+            write_count=self._write_count,
+            query_count=self._query_count,
+            delete_count=self._delete_count,
+            clear_count=self._clear_count,
+            duplicate_ignored_count=self._duplicate_ignored_count,
+            replaced_count=self._replaced_count,
+            evicted_count=self._evicted_count,
+            retention_removed_count=self._retention_removed_count,
+            last_write_at=self._last_write_at,
+            last_query_at=self._last_query_at,
+            last_retention_at=self._last_retention_at,
+        )
+
+    def _restore_state_unsafe(self, snapshot: _StoreStateSnapshot) -> None:
+        self._events_by_id = snapshot.events_by_id
+        self._sequence_ids = snapshot.sequence_ids
+        self._timestamp_index = snapshot.timestamp_index
+        self._hash_to_ids = snapshot.hash_to_ids
+        self._indexes = snapshot.indexes
+        self._total_estimated_bytes = snapshot.total_estimated_bytes
+        self._next_sequence = snapshot.next_sequence
+        self._write_count = snapshot.write_count
+        self._query_count = snapshot.query_count
+        self._delete_count = snapshot.delete_count
+        self._clear_count = snapshot.clear_count
+        self._duplicate_ignored_count = snapshot.duplicate_ignored_count
+        self._replaced_count = snapshot.replaced_count
+        self._evicted_count = snapshot.evicted_count
+        self._retention_removed_count = snapshot.retention_removed_count
+        self._last_write_at = snapshot.last_write_at
+        self._last_query_at = snapshot.last_query_at
+        self._last_retention_at = snapshot.last_retention_at
+
+    @staticmethod
+    def _safe_error_code(exc: Exception) -> str:
+        return exc.__class__.__name__
+
+    @staticmethod
+    def _merge_ids(
+        first: Iterable[str],
+        second: Iterable[str],
+    ) -> tuple[str, ...]:
+        merged: list[str] = []
+        InMemoryEventStore._extend_unique(merged, first)
+        InMemoryEventStore._extend_unique(merged, second)
+        return tuple(merged)
+
+    @staticmethod
+    def _extend_unique(target: list[str], values: Iterable[str]) -> None:
+        existing = set(target)
+        for value in values:
+            if value in existing:
+                continue
+            target.append(value)
+            existing.add(value)

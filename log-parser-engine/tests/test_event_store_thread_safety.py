@@ -1,28 +1,29 @@
 
 import threading
-from datetime import datetime, timezone
 import time
+from datetime import datetime, timezone
 
 import pytest
 
-from log_parser_engine.models import LogEvent, LogSourceType, EventQuery
+from log_parser_engine.models import EventQuery, LogEvent, LogSourceType
 from log_parser_engine.storage import InMemoryEventStore
 from log_parser_engine.storage.options import EventStoreOptions
 
 
-def test_concurrent_adds():
+def test_concurrent_adds() -> None:
     """Tests that concurrent adds do not corrupt the store's state."""
     store = InMemoryEventStore(EventStoreOptions(max_events=1000))
     num_threads = 10
     events_per_thread = 100
     
-    def worker(thread_id):
+    def worker(thread_id: int) -> None:
         for i in range(events_per_thread):
+            message = f"event from thread {thread_id}-{i}"
             event = LogEvent(
                 timestamp=datetime.now(timezone.utc),
                 source_type=LogSourceType.FILE,
-                message=f"event from thread {thread_id}-{i}",
-                raw_message=""
+                message=message,
+                raw_message=message,
             )
             store.add(event)
 
@@ -41,15 +42,21 @@ def test_concurrent_adds():
     assert stats.write_count == num_threads * events_per_thread
 
 
-def test_concurrent_add_and_query():
+def test_concurrent_add_and_query() -> None:
     """Tests that queries are consistent during concurrent writes."""
     store = InMemoryEventStore(EventStoreOptions(max_events=2000))
     stop_event = threading.Event()
 
-    def writer():
+    def writer() -> None:
         i = 0
         while not stop_event.is_set():
-            event = LogEvent(timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message=f"event-{i}", raw_message="")
+            message = f"event-{i}"
+            event = LogEvent(
+                timestamp=datetime.now(timezone.utc),
+                source_type=LogSourceType.FILE,
+                message=message,
+                raw_message=message,
+            )
             store.add(event)
             i += 1
             time.sleep(0.001)
@@ -57,7 +64,7 @@ def test_concurrent_add_and_query():
     writer_thread = threading.Thread(target=writer)
     writer_thread.start()
 
-    time.sleep(0.1) # Let the writer add some events
+    time.sleep(0.1)  # Let the writer add some events.
 
     # Perform some queries while the writer is active
     for _ in range(5):
@@ -68,8 +75,8 @@ def test_concurrent_add_and_query():
             # Due to snapshot consistency, total should be consistent within one result
             if result.page.total is not None:
                 assert result.page.returned <= result.page.total
-        except Exception as e:
-            pytest.fail(f"Query failed during concurrent writes: {e}")
+        except Exception as exc:
+            pytest.fail(f"Query failed during concurrent writes: {exc}")
         time.sleep(0.01)
 
     stop_event.set()
@@ -79,7 +86,7 @@ def test_concurrent_add_and_query():
     assert store.count() > 0
 
 
-def test_concurrent_add_and_delete():
+def test_concurrent_add_and_delete() -> None:
     """Tests concurrent additions and deletions."""
     store = InMemoryEventStore(EventStoreOptions(max_events=1000))
     initial_events = 100
@@ -87,15 +94,31 @@ def test_concurrent_add_and_delete():
     # Pre-populate the store
     ids_to_delete = []
     for i in range(initial_events):
-        res = store.add(LogEvent(timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message=f"event-{i}", raw_message=""))
+        message = f"event-{i}"
+        res = store.add(
+            LogEvent(
+                timestamp=datetime.now(timezone.utc),
+                source_type=LogSourceType.FILE,
+                message=message,
+                raw_message=message,
+            )
+        )
         if i % 2 == 0:
             ids_to_delete.append(res.stored_event.id)
 
-    def writer():
+    def writer() -> None:
         for i in range(50):
-            store.add(LogEvent(timestamp=datetime.now(timezone.utc), source_type=LogSourceType.FILE, message=f"new-event-{i}", raw_message=""))
+            message = f"new-event-{i}"
+            store.add(
+                LogEvent(
+                    timestamp=datetime.now(timezone.utc),
+                    source_type=LogSourceType.FILE,
+                    message=message,
+                    raw_message=message,
+                )
+            )
 
-    def deleter():
+    def deleter() -> None:
         for event_id in ids_to_delete:
             store.delete(event_id)
 
@@ -110,7 +133,7 @@ def test_concurrent_add_and_delete():
 
     expected_count = initial_events - len(ids_to_delete) + 50
     assert store.count() == expected_count
-    
+
     # Check that deleted events are gone
     for event_id in ids_to_delete:
         assert store.get(event_id) is None

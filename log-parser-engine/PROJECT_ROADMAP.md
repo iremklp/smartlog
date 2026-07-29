@@ -36,8 +36,9 @@ tamamlandığında yeniden doğrulanmalıdır.
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
 Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-in
 parser canonical immutability ve plugin startup lifecycle dilimleri
-tamamlanmıştır. Sırada storage/query/aggregation, frontend sözleşmeleri ve
-repository hijyeni vardır.
+tamamlanmıştır. In-memory store write/atomicity dilimi de bitmiştir. Sırada
+query/aggregation typing, backend lint, frontend sözleşmeleri ve repository
+hijyeni vardır.
 
 ## Büyük aşamalar
 
@@ -48,8 +49,8 @@ repository hijyeni vardır.
 | 3. Built-in Parsers | ✅ | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor | Yeni parserlar aynı validated reconstruction contract kapısından geçer | Yeni plugin parserın doğrulamayı atlayan güncelleme yapması |
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
 | 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
-| 6. In-Memory Storage | 🔧 | Store, identity, retention, eviction ve istatistik yüzeyi var | Atomic batch gerçekten atomik; duplicate/capacity/thread-safety testleri başarılı | `atomic=True` yolu uygulanmamış |
-| 7. Query Engine | 🔧 | Typed filter, sort, pagination, facet ve aggregation var | Query/aggregation testleri ve mypy başarılı; API/UI contractı sabit | Test fixture hataları ve tip/sözleşme uyumsuzlukları |
+| 6. In-Memory Storage | ✅ | Typed single write, gerçek atomic rollback, retention, eviction, monoton sequence ve snapshot query var | Yeni write politikaları aynı rollback/index/thread testlerinden geçer | Process/pod restartında veri kaybı tasarım gereğidir |
+| 7. Query Engine | 🔧 | Typed filter, sort, pagination, facet ve aggregation testleri geçiyor | Query/aggregation mypy ve Ruff başarılı; API/UI contractı sabit | Model validator ve bucket typing borcu |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory ve temel endpointler var | Versioned contract, bounded upload, güvenli error mapping, readiness ve limit testleri tamam | Çoğu endpoint versiyonsuz; file upload boundsuz |
 | 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa ve temel akışlar var | Backend contractlarıyla uyumlu, erişilebilir, testli ve lint/typecheck/build kapıları yeşil | Elle tutulan tipler backendden sapmış |
@@ -91,10 +92,10 @@ repository hijyeni vardır.
 | Ingestion | Text/bytes/path ve encoding | ✅ | Ingestion options | BOM, binary, encoding ve metadata var |
 | Ingestion | Gzip/Zip güvenliği | ✅ | Archive options | Entry seçimi ve archive güvenlik kuralları var |
 | Batch | Streaming ve parser session | 🟡 | Parser manager | İşlevsel; `batch/orchestrator.py` mypy hataları taşıyor |
-| Storage | InMemoryEventStore | 🔧 | LogEvent | Duplicate/capacity/clear/thread-safety testleri kırık |
-| Storage | Atomic batch write | 🔧 | InMemoryEventStore | `atomic=True` dalında gerçek transaction planı yok |
-| Query | Filter/sort/pagination/index | 🔧 | StoredEvent snapshot | Test setup ve mypy hataları var |
-| Query | Facet/aggregation | 🔧 | Query engine | Model validator ve bucket type sorunları var |
+| Storage | InMemoryEventStore | ✅ | LogEvent | Typed errors, duplicate/capacity/clear ve concurrency testleri yeşil |
+| Storage | Atomic batch write | ✅ | InMemoryEventStore | Store state/index/counter/sequence rollback testli |
+| Query | Filter/sort/pagination/index | 🟡 | StoredEvent snapshot | Davranış testleri yeşil; source lint/type borcu var |
+| Query | Facet/aggregation | 🔧 | Query engine | Testler yeşil; model validator ve bucket type sorunları var |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
 | API | FastAPI routes/middleware | 🟡 | Application service | Request ID ve analiz limitleri var; versioning/upload güvenliği eksik |
 | UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları var; sözleşme ve test kapsamı yetersiz |
@@ -141,8 +142,18 @@ repository hijyeni vardır.
    - Sonuç: plugin/application odak seçkisi 60 passed; tam backend paketi
      481 passed, 8 failed ve 11 setup error. Açık hatalar storage/query
      baseline'ındadır.
-5. InMemoryEventStore atomic batch, duplicate, capacity ve clear davranışlarını
-   tamamla.
+5. **InMemoryEventStore atomic batch, duplicate, capacity ve clear
+   davranışlarını tamamla — tamamlandı.**
+   - Single write typed duplicate/collision/capacity hatalarını koruyor.
+   - Atomic batch başarısızlıkta event, index, sayaç ve sequence state'ini geri
+     yüklüyor.
+   - Duplicate ignore capacity eviction'dan önce çözülüyor; replace ID ve
+     sequence'i koruyor.
+   - Clear sequence'i sıfırlamıyor; concurrent add/query/delete testleri
+     geçiyor.
+   - Query ve aggregation fixture'ları canonical nonblank `raw_message`
+     sözleşmesine taşındı.
+   - Sonuç: tam backend paketi 505 passed; coverage %85.
 6. Query/aggregation test ve mypy sorunlarını gider.
 7. Backend Ruff ve mypy borcunu sıfırla.
 8. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
@@ -214,7 +225,7 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q0'ın beşinci dilimi uygulanacaktır:
-`InMemoryEventStore` single/batch write sözleşmesi, typed duplicate/capacity
-hataları, gerçek atomic batch davranışı, monoton sequence ve thread-safety
-testleri düzeltilecektir. SQL veya harici kalıcı veri tabanı eklenmeyecektir.
+Bir sonraki `devam et` komutunda Q0'ın altıncı dilimi uygulanacaktır:
+query/aggregation Pydantic validator ve bucket typing sorunları giderilecek,
+query engine deterministik davranışı korunarak mypy/Ruff temizlenecektir.
+SQL veya harici kalıcı veri tabanı eklenmeyecektir.
