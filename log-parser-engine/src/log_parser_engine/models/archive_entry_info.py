@@ -64,7 +64,11 @@ class ArchiveEntryInfo(BaseModel):
             return False
         if self.content_type is not None and self.content_type.startswith("text/"):
             return True
-        if self.content_type in {"application/json", "application/xml", "application/csv"}:
+        if self.content_type in {
+            "application/json",
+            "application/xml",
+            "application/csv",
+        }:
             return True
         return self.extension in {
             "log",

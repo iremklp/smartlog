@@ -71,7 +71,8 @@ class IngestionSource(BaseModel):
         if self.kind == "archive_entry":
             if not self.archive_name or not self.archive_entry_name:
                 raise ValueError(
-                    "archive_entry sources must include archive_name and archive_entry_name"
+                    "archive_entry sources must include archive_name and "
+                    "archive_entry_name"
                 )
         else:
             if self.archive_entry_name is not None and self.archive_name is None:

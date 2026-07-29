@@ -20,11 +20,10 @@ from .archive import extract_logical_document
 from .binary import BinaryAssessment, assess_binary_content
 from .encoding import decode_text, detect_encoding
 from .hashing import compute_sha256_hex
-from .line_endings import analyze_line_endings
 from .helpers import guess_content_type, split_name_parts
+from .line_endings import LineEndingAnalysis, analyze_line_endings
 from .options import IngestionOptions
 from .source_reader import build_source_from_bytes, read_path_bytes
-from .line_endings import LineEndingAnalysis
 
 
 class FileIngestionService:
@@ -53,7 +52,11 @@ class FileIngestionService:
     ) -> IngestionResult:
         resolved_options = options or IngestionOptions()
         source = build_source_from_bytes(data, source_name=source_name)
-        return self._ingest_bytes_internal(data, source=source, options=resolved_options)
+        return self._ingest_bytes_internal(
+            data,
+            source=source,
+            options=resolved_options,
+        )
 
     def ingest_text(
         self,
@@ -81,7 +84,11 @@ class FileIngestionService:
         )
         line_info = analyze_line_endings(text)
         raw_bytes = text.encode("utf-8")
-        sha256 = compute_sha256_hex(raw_bytes) if resolved_options.compute_sha256 else None
+        sha256 = (
+            compute_sha256_hex(raw_bytes)
+            if resolved_options.compute_sha256
+            else None
+        )
         warnings: tuple[IngestionWarning, ...] = ()
         if not text:
             warnings = (
@@ -138,10 +145,14 @@ class FileIngestionService:
         if not data and not options.allow_empty:
             raise EmptyContentError("empty content is not allowed")
 
-        logical_bytes, source, archive_type, compressed_size, selected_archive_entry = extract_logical_document(
-            data,
+        (
+            logical_bytes,
             source,
-            options=options,
+            archive_type,
+            compressed_size,
+            selected_archive_entry,
+        ) = extract_logical_document(
+            data, source, options=options
         )
         raw_bytes = logical_bytes
 
@@ -195,7 +206,11 @@ class FileIngestionService:
             },
         )
         original_bytes = raw_bytes if options.preserve_original_bytes else None
-        return IngestionResult(text=text, metadata=metadata, original_bytes=original_bytes)
+        return IngestionResult(
+            text=text,
+            metadata=metadata,
+            original_bytes=original_bytes,
+        )
 
     def _build_warnings(
         self,
@@ -212,7 +227,9 @@ class FileIngestionService:
             warnings.append(
                 IngestionWarning(
                     code="ENCODING_LOW_CONFIDENCE",
-                    message="encoding detection confidence is below the certainty threshold",
+                    message=(
+                        "encoding detection confidence is below the certainty threshold"
+                    ),
                     details={"confidence": detection.confidence},
                     recoverable=True,
                 )

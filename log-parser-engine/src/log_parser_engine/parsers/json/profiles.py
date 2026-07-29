@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from log_parser_engine.models import JsonProfileDetection
+
 from .constants import SUPPORTED_PROFILES
 
 
@@ -29,7 +30,13 @@ def detect_profile(data: dict[str, object]) -> JsonProfileDetection:
             matched_paths = profile_signals
 
     if best_confidence < 0.5:
-        return JsonProfileDetection(profile="generic", confidence=0.4, signals=(), matched_paths=(), reason="no structured profile matched")
+        return JsonProfileDetection(
+            profile="generic",
+            confidence=0.4,
+            signals=(),
+            matched_paths=(),
+            reason="no structured profile matched",
+        )
     return JsonProfileDetection(
         profile=best_profile,
         confidence=min(best_confidence, 1.0),

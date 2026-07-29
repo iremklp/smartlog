@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 _BOMS: tuple[tuple[str, str, bytes], ...] = (
     ("utf-32-be", "utf-32-be", b"\x00\x00\xfe\xff"),
     ("utf-32-le", "utf-32-le", b"\xff\xfe\x00\x00"),

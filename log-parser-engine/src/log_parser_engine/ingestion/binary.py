@@ -53,7 +53,16 @@ def assess_binary_content(
     printable_ratio = printable_count / len(sample) if sample else 1.0
 
     signals: list[str] = []
-    if sample.startswith((b"\x89PNG\r\n\x1a\n", b"%PDF", b"MZ", b"\x7fELF", b"PK\x03\x04", b"\x1f\x8b")):
+    if sample.startswith(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            b"%PDF",
+            b"MZ",
+            b"\x7fELF",
+            b"PK\x03\x04",
+            b"\x1f\x8b",
+        )
+    ):
         signals.append("known_binary_magic")
     if null_byte_count > 0:
         signals.append("null_bytes")

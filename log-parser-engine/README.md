@@ -323,8 +323,7 @@ Backend:
 - In-memory query, aggregation ve storage contract testleri başarılıdır.
 - Query/aggregation source kapsamı Ruff ve mypy kontrollerinden geçmektedir.
 - `mypy src` kontrolü 216 source dosyasının tamamında başarılıdır.
-- `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
-  ve kullanılmayan değişken borçları dahil 61 bulgu bulunmaktadır.
+- `ruff check .` kontrolü repository genelinde başarılıdır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
 durumuyla bütün production kalite kapılarını henüz geçmemektedir.
@@ -423,11 +422,10 @@ podda bulunan snapshotı görür.
 
 ### Production Öncesi Öncelikler
 
-1. Proje genelindeki Ruff kalite bulgularını temizlemek
-2. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
+1. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
    okumaya geçirmek
-3. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
-4. Frontend bundle'ı route-level code splitting ile küçültmek
+2. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
+3. Frontend bundle'ı route-level code splitting ile küçültmek
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
 başarılı olmalıdır:

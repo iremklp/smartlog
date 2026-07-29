@@ -38,7 +38,8 @@ Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-i
 parser canonical immutability ve plugin startup lifecycle dilimleri
 tamamlanmıştır. In-memory store write/atomicity ve query/aggregation contract
 dilimleri de bitmiştir. Batch orchestrator type kapısı da yeşildir. Sırada
-backend lint, frontend sözleşmeleri ve repository hijyeni vardır.
+frontend sözleşmeleri ve repository hijyeni vardır. Backend pytest, coverage,
+Ruff, mypy ve build kapıları birlikte yeşildir.
 
 ## Büyük aşamalar
 
@@ -163,7 +164,13 @@ backend lint, frontend sözleşmeleri ve repository hijyeni vardır.
      bucket davranışları testlendi.
    - Sonuç: tam backend paketi 521 passed; coverage %85; query/storage source
      Ruff ve mypy kontrolleri başarılı.
-7. Backend Ruff ve mypy borcunu sıfırla.
+7. **Backend Ruff ve mypy borcunu sıfırla — tamamlandı.**
+   - Oversized batch record stop yolu typed domain exceptionına bağlandı.
+   - `mypy src` 216 source dosyasında sıfır hata ile tamamlandı.
+   - Kalan import sırası, kullanılmayan sembol ve satır uzunluğu bulguları
+     davranış değiştirmeyen temizliklerle giderildi.
+   - Sonuç: 523 test, %86 coverage, repository geneli Ruff ve mypy başarılı;
+     wheel/sdist build başarılı.
 8. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
    konfigürasyonunu ve temel component/contract testlerini ekle.
 9. `node_modules`, TypeScript build cache ve generated Vite dosyalarını
@@ -233,7 +240,7 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q0'ın yedinci dilimi uygulanacaktır:
-repository geneli kalan 61 Ruff bulgusu davranış değiştirmeyen küçük gruplar
-halinde temizlenecektir. Backend mypy kapısı artık tamamen yeşildir.
+Bir sonraki `devam et` komutunda Q0'ın sekizinci dilimi uygulanacaktır:
+frontend API tipleri gerçek backend response modelleriyle eşleştirilecek,
+ESLint 9 flat config ve temel contract/component testleri eklenecektir.
 SQL veya harici kalıcı veri tabanı eklenmeyecektir.

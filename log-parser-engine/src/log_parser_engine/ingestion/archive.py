@@ -7,9 +7,9 @@ from pathlib import PurePosixPath
 
 from log_parser_engine.exceptions import (
     ArchiveBombError,
-    ArchiveError,
     ArchiveEntrySelectionError,
     ArchiveEntryTooLargeError,
+    ArchiveError,
     ArchiveNotAllowedError,
     EncryptedArchiveError,
     NestedArchiveError,
@@ -96,29 +96,49 @@ def _extract_zip(
 ) -> tuple[bytes, IngestionSource, str, int, ArchiveEntryInfo]:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            entries = [info for info in archive.infolist() if not _is_ignored_zip_entry(info)]
+            entries = [
+                info
+                for info in archive.infolist()
+                if not _is_ignored_zip_entry(info)
+            ]
             if not entries:
-                raise ArchiveEntrySelectionError("zip archive contains no selectable entries")
+                raise ArchiveEntrySelectionError(
+                    "zip archive contains no selectable entries"
+                )
             if len(entries) > options.max_zip_entries:
                 raise ArchiveBombError("zip entry count exceeds configured limit")
             if any(not _is_safe_entry_name(info.filename) for info in entries):
-                raise ArchiveEntrySelectionError("zip archive contains unsafe entry names")
+                raise ArchiveEntrySelectionError(
+                    "zip archive contains unsafe entry names"
+                )
 
-            if options.reject_encrypted_archives and any(_is_encrypted(info) for info in entries):
+            if options.reject_encrypted_archives and any(
+                _is_encrypted(info) for info in entries
+            ):
                 raise EncryptedArchiveError("encrypted zip archives are not allowed")
 
             selected_info = _select_zip_entry(entries, options)
             payload = archive.read(selected_info)
             if len(payload) > options.max_selected_entry_bytes:
-                raise ArchiveEntryTooLargeError("selected zip entry exceeds configured limit")
+                raise ArchiveEntryTooLargeError(
+                    "selected zip entry exceeds configured limit"
+                )
             if len(payload) > options.max_decompressed_bytes:
-                raise ArchiveBombError("zip entry exceeds configured decompression limit")
+                raise ArchiveBombError(
+                    "zip entry exceeds configured decompression limit"
+                )
 
-            ratio = _compression_ratio(selected_info.compress_size, selected_info.file_size)
+            ratio = _compression_ratio(
+                selected_info.compress_size,
+                selected_info.file_size,
+            )
             if ratio > options.max_compression_ratio:
                 raise ArchiveBombError("zip compression ratio exceeds configured limit")
 
-            if options.reject_nested_archives and _looks_like_archive(payload, selected_info.filename):
+            if options.reject_nested_archives and _looks_like_archive(
+                payload,
+                selected_info.filename,
+            ):
                 raise NestedArchiveError("nested archive content is not allowed")
 
             entry_info = _build_entry_info(selected_info)
@@ -150,7 +170,9 @@ def _select_zip_entry(
 
     candidates = entries
     if options.prefer_text_entries:
-        text_candidates = [info for info in entries if _build_entry_info(info).text_candidate]
+        text_candidates = [
+            info for info in entries if _build_entry_info(info).text_candidate
+        ]
         if text_candidates:
             candidates = text_candidates
 
@@ -159,7 +181,9 @@ def _select_zip_entry(
         raise ArchiveEntrySelectionError("zip archive contains no selectable entries")
     if len(candidates) > 1:
         if options.strict:
-            raise ArchiveEntrySelectionError("zip archive contains multiple selectable entries")
+            raise ArchiveEntrySelectionError(
+                "zip archive contains multiple selectable entries"
+            )
     return candidates[0]
 
 
@@ -194,7 +218,9 @@ def _compression_ratio(compressed_size: int, uncompressed_size: int) -> float:
 
 
 def _looks_like_archive(data: bytes, filename: str | None = None) -> bool:
-    if data.startswith(b"\x1f\x8b") or data.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")):
+    if data.startswith(b"\x1f\x8b") or data.startswith(
+        (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+    ):
         return True
     if filename is None:
         return False

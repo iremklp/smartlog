@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from log_parser_engine.application import ApplicationContainer, ApplicationOptions, LogAnalysisApplicationService
+from log_parser_engine.application import (
+    ApplicationContainer,
+    ApplicationOptions,
+    LogAnalysisApplicationService,
+)
 from log_parser_engine.core import ParserRegistry
-from log_parser_engine.models import EventQuery, LogEvent, LogSeverity, LogSourceType
+from log_parser_engine.models import (
+    EventQuery,
+    LogEvent,
+    LogSeverity,
+    LogSourceType,
+)
 from log_parser_engine.storage import InMemoryEventStore
 from tests.helpers.fake_parser import FakeParser
 

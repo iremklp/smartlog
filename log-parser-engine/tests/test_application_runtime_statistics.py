@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from log_parser_engine.application import ApplicationContainer, ApplicationOptions, LogAnalysisApplicationService
+from log_parser_engine.application import (
+    ApplicationContainer,
+    ApplicationOptions,
+    LogAnalysisApplicationService,
+)
 from log_parser_engine.core import ParserRegistry
 from log_parser_engine.models import LogSourceType
 from log_parser_engine.storage import InMemoryEventStore

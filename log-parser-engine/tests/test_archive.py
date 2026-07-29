@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import pytest
 
 from log_parser_engine.exceptions import (
-    ArchiveError,
     ArchiveEntrySelectionError,
     ArchiveEntryTooLargeError,
-    ArchiveNotAllowedError,
+    ArchiveError,
     EncryptedArchiveError,
     NestedArchiveError,
 )
@@ -34,7 +32,13 @@ def _source(name: str) -> IngestionSource:
 def test_extract_logical_document_handles_gzip() -> None:
     source_name = "standard.log.gz"
     data = _fixture_bytes(source_name)
-    logical_bytes, logical_source, archive_type, compressed_size, selected_entry = extract_logical_document(
+    (
+        logical_bytes,
+        logical_source,
+        archive_type,
+        compressed_size,
+        selected_entry,
+    ) = extract_logical_document(
         data,
         _source(source_name),
         options=IngestionOptions(),
@@ -50,7 +54,13 @@ def test_extract_logical_document_handles_gzip() -> None:
 def test_extract_logical_document_selects_single_zip_entry() -> None:
     source_name = "single_file.zip"
     data = _fixture_bytes(source_name)
-    logical_bytes, logical_source, archive_type, compressed_size, selected_entry = extract_logical_document(
+    (
+        logical_bytes,
+        logical_source,
+        archive_type,
+        compressed_size,
+        selected_entry,
+    ) = extract_logical_document(
         data,
         _source(source_name),
         options=IngestionOptions(),

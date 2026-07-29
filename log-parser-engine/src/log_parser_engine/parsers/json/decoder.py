@@ -7,7 +7,12 @@ from log_parser_engine.exceptions import JsonDecodingError, JsonStructureError
 
 
 class _DuplicateAwareDict(dict):
-    def __init__(self, pairs: list[tuple[str, Any]], *, strict_duplicates: bool = False) -> None:
+    def __init__(
+        self,
+        pairs: list[tuple[str, Any]],
+        *,
+        strict_duplicates: bool = False,
+    ) -> None:
         super().__init__()
         self.duplicates: tuple[str, ...] = ()
         seen: set[str] = set()
@@ -23,14 +28,21 @@ class _DuplicateAwareDict(dict):
             raise JsonStructureError("duplicate JSON keys detected")
 
 
-def decode_json_value(raw_json: str, *, strict_duplicates: bool = False) -> tuple[object, tuple[str, ...]]:
+def decode_json_value(
+    raw_json: str,
+    *,
+    strict_duplicates: bool = False,
+) -> tuple[object, tuple[str, ...]]:
     if not isinstance(raw_json, str):
         raise JsonDecodingError("input must be a string")
     if not raw_json.strip():
         raise JsonDecodingError("input must not be empty")
 
     try:
-        parsed = json.loads(raw_json, object_pairs_hook=_build_pairs_hook(strict_duplicates))
+        parsed = json.loads(
+            raw_json,
+            object_pairs_hook=_build_pairs_hook(strict_duplicates),
+        )
     except json.JSONDecodeError as exc:
         raise JsonDecodingError(f"invalid JSON: {exc.msg}") from exc
 
@@ -44,7 +56,11 @@ def decode_json_value(raw_json: str, *, strict_duplicates: bool = False) -> tupl
     raise JsonStructureError("top-level JSON value must be an object")
 
 
-def decode_json_object(raw_json: str, *, strict_duplicates: bool = False) -> dict[str, object]:
+def decode_json_object(
+    raw_json: str,
+    *,
+    strict_duplicates: bool = False,
+) -> dict[str, object]:
     parsed, _ = decode_json_value(raw_json, strict_duplicates=strict_duplicates)
     if not isinstance(parsed, dict):
         raise JsonStructureError("top-level JSON value must be an object")

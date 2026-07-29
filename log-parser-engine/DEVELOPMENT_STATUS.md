@@ -2,9 +2,9 @@
 
 Son kalite kontrolü: 29 Temmuz 2026
 Branch: `main`
-Referans taban commit: `fb53055`
-Remote durumu: Query/aggregation contract dilimi GitHub `main` branchine
-`fb53055` olarak gönderildi. Bu dosyadaki backend type-gate düzeltmesi henüz bu
+Referans taban commit: `25656c4`
+Remote durumu: Backend type-gate düzeltmesi GitHub `main` branchine `25656c4`
+olarak gönderildi. Bu dosyadaki repository-geneli Ruff temizliği henüz bu
 tabanın üzerinde doğrulanmıştır.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
@@ -12,19 +12,17 @@ tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan teknik dilim **Foundation Quality Recovery — Backend Type
+Son tamamlanan teknik dilim **Foundation Quality Recovery — Backend Lint
 Gate**dir.
 
 Bu dilimde:
 
-- `BatchRecordTooLargeError` orchestratorın kullandığı typed metadata
-  sözleşmesini destekler,
-- exception `record_index`, `character_count` ve `max_characters` alanlarını
-  güvenli, deterministik bir mesajla taşır,
-- eski positional message kullanımı geriye uyumlu kalır,
-- oversized record ve `stop_on_error=True` yolu artık `TypeError` yerine
-  hedeflenen domain exceptionını üretir,
-- bütün backend source dosyaları mypy kontrolünden geçer.
+- kalan import sırası bulguları düzenlendi,
+- kullanılmayan importlar ve gerçekten ölü JSON resolver aliası kaldırıldı,
+- satır uzunluğu bulguları davranış değiştirmeyen satır kırımlarıyla giderildi,
+- API `app` re-export sözleşmesi açık `__all__` ile korundu,
+- backend test, coverage, Ruff, mypy ve package build kapıları birlikte
+  doğrulandı.
 
 Tam backend paketi **523 passed** ve toplam coverage **%86** durumundadır.
 
@@ -110,7 +108,7 @@ production-ready anlamına gelmez.
 | Redis parser odak seçkisi | Başarılı | 7 passed |
 | Built-in parser/pipeline/orchestration seçkisi | Başarılı | 126 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
-| `poetry run ruff check . --statistics` | Başarısız | 61 bulgu |
+| `poetry run ruff check .` | Başarılı | Repository genelinde bulgu yok |
 | `poetry run mypy src` | Başarılı | 216 source dosyasında hata yok |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
 
@@ -118,15 +116,6 @@ Sandbox yazılabilir sparse clone içinde yeni Poetry virtualenv oluşturamadı�
 için bu dilimin pytest/Ruff/mypy kontrolleri mevcut Poetry virtualenv
 binaryleri ve `PYTHONPATH=src` ile çalıştırılmıştır. Tablodaki komutlar
 repository için canonical tekrar komutlarıdır.
-
-Ruff dağılımı:
-
-| Kural | Adet |
-|---|---:|
-| `E501` line too long | 43 |
-| `I001` import order | 12 |
-| `F401` unused import | 5 |
-| `F841` unused variable | 1 |
 
 Başarısız backend testi kalmamıştır. İlk tam paket baseline'ı 399 passed /
 21 failed idi. Type-gate düzeltmesi sonunda sonuç 523 passed durumuna
@@ -329,21 +318,44 @@ SQL, Redis, Elasticsearch veya başka bir harici kalıcı store eklenmeyecektir.
 
 ### Foundation Quality Recovery — Dilim 7: Backend Type ve Lint Gate
 
-Tamamlanan type-gate kısmı:
+Tamamlanan çalışma:
 
 1. `batch/orchestrator.py` ile batch exception constructor sözleşmesi
    eşleştirildi.
 2. Oversized record stop yolunun hedeflenen typed exceptionı ürettiği test
    edildi.
 3. `poetry run mypy src` 216 source dosyasında başarılı oldu.
+4. Import sırası ve kullanılmayan import/değişken bulguları temizlendi.
+5. Satır uzunluğu bulguları davranış değiştirmeyen format değişiklikleriyle
+   giderildi.
+6. Tam pytest, coverage, Ruff, mypy ve build kapıları yeniden çalıştırıldı.
 
-Kalan lint kısmı:
+Sonuç:
 
-1. Import sırası ve kullanılmayan import/değişken bulguları mekanik olarak
-   temizlenecek.
-2. Satır uzunluğu bulguları küçük, gözden geçirilebilir gruplar halinde
-   düzeltilecek.
-3. Tam pytest, coverage, Ruff, mypy ve build kapıları yeniden çalıştırılacak.
+- Tam backend paketi: `523 passed`.
+- Coverage: `%86`.
+- Proje geneli Ruff: başarılı, sıfır bulgu.
+- Proje geneli mypy: başarılı, 216 source dosyası.
+- Package build: sdist ve wheel başarılı.
+
+### Dilim 7 kabul kriterleri — karşılandı
+
+- Oversized batch record typed failure üretir.
+- Backend source type kapısı tamamen yeşildir.
+- Repository geneli Ruff kapısı tamamen yeşildir.
+- Tam test ve coverage gerilememiştir.
+- Paket artifactları başarıyla oluşturulmaktadır.
+
+## Sıradaki önerilen iş
+
+### Foundation Quality Recovery — Dilim 8: Frontend Contract ve Tooling
+
+1. Frontend API tipleri backend response modelleriyle karşılaştırılacak.
+2. `raw_log/raw_message`, `has_next/has_more` ve analiz endpoint farkları
+   giderilecek.
+3. ESLint 9 flat config eklenecek.
+4. Temel API contract ve component testleri genişletilecek.
+5. npm test, lint, typecheck/build ve Prettier kapıları doğrulanacak.
 
 ## Public contract notu
 

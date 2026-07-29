@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from log_parser_engine.exceptions import InputNotFoundError, SymlinkNotAllowedError
-from log_parser_engine.ingestion import IngestionOptions, build_source_from_bytes, read_path_bytes
+from log_parser_engine.ingestion import (
+    IngestionOptions,
+    build_source_from_bytes,
+    read_path_bytes,
+)
 
 
 def test_read_path_bytes_reads_regular_file(tmp_path: Path) -> None:

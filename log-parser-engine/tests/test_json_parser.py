@@ -33,7 +33,8 @@ def test_json_parser_parses_generic_json() -> None:
 
 def test_json_parser_detects_json_content() -> None:
     parser = JsonLogParser()
-    result = parser.safe_detect('{"timestamp":"2026-07-23T14:32:10Z","message":"hello"}')
+    raw_log = '{"timestamp":"2026-07-23T14:32:10Z","message":"hello"}'
+    result = parser.safe_detect(raw_log)
     assert result.match is True
     assert result.confidence >= 0.6
 

@@ -91,4 +91,6 @@ RESERVED_CANONICAL_FIELDS = frozenset(
         "attributes",
     }
 )
-PROTECTED_JSON_PATHS = frozenset({"timestamp", "message", "level", "severity", "service"})
+PROTECTED_JSON_PATHS = frozenset(
+    {"timestamp", "message", "level", "severity", "service"}
+)

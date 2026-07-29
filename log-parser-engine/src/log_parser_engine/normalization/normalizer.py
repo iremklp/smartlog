@@ -90,17 +90,24 @@ class Normalizer:
             timestamp=timestamp,
             source_type=source_type,
             severity=severity,
-            event_type=str(event_type_value) if event_type_value is not None else None,
+            event_type=(
+                str(event_type_value) if event_type_value is not None else None
+            ),
             message=raw_message,
             raw_message=raw_message,
             service=service_value or (context.service if context is not None else None),
-            application=application_value or (context.application if context is not None else None),
+            application=application_value
+            or (context.application if context is not None else None),
             environment=context.environment if context is not None else None,
             host=host_value or (context.host if context is not None else None),
             source=source_value,
             attributes=merged_attributes,
             duration_ms=duration_ms,
-            tags=list(tags_value) if isinstance(tags_value, list) else [str(tags_value)],
+            tags=(
+                list(tags_value)
+                if isinstance(tags_value, list)
+                else [str(tags_value)]
+            ),
         )
         return NormalizationResult(event=event, warnings=warnings)
 

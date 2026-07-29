@@ -59,7 +59,9 @@ class IngestionMetadata(BaseModel):
         cleaned = value.strip().lower()
         if not cleaned:
             return None
-        if len(cleaned) != 64 or any(char not in "0123456789abcdef" for char in cleaned):
+        if len(cleaned) != 64 or any(
+            char not in "0123456789abcdef" for char in cleaned
+        ):
             raise ValueError("sha256 must be a lowercase hex digest")
         return cleaned
 
@@ -81,7 +83,10 @@ class IngestionMetadata(BaseModel):
 
     @field_validator("warnings")
     @classmethod
-    def normalize_warnings(cls, value: tuple[IngestionWarning, ...]) -> tuple[IngestionWarning, ...]:
+    def normalize_warnings(
+        cls,
+        value: tuple[IngestionWarning, ...],
+    ) -> tuple[IngestionWarning, ...]:
         return tuple(value)
 
     @field_validator("attributes")

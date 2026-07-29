@@ -5,6 +5,7 @@ from typing import Any
 
 from log_parser_engine.models import JsonFieldMapping, JsonProfileDetection
 from log_parser_engine.models.enums import LogSeverity
+
 from .constants import GENERIC_DEFAULT_PATHS, RESERVED_CANONICAL_FIELDS
 from .field_path import FieldPathResolver
 
@@ -15,7 +16,6 @@ def map_json_record_to_normalization_fields(
     field_mapping: JsonFieldMapping | None = None,
 ) -> dict[str, Any]:
     mapping = field_mapping or JsonFieldMapping.generic_defaults()
-    resolver = FieldPathResolver
     canonical: dict[str, Any] = {}
     for field_name in _canonical_field_order():
         value = _resolve_field_value(data, mapping, field_name)
@@ -74,7 +74,11 @@ def _canonical_field_order() -> tuple[str, ...]:
     return tuple(sorted(RESERVED_CANONICAL_FIELDS))
 
 
-def _resolve_field_value(data: dict[str, object], mapping: JsonFieldMapping, field_name: str) -> Any:
+def _resolve_field_value(
+    data: dict[str, object],
+    mapping: JsonFieldMapping,
+    field_name: str,
+) -> Any:
     field_attr = f"{field_name}_paths"
     if field_name == "duration_ms":
         field_attr = "duration_ms_paths"
@@ -105,7 +109,16 @@ def _coerce_severity(data: dict[str, object]) -> Any:
         if value is not None:
             if isinstance(value, str):
                 normalized = value.strip().lower()
-                if normalized in {"info", "warning", "error", "debug", "trace", "fatal", "critical", "notice"}:
+                if normalized in {
+                    "info",
+                    "warning",
+                    "error",
+                    "debug",
+                    "trace",
+                    "fatal",
+                    "critical",
+                    "notice",
+                }:
                     return normalized
                 if normalized in {"warn"}:
                     return "warning"

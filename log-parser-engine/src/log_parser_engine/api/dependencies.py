@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from fastapi import Request
 
-from log_parser_engine.application import ApplicationContainer, LogAnalysisApplicationService
+from log_parser_engine.application import (
+    ApplicationContainer,
+    LogAnalysisApplicationService,
+)
 
 
 def get_container(request: Request) -> ApplicationContainer:

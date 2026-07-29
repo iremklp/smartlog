@@ -5,7 +5,11 @@ from typing import Any
 
 class FieldPathResolver:
     def __init__(self, field_paths: tuple[str, ...] | None = None) -> None:
-        self.field_paths = tuple(path.strip() for path in (field_paths or ()) if path and str(path).strip())
+        self.field_paths = tuple(
+            path.strip()
+            for path in (field_paths or ())
+            if path and str(path).strip()
+        )
 
     def resolve(self, data: dict[str, object]) -> Any:
         for path in self.field_paths:
