@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
 Son güncelleme: 29 Temmuz 2026
-Doğrulama tabanı: `bdb3396` sonrası çalışma ağacı
+Doğrulama tabanı: `79d8ec3` sonrası çalışma ağacı
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -33,26 +33,24 @@ tamamlandığında yeniden doğrulanmalıdır.
 
 ## Mevcut öncelik
 
-Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
-Recovery** tamamlanmalıdır. Backend ve frontend kalite kapıları birlikte
-yeşildir; frontend API tipleri gerçek backend sözleşmesine taşınmış, ESLint 9
-ve Vitest yapılandırılmış, generated dependency/cache dosyaları Git takibinden
-çıkarılmıştır. Sırada file upload akışının bounded/chunked hale getirilmesi ve
-API güvenlik sınırlarının test edilmesi vardır.
+**Foundation Quality Recovery tamamlandı.** Backend ve frontend kalite kapıları
+birlikte yeşildir; upload akışı bounded/chunked çalışır, güvenli request ID,
+explicit CORS ve temel API security header sözleşmeleri testlerle sabittir.
+Sıradaki ürün dilimi **Q1 Statistical Analysis UI entegrasyonu**dur.
 
 ## Büyük aşamalar
 
 | Aşama | Durum | Mevcut gerçeklik | Tamamlanma ölçütü | Ana risk |
 |---|---|---|---|---|
-| 1. Foundation | 🔧 | Poetry/src layout ve test altyapısı var; kalite kapıları kırmızı, merkezi structured logging/config eksik | Tam pytest, Ruff ve mypy başarılı; generated dosyalar izlenmiyor; config/logging sözleşmesi belgeli | Kırık temel üzerine yeni özellik eklenmesi |
+| 1. Foundation | 🟡 | Poetry/src layout, yeşil backend/frontend kalite kapıları ve temiz generated-file sınırı var; merkezi structured logging/config eksik | Config/logging sözleşmesi Q4'te tamamlanmış | Dağınık environment/config davranışı |
 | 2. Parser Core | ✅ | BaseParser, context, registry, manager, detection, normalization ve güvenli plugin startup lifecycle var | Yeni pluginler aynı allowlist, staging ve sözleşme testlerinden geçer | Güvenilir plugin kodu process yetkileriyle çalışır |
 | 3. Built-in Parsers | ✅ | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor | Yeni parserlar aynı validated reconstruction contract kapısından geçer | Yeni plugin parserın doğrulamayı atlayan güncelleme yapması |
-| 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
+| 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri; API uploadında 64 KiB chunk ve byte limiti var | Odak ingestion/upload testleri yeşil; limitler belgeli | Upload request süresince bounded içerik process belleğindedir |
 | 5. Batch Orchestration | ✅ | Line/document/stateful mode, sampling, session, error policy, streaming ve typed oversized-record failure testli | Yeni policy yolları aynı typed exception ve stream testlerinden geçer | Karmaşık session lifecycle'ında regresyon riski |
 | 6. In-Memory Storage | ✅ | Typed single write, gerçek atomic rollback, retention, eviction, monoton sequence ve snapshot query var | Yeni write politikaları aynı rollback/index/thread testlerinden geçer | Process/pod restartında veri kaybı tasarım gereğidir |
 | 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
-| 9. REST API | 🟡 | FastAPI app factory ve temel endpointler var | Versioned contract, bounded upload, güvenli error mapping, readiness ve limit testleri tamam | Çoğu endpoint versiyonsuz; file upload boundsuz |
+| 9. REST API | 🟡 | FastAPI app factory, bounded upload, güvenli request ID/CORS/header davranışları ve temel endpointler var | Versioned contract, ortak error envelope ve readiness tamam | Çoğu endpoint versiyonsuz; error sözleşmesi tamamen birleşik değil |
 | 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa, backend uyumlu temel contractlar ve yeşil kalite kapıları var | Analysis/comparison UI, erişilebilirlik ve route-level code splitting tamam | İstatistiksel analiz API'si henüz ekranda tüketilmiyor |
 | 11. Statistical Analysis | 🟡 | Engine ve `/api/v1/analysis*` API kapsamı tamam; 139 odak test geçiyor | Statistical Analysis UI, comparison ve dashboard entegrasyonu tamam | UI mevcut analiz API'sini tüketmiyor |
 | 12. Report Engine | ⏳ | Uygulama yok | Bounded HTML/Markdown/JSON/CSV çıktısı, güvenli download lifecycle ve testler | PDF/Excel dependency ve response boyutu |
@@ -62,7 +60,7 @@ API güvenlik sınırlarının test edilmesi vardır.
 | 16. Audit ve Enterprise Controls | ⏳ | Uygulama yok | Redacted, bounded ve in-memory audit eventleri; kritik operasyonlar kapsanmış | Kalıcı audit garantisi verilemez |
 | 17. Authentication/Authorization | ⛔ | Abstraction yok | Açık kullanıcı onayı sonrası identity/role/permission abstractionı; adapter sınırı testli | Kurumsal sağlayıcı varsaymak |
 | 18. Observability | 🟡 | Request ID, health ve process-local runtime metrics var | Structured logs, Prometheus metrics, readiness ve cardinality sınırları tamam | Raw log/PII sızıntısı ve yüksek cardinality |
-| 19. Security Hardening | 🟡 | Parser/analysis limitleri ve bazı güvenli hata davranışları var | Threat model, dependency/static/secret scan, upload/CORS/CSP/container kontrolleri yeşil | Boundsuz upload ve auth eksikliği |
+| 19. Security Hardening | 🟡 | Parser/analysis limitleri, bounded upload, explicit CORS, güvenli request ID ve temel response headerları var | Threat model, dependency/static/secret scan, auth readiness, CSP ve container kontrolleri yeşil | Auth ve otomatik supply-chain taramaları eksik |
 | 20. Deployment | ⏳ | Containerfile veya OpenShift manifesti yok | Non-root, read-only, resource/probe tanımlı image ve OpenShift manifestleri doğrulanmış | Process-local verinin replica'larda ayrışması |
 | 21. CI/CD | ⏳ | Workflow yok | Backend/frontend quality gate, image scan, SBOM, release ve rollback akışı var | Kırık kalite kapılarının otomatikleşmemesi |
 | 22. Performance/Stability | 🟡 | Bazı bounds, concurrency ve memory testleri var | Parser/store/query/analysis benchmark, API load, soak ve kapasite rehberi tamam | 779 kB frontend bundle ve belirsiz kapasite |
@@ -97,7 +95,7 @@ API güvenlik sınırlarının test edilmesi vardır.
 | Query | Filter/sort/pagination/index | ✅ | StoredEvent snapshot | Deterministik davranış ve source type/lint kapısı yeşil |
 | Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
-| API | FastAPI routes/middleware | 🟡 | Application service | Request ID ve analiz limitleri var; versioning/upload güvenliği eksik |
+| API | FastAPI routes/middleware | 🟡 | Application service | Bounded upload, güvenli request ID/CORS/header ve analiz limitleri var; ortak versioning eksik |
 | UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları ve contract/component testleri var; analysis UI bekliyor |
 | Analysis | StatisticalAnalysisEngine | ✅ | Store snapshot | Summary, distribution, timeline, latency, HTTP, comparison ve insight var |
 | Analysis | Analysis UI/dashboard | ⏳ | Analysis API | `/api/v1/analysis` ve compare UI tarafından çağrılmıyor |
@@ -186,8 +184,23 @@ API güvenlik sınırlarının test edilmesi vardır.
    - Dependency manifesti ve `package-lock.json` kaynak kontrolünde korunuyor.
    - Build ve test cache'leri yeniden üretilebilir yerel çıktılar olarak
      değerlendiriliyor.
-10. File upload akışını bounded/chunked yap; CORS/request ID/security header
-    davranışlarını test et.
+10. **File upload ve API güvenlik sınırlarını tamamla — tamamlandı.**
+    - Upload streami 64 KiB chunklarla ve en fazla `max_bytes + 1` probe ile
+      okunuyor; başarı, limit, boş içerik ve hata yollarında her zaman
+      kapatılıyor.
+    - Varsayılan 50 MiB upload limiti uygulama options modeliyle doğrulanıyor;
+      aşım güvenli `413`, boş veya geçersiz ingestion girdisi güvenli `400`
+      cevabı üretiyor.
+    - Incoming request ID varsayılan olarak güvenilmez; opt-in trusted modda
+      yalnız bounded ve güvenli karakterli değerler kabul ediliyor.
+    - CORS yalnız doğrulanmış explicit HTTP(S) origin, method ve header
+      allowlistleriyle çalışıyor; wildcard ve credential-bearing originler
+      reddediliyor.
+    - API cevapları `no-store`, `nosniff`, `DENY` ve `no-referrer` headerlarını
+      taşıyor.
+    - Sonuç: 24 yeni API testi dahil tam backend paketi 549 test ve %86
+      coverage ile başarılı; Ruff, 217 source dosyasında mypy ve wheel/sdist
+      build kapıları yeşil.
 
 Q0 kabul kriterleri:
 
@@ -200,6 +213,8 @@ Q0 kabul kriterleri:
 - Prettier check başarılı.
 - Üretilmiş dependency/build-cache dosyaları Git tarafından izlenmiyor.
 - API/UI sözleşme testleri mevcut.
+
+Q0 durumu: **tamamlandı**.
 
 ### Q1 — Statistical Analysis UI entegrasyonu
 
@@ -251,7 +266,8 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q0'ın onuncu dilimi uygulanacaktır: file
-upload route'u bounded/chunked okunacak; upload limiti, request ID, CORS ve
-security header davranışları odak API testleriyle sabitlenecektir. SQL veya
+Bir sonraki `devam et` komutunda Q1'in ilk dilimi uygulanacaktır: frontend için
+typed analysis/comparison request-state altyapısı kurulacak, ardından summary,
+timeline ve distribution sonuçları bounded ve erişilebilir görünümlerle
+sunulacaktır. Backend analiz sözleşmesi değiştirilmeden kullanılacak; SQL veya
 harici kalıcı veri tabanı eklenmeyecektir.

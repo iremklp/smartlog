@@ -30,9 +30,21 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 ### API Notes
 
 - Default base URL: `http://localhost:8000`
-- Request ID header is returned as `X-Request-ID`
+- Request ID header is returned as `X-Request-ID`. Incoming client request IDs
+  are ignored by default; trusted mode accepts only bounded, safe identifiers.
 - Dev CORS defaults to `http://localhost:5173` and `http://127.0.0.1:5173`
-- Override CORS with: `LOG_PARSER_CORS_ORIGINS=http://my-ui.example.com,http://localhost:4173`
+- Override CORS with:
+  `LOG_PARSER_CORS_ORIGINS=https://my-ui.example.com,http://localhost:4173`.
+  Origins must be explicit HTTP(S) origins; wildcard, credential-bearing and
+  path-bearing values are rejected.
+- `POST /parse/file` reads uploads in 64 KiB chunks, enforces a configurable
+  byte limit before ingestion and always closes the upload stream. The default
+  limit is 50 MiB (`ApplicationOptions.max_upload_bytes`).
+- Oversized uploads return `413`; empty or invalid ingestion input returns a
+  safe `400` response without reflecting the uploaded content.
+- API responses include `Cache-Control: no-store`,
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and
+  `Referrer-Policy: no-referrer`.
 - Enum values in JSON responses use lowercase/snake_case. Legacy uppercase and
   case-insensitive enum inputs remain accepted.
 
@@ -327,7 +339,7 @@ Frontend:
 
 Backend:
 
-- Tam backend paketi başarılıdır: **525 test geçti**.
+- Tam backend paketi başarılıdır: **549 test geçti**.
 - Tam paket coverage sonucu **%86**'dır. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
@@ -335,7 +347,7 @@ Backend:
   parser/pipeline/orchestration seçkisi 126/126 geçmiştir.
 - In-memory query, aggregation ve storage contract testleri başarılıdır.
 - Query/aggregation source kapsamı Ruff ve mypy kontrollerinden geçmektedir.
-- `mypy src` kontrolü 216 source dosyasının tamamında başarılıdır.
+- `mypy src` kontrolü 217 source dosyasının tamamında başarılıdır.
 - `ruff check .` kontrolü repository genelinde başarılıdır.
 
 Bu nedenle proje kapsamlı ve modüler bir MVP/prototip seviyesindedir; mevcut
@@ -435,10 +447,10 @@ podda bulunan snapshotı görür.
 
 ### Production Öncesi Öncelikler
 
-1. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
-   okumaya geçirmek
-2. Frontend'de `/api/v1/analysis` ve comparison sonuç ekranlarını geliştirmek
-3. Frontend bundle'ı route-level code splitting ile küçültmek
+1. Frontend'de `/api/v1/analysis` ve comparison sonuç ekranlarını geliştirmek
+2. Frontend bundle'ı route-level code splitting ile küçültmek
+3. Merkezi doğrulanmış configuration ve redacted structured logging
+   sözleşmesini tamamlamak
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
 başarılı olmalıdır:

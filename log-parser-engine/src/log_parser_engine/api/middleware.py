@@ -11,8 +11,16 @@ from .request_id import (
     get_request_id,
     new_request_id,
     request_id_context,
+    resolve_request_id,
 )
 from .schemas import AnalysisApiErrorDetail, AnalysisApiErrorResponse
+
+_SECURITY_HEADERS = {
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+}
 
 _ANALYSIS_PATHS = frozenset(
     {
@@ -123,11 +131,18 @@ async def request_id_middleware(
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     incoming = request.headers.get("X-Request-ID")
-    request_id = incoming.strip() if incoming and incoming.strip() else new_request_id()
+    options = request.app.state.container.options
+    request_id = resolve_request_id(
+        incoming,
+        trust_incoming=options.trust_incoming_request_id,
+    )
+    request.state.request_id = request_id
     token = request_id_context.set(request_id)
     try:
         response = await call_next(request)
     finally:
         request_id_context.reset(token)
     response.headers["X-Request-ID"] = request_id
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers[name] = value
     return response

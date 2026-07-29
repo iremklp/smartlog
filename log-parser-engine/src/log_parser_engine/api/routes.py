@@ -10,6 +10,7 @@ from log_parser_engine.application import (
     LogAnalysisApplicationService,
 )
 from log_parser_engine.core import ParserContext
+from log_parser_engine.exceptions import EmptyContentError
 from log_parser_engine.models import (
     BatchParseResult,
     BatchWriteResult,
@@ -40,6 +41,7 @@ from .schemas import (
     ParseWithParserRequest,
     QueryRequest,
 )
+from .uploads import read_bounded_upload
 
 router = APIRouter()
 
@@ -166,9 +168,16 @@ async def parse_file(
     | EventWriteResult
     | BatchWriteResult
 ):
-    payload = await file.read()
-    if not payload:
-        raise HTTPException(status_code=400, detail="uploaded file is empty")
+    try:
+        payload = await read_bounded_upload(
+            file,
+            max_bytes=service.container.options.max_upload_bytes,
+        )
+    except EmptyContentError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="uploaded file is empty",
+        ) from exc
 
     source_label = source_name or file.filename
     ingestion = service.ingest_bytes(payload, source_name=source_label)

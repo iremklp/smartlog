@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+from urllib.parse import urlsplit
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from log_parser_engine.analysis import AnalysisOptions
@@ -29,6 +32,16 @@ class ApplicationOptions(BaseModel):
         ge=256,
         le=1_048_576,
     )
+    max_upload_bytes: int = Field(
+        default=50 * 1024 * 1024,
+        ge=1,
+        le=1024 * 1024 * 1024,
+    )
+    cors_allowed_origins: tuple[str, ...] = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    trust_incoming_request_id: bool = False
 
     @field_validator("name")
     @classmethod
@@ -44,3 +57,39 @@ class ApplicationOptions(BaseModel):
         if not 0.0 <= value <= 1.0:
             raise ValueError("confidence value must be between 0.0 and 1.0")
         return value
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def normalize_cors_origins(cls, value: object) -> tuple[str, ...]:
+        if isinstance(value, str) or not isinstance(value, Sequence):
+            raise ValueError("cors_allowed_origins must be a sequence of origins")
+
+        origins: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("CORS origins must be strings")
+            origin = item.strip().rstrip("/")
+            if not origin:
+                continue
+            cls._validate_cors_origin(origin)
+            if origin not in seen:
+                origins.append(origin)
+                seen.add(origin)
+        return tuple(origins)
+
+    @staticmethod
+    def _validate_cors_origin(origin: str) -> None:
+        if origin == "*":
+            raise ValueError("wildcard CORS origins are not allowed")
+        parsed = urlsplit(origin)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("CORS origins must be HTTP(S) origins without paths")

@@ -19,16 +19,14 @@ from .middleware import (
 from .routes import router
 
 
-def _resolve_cors_origins() -> tuple[str, ...]:
+def _resolve_cors_origins(options: ApplicationOptions) -> tuple[str, ...]:
     configured = os.getenv("LOG_PARSER_CORS_ORIGINS", "").strip()
     if configured:
         origins = tuple(item.strip() for item in configured.split(",") if item.strip())
         if origins:
-            return origins
-    return (
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    )
+            validated = ApplicationOptions(cors_allowed_origins=origins)
+            return validated.cors_allowed_origins
+    return options.cors_allowed_origins
 
 
 def create_app(
@@ -40,14 +38,16 @@ def create_app(
     service = LogAnalysisApplicationService(resolved_container)
 
     app = FastAPI(title=resolved_container.options.name)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=list(_resolve_cors_origins()),
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["X-Request-ID"],
-    )
+    cors_origins = _resolve_cors_origins(resolved_container.options)
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(cors_origins),
+            allow_credentials=False,
+            allow_methods=["DELETE", "GET", "HEAD", "OPTIONS", "POST"],
+            allow_headers=["Accept", "Content-Type", "X-Request-ID"],
+            expose_headers=["X-Request-ID"],
+        )
     app.add_middleware(
         AnalysisRequestSizeLimitMiddleware,
         max_body_bytes=resolved_container.options.max_analysis_request_body_bytes,

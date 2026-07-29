@@ -19,8 +19,11 @@ from log_parser_engine.exceptions import (
     AnalysisSampleLimitError,
     AnalysisTimelineLimitError,
     DuplicateEventError,
+    EmptyContentError,
     EventIdCollisionError,
     EventStoreCapacityError,
+    IngestionError,
+    InputTooLargeError,
 )
 from log_parser_engine.exceptions.parser_registry import ParserNotFoundError
 
@@ -38,6 +41,9 @@ _ANALYSIS_PATHS = frozenset(
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(InputTooLargeError, _input_too_large_handler)
+    app.add_exception_handler(EmptyContentError, _empty_content_handler)
+    app.add_exception_handler(IngestionError, _ingestion_error_handler)
     app.add_exception_handler(ParserNotFoundError, _not_found_handler)
     app.add_exception_handler(DuplicateEventError, _conflict_handler)
     app.add_exception_handler(EventIdCollisionError, _conflict_handler)
@@ -49,6 +55,27 @@ def register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(AnalysisRequestError, _analysis_request_handler)
     app.add_exception_handler(RequestValidationError, _validation_handler)
+
+
+async def _input_too_large_handler(_: Request, __: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=413,
+        content={"detail": "input exceeds the configured size limit"},
+    )
+
+
+async def _empty_content_handler(_: Request, __: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "uploaded file is empty"},
+    )
+
+
+async def _ingestion_error_handler(_: Request, __: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "uploaded file could not be ingested"},
+    )
 
 
 async def _not_found_handler(_: Request, exc: Exception) -> JSONResponse:
