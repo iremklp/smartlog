@@ -86,9 +86,58 @@ poetry run ruff check .
 poetry run mypy src
 ```
 
-## Plugin discovery notes
+## Plugin startup and discovery
 
-Parser implementation modules are separate from plugin entry modules. Webserver plugins are exposed only through `*_plugin.py` entry modules, and helper modules must not export `Parser` or `create_parser`.
+External parser discovery is disabled by default. The application always
+registers the eight built-in parsers first and runs the optional plugin startup
+lifecycle once, before `ParserManager`, the pipeline and the batch orchestrator
+are created.
+
+Trusted package plugins must be explicitly allowlisted and should expose a
+non-empty `__plugin_modules__` manifest:
+
+```python
+from log_parser_engine.application import ApplicationOptions
+from log_parser_engine.plugins import PluginStartupOptions
+
+options = ApplicationOptions(
+    plugin_startup_options=PluginStartupOptions(
+        package_names=("company_log_parsers",),
+        failure_policy="fail",
+        duplicate_policy="reject",
+    )
+)
+```
+
+Entry-point discovery is also opt-in and requires an explicit name allowlist.
+Package candidates are confined to the configured package namespace, and
+fallback class discovery accepts only concrete `BaseParser` subclasses.
+Unrelated classes are never instantiated as parser candidates.
+
+Startup policies:
+
+- `failure_policy="fail"` validates and stages all plugins before changing the
+  real registry; any failure aborts startup without partial registration.
+- `failure_policy="warn"` registers healthy plugins, reports bounded and
+  sanitized startup warnings, and exposes degraded application health.
+- `duplicate_policy="reject"` preserves the existing parser.
+- `duplicate_policy="replace"` preserves registration order, but replacing a
+  built-in parser additionally requires `allow_builtin_replacement=True`.
+- Candidate and warning counts are bounded.
+
+Application package loading requires the manifest by default. Direct loader
+APIs retain their backward-compatible behavior for library users. Injected
+loaders are intended for controlled composition and tests and require
+`allow_injected_loaders=True`.
+
+Plugins are trusted Python code and are not sandboxed. Do not derive package or
+entry-point configuration from uploads, request metadata or other
+user-controlled input. There is no runtime hot reload, remote plugin download,
+filesystem-directory scanning or plugin unload lifecycle.
+
+Parser implementation modules remain separate from plugin entry modules.
+Webserver plugins are exposed only through `*_plugin.py` entry modules, and
+helper modules must not export `Parser` or `create_parser`.
 
 ## Canonical LogEvent updates
 

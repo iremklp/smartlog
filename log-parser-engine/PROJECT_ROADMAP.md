@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
-Son güncelleme: 25 Temmuz 2026  
-Referans taban commit: `d278339`
+Son güncelleme: 29 Temmuz 2026
+Referans taban commit: `f9ac2d1`
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -34,23 +34,23 @@ tamamlandığında yeniden doğrulanmalıdır.
 ## Mevcut öncelik
 
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
-Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu ve built-in
-parser canonical immutability dilimleri tamamlanmıştır. Sırada plugin startup
-lifecycle, storage/query/aggregation, frontend sözleşmeleri ve repository
-hijyeni vardır.
+Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-in
+parser canonical immutability ve plugin startup lifecycle dilimleri
+tamamlanmıştır. Sırada storage/query/aggregation, frontend sözleşmeleri ve
+repository hijyeni vardır.
 
 ## Büyük aşamalar
 
 | Aşama | Durum | Mevcut gerçeklik | Tamamlanma ölçütü | Ana risk |
 |---|---|---|---|---|
 | 1. Foundation | 🔧 | Poetry/src layout ve test altyapısı var; kalite kapıları kırmızı, merkezi structured logging/config eksik | Tam pytest, Ruff ve mypy başarılı; generated dosyalar izlenmiyor; config/logging sözleşmesi belgeli | Kırık temel üzerine yeni özellik eklenmesi |
-| 2. Parser Core | 🔧 | BaseParser, context, registry, manager, detection ve normalization var | Plugin loader sözleşmeleri ve startup lifecycle testleri başarılı | Plugin keşfi container'a bağlı değil |
+| 2. Parser Core | ✅ | BaseParser, context, registry, manager, detection, normalization ve güvenli plugin startup lifecycle var | Yeni pluginler aynı allowlist, staging ve sözleşme testlerinden geçer | Güvenilir plugin kodu process yetkileriyle çalışır |
 | 3. Built-in Parsers | ✅ | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor | Yeni parserlar aynı validated reconstruction contract kapısından geçer | Yeni plugin parserın doğrulamayı atlayan güncelleme yapması |
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
 | 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
 | 6. In-Memory Storage | 🔧 | Store, identity, retention, eviction ve istatistik yüzeyi var | Atomic batch gerçekten atomik; duplicate/capacity/thread-safety testleri başarılı | `atomic=True` yolu uygulanmamış |
 | 7. Query Engine | 🔧 | Typed filter, sort, pagination, facet ve aggregation var | Query/aggregation testleri ve mypy başarılı; API/UI contractı sabit | Test fixture hataları ve tip/sözleşme uyumsuzlukları |
-| 8. Application Service | 🟡 | Container ve orchestration servisi parsing/store/query/analysis'i bağlıyor | Lifecycle, güvenli response mapping ve config testleri tamam | Plugin discovery bypass ediliyor |
+| 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory ve temel endpointler var | Versioned contract, bounded upload, güvenli error mapping, readiness ve limit testleri tamam | Çoğu endpoint versiyonsuz; file upload boundsuz |
 | 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa ve temel akışlar var | Backend contractlarıyla uyumlu, erişilebilir, testli ve lint/typecheck/build kapıları yeşil | Elle tutulan tipler backendden sapmış |
 | 11. Statistical Analysis | 🟡 | Engine ve `/api/v1/analysis*` API kapsamı tamam; 139 odak test geçiyor | Statistical Analysis UI, comparison ve dashboard entegrasyonu tamam | UI mevcut analiz API'sini tüketmiyor |
@@ -79,7 +79,7 @@ hijyeni vardır.
 | Foundation | Quality tooling | 🔧 | Poetry/npm | Backend Ruff/mypy ve frontend ESLint/Prettier başarısız |
 | Parser Core | BaseParser/metadata/context | ✅ | Domain models | Sözleşme ve güvenli wrapperlar mevcut |
 | Parser Core | Registry/manager/detection | ✅ | BaseParser | Confidence, ambiguity ve registry yüzeyleri mevcut |
-| Parser Core | Plugin discovery | 🟡 | Registry | Loader/discovery odak testleri yeşil; application startup'a bağlı değil |
+| Parser Core | Plugin discovery | ✅ | Registry | Default-off allowlist, strict staging, warn izolasyonu ve container startup testleri yeşil |
 | Parser Core | Normalization/pipeline | ✅ | Parser manager | Domain/pipeline odak sözleşme testleri yeşil; non-string input güvenli failure döndürüyor |
 | Built-in Parsers | IIS W3C | ✅ | Stateful context | Header ve field mapping desteği var |
 | Built-in Parsers | JSON/JSON Lines | ✅ | JSON profiles | Structured JSON ve line profilleri var |
@@ -129,7 +129,18 @@ hijyeni vardır.
    - Sonuç: built-in parser/pipeline/orchestration odak seçkisi 126 passed; tam
      paket 434 passed, 8 failed ve 11 setup error; coverage %84.
 4. **Plugin discovery'yi application startup lifecycle'ına güvenli ve testli
-   biçimde bağla — sıradaki iş.**
+   biçimde bağla — tamamlandı.**
+   - Harici discovery varsayılan kapalı ve yalnız allowlist kaynaklarla
+     etkinleşiyor.
+   - Package manifesti, entry-point adı, candidate/warning limitleri ve yalnız
+     `BaseParser` sınıfı kabulü doğrulanıyor.
+   - Strict mod gerçek registry'yi kısmi değiştirmiyor; warn mod sağlıklı
+     pluginleri koruyor.
+   - Built-in kayıt sırası, duplicate reject/replace ve built-in replacement
+     opt-in davranışları testli.
+   - Sonuç: plugin/application odak seçkisi 60 passed; tam backend paketi
+     481 passed, 8 failed ve 11 setup error. Açık hatalar storage/query
+     baseline'ındadır.
 5. InMemoryEventStore atomic batch, duplicate, capacity ve clear davranışlarını
    tamamla.
 6. Query/aggregation test ve mypy sorunlarını gider.
@@ -203,8 +214,7 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda yeni özellik açılmayacaktır. Plugin discovery
-application startup lifecycle'ına bağlanacaktır. Yükleme allowlist'i, yalnız
-`BaseParser` sınıflarının aday olması, deterministik sıra, duplicate politikası,
-güvenli startup warningleri ve config ile kapatma davranışı odak ve container
-entegrasyon testleriyle sabitlenecektir.
+Bir sonraki `devam et` komutunda Q0'ın beşinci dilimi uygulanacaktır:
+`InMemoryEventStore` single/batch write sözleşmesi, typed duplicate/capacity
+hataları, gerçek atomic batch davranışı, monoton sequence ve thread-safety
+testleri düzeltilecektir. SQL veya harici kalıcı veri tabanı eklenmeyecektir.

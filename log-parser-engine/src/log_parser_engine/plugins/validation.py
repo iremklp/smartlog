@@ -9,7 +9,9 @@ def resolve_parser_instance(loaded_object: object) -> BaseParser:
     if isinstance(loaded_object, BaseParser):
         return loaded_object
 
-    if isinstance(loaded_object, type) and issubclass(loaded_object, BaseParser):
+    if isinstance(loaded_object, type):
+        if not issubclass(loaded_object, BaseParser):
+            raise PluginFactoryError("loaded class is not a BaseParser subclass")
         try:
             return loaded_object()
         except Exception as exc:  # noqa: BLE001

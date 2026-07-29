@@ -11,6 +11,7 @@ import pytest
 from log_parser_engine.exceptions import (
     InvalidPluginError,
     PluginDiscoveryError,
+    PluginFactoryError,
     PluginLoadError,
 )
 from log_parser_engine.models import PluginCandidate
@@ -202,6 +203,37 @@ def test_package_loader_does_not_instantiate_non_parser_class_fallback(
         loader.load(candidate)
 
     invalid_module = importlib.import_module("demo_plugins.invalid_plugin")
+    assert invalid_module.constructed is False
+
+
+def test_package_loader_does_not_construct_invalid_explicit_parser_class(
+    package_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package_dir = Path(package_module.__path__[0])
+    (package_dir / "invalid_alias.py").write_text(
+        "constructed = False\n"
+        "class Helper:\n"
+        "    def __init__(self):\n"
+        "        global constructed\n"
+        "        constructed = True\n"
+        "Parser = Helper\n",
+        encoding="utf-8",
+    )
+    importlib.invalidate_caches()
+    monkeypatch.setattr(
+        package_module,
+        "__plugin_modules__",
+        ("invalid_alias",),
+        raising=False,
+    )
+    loader = PackagePluginLoader("demo_plugins", require_manifest=True)
+    candidate = loader.discover()[0]
+
+    with pytest.raises(PluginFactoryError, match="not a BaseParser subclass"):
+        loader.load(candidate)
+
+    invalid_module = importlib.import_module("demo_plugins.invalid_alias")
     assert invalid_module.constructed is False
 
 

@@ -62,3 +62,17 @@ def test_resolve_parser_instance_rejects_invalid_factory() -> None:
 
     with pytest.raises(PluginFactoryError):
         resolve_parser_instance(bad_factory)
+
+
+def test_resolve_parser_instance_does_not_construct_an_unrelated_class() -> None:
+    constructed = False
+
+    class Helper:
+        def __init__(self) -> None:
+            nonlocal constructed
+            constructed = True
+
+    with pytest.raises(PluginFactoryError, match="not a BaseParser subclass"):
+        resolve_parser_instance(Helper)
+
+    assert constructed is False

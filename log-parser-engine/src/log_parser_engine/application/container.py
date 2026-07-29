@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from log_parser_engine.analysis import StatisticalAnalysisEngine
 from log_parser_engine.batch import BatchParseOrchestrator
 from log_parser_engine.core import BaseParser, ParserRegistry
 from log_parser_engine.ingestion import FileIngestionService
-from log_parser_engine.models import EventStoreStatistics
+from log_parser_engine.models import EventStoreStatistics, PluginDiscoveryResult
 from log_parser_engine.normalization import LogNormalizer
 from log_parser_engine.pipeline.pipeline import LogProcessingPipeline
+from log_parser_engine.plugins import BasePluginLoader
 from log_parser_engine.storage import EventStore, InMemoryEventStore
 
 from .helpers import build_parser_manager, build_parser_registry
 from .options import ApplicationOptions
+from .plugin_lifecycle import PluginStartupLifecycle
 from .runtime_statistics import AnalysisRuntimeMetrics
 
 
@@ -27,12 +30,32 @@ class ApplicationContainer:
         registry: ParserRegistry | None = None,
         store: EventStore | None = None,
         normalizer: LogNormalizer | None = None,
+        plugin_loaders: Iterable[BasePluginLoader] | None = None,
     ) -> None:
         self.options = options or ApplicationOptions()
         self.created_at = datetime.now(timezone.utc)
         self.startup_warnings: tuple[str, ...] = tuple()
-        self.store = store or InMemoryEventStore(self.options.event_store_options)
-        self.registry = registry or build_parser_registry(self._build_builtin_parsers())
+        self.plugin_discovery_result = PluginDiscoveryResult()
+        self.store = (
+            store
+            if store is not None
+            else InMemoryEventStore(self.options.event_store_options)
+        )
+        self.registry = (
+            registry
+            if registry is not None
+            else self._build_default_registry()
+        )
+        self.plugin_startup_lifecycle = PluginStartupLifecycle(
+            self.options.plugin_startup_options,
+            injected_loaders=plugin_loaders,
+        )
+        plugin_outcome = self.plugin_startup_lifecycle.run(self.registry)
+        self.plugin_discovery_result = plugin_outcome.discovery_result
+        self.startup_warnings = (
+            *self.startup_warnings,
+            *plugin_outcome.warnings,
+        )
         self.parser_manager = build_parser_manager(
             self.registry,
             minimum_confidence=self.options.parser_minimum_confidence,
@@ -59,12 +82,14 @@ class ApplicationContainer:
         registry: ParserRegistry | None = None,
         store: EventStore | None = None,
         normalizer: LogNormalizer | None = None,
+        plugin_loaders: Iterable[BasePluginLoader] | None = None,
     ) -> "ApplicationContainer":
         return cls(
             options=options,
             registry=registry,
             store=store,
             normalizer=normalizer,
+            plugin_loaders=plugin_loaders,
         )
 
     def store_statistics(self) -> EventStoreStatistics:
@@ -77,6 +102,12 @@ class ApplicationContainer:
     def release_analysis_slot(self) -> None:
         """Release a previously acquired analysis slot."""
         self._analysis_slots.release()
+
+    def _build_default_registry(self) -> ParserRegistry:
+        registry = build_parser_registry()
+        for parser in self._build_builtin_parsers():
+            registry.register(parser, origin="builtin")
+        return registry
 
     def _build_builtin_parsers(self) -> tuple[BaseParser, ...]:
         if not self.options.enable_builtin_parsers:

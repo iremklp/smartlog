@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from log_parser_engine.core import BaseParser, ParserContext, ParserManager, ParserRegistry
+from log_parser_engine.core import (
+    BaseParser,
+    ParserContext,
+    ParserManager,
+    ParserRegistry,
+)
 from log_parser_engine.models import LogEvent
 
 
@@ -24,7 +29,9 @@ def build_parser_context(
     )
 
 
-def build_parser_registry(parsers: Iterable[BaseParser] | None = None) -> ParserRegistry:
+def build_parser_registry(
+    parsers: Iterable[BaseParser] | None = None,
+) -> ParserRegistry:
     return ParserRegistry(parsers=parsers)
 
 

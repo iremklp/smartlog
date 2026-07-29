@@ -4,6 +4,7 @@ from .commands import AnalyzeEventsCommand, CompareEventsCommand
 from .container import ApplicationContainer
 from .health import ApplicationHealth
 from .options import ApplicationOptions
+from .plugin_lifecycle import PluginStartupLifecycle, PluginStartupOutcome
 from .responses import (
     AnalyzeEventsResponse,
     BatchExecutionResponse,
@@ -23,6 +24,8 @@ __all__ = [
     "ApplicationHealth",
     "ApplicationOptions",
     "ApplicationRuntimeStatistics",
+    "PluginStartupLifecycle",
+    "PluginStartupOutcome",
     "BatchExecutionResponse",
     "CompareEventsCommand",
     "CompareEventsResponse",

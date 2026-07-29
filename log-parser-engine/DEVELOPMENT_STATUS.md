@@ -88,7 +88,7 @@ production-ready anlamına gelmez.
 |---|---|---|
 | Domain model contractı | ✅ | Enum çıktıları lowercase; uppercase/case-insensitive legacy input kabul ediliyor |
 | Parse/Pipeline contractı | ✅ | Domain/pipeline odak testleri ve güvenli failure regresyonları başarılı |
-| Plugin discovery | 🟡 | Loader/discovery odak testleri başarılı; container hâlâ yalnız built-in parserları doğrudan yükler |
+| Plugin discovery | ✅ | Default-off allowlist, strict staging, warn izolasyonu ve container lifecycle testleri başarılı |
 | Redis parser | ✅ | 7/7 test; server, Sentinel, systemd, enrichment ve immutability başarılı |
 | Built-in parser immutability | ✅ | Sekiz built-in parser root/nested attributes, context collections, tags ve JSON round-trip testlerinden geçiyor |
 | Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
@@ -210,8 +210,8 @@ yapılmalıdır.
   başarısız olduğu için ürün henüz production-ready değildir.
 - Frontend README analysis/comparison API'lerini listelemiyor.
 - README upload akışının boundsuz `UploadFile.read()` kullandığını söylemiyor.
-- Plugin discovery odak testleri başarılıdır; runtime container discovery'yi
-  hâlâ çağırmaz.
+- Plugin discovery runtime container başlangıcında, parser manager kurulmadan
+  önce ve en fazla bir kez çalışır.
 - Frontend README API contractı ile elle yazılmış TypeScript modellerinin bazı
   alanları gerçek backendden sapmıştır.
 - Repository kök README'si yalnız başlık seviyesindedir; gerçek dokümantasyon
@@ -231,11 +231,11 @@ yapılmalıdır.
 - Query/store kapasite ve concurrency davranışı kırık testler nedeniyle henüz
   production kanıtına sahip değildir.
 
-## Sıradaki önerilen iş
+## Tamamlanan son iş
 
 ### Foundation Quality Recovery — Dilim 4: Plugin Discovery Startup Lifecycle
 
-Bir sonraki çalışma:
+Tamamlanan çalışma:
 
 1. `ApplicationContainer` için açık ve tek seferlik plugin discovery lifecycle
    noktası tanımlar.
@@ -252,10 +252,20 @@ Bir sonraki çalışma:
 7. Container izolasyonu, startup idempotency, circular import ve güvenli
    failure testlerini ekler.
 
-Bu dilim ve kalan Q0 kalite borçları tamamlanmadan Report Engine veya yeni ürün
-özelliği başlatılmamalıdır.
+Sonuç:
 
-### Dilim 4 kabul kriterleri
+- Plugin/application odak seçkisi: `60 passed`.
+- Tam backend paketi: `481 passed, 8 failed, 11 errors`.
+- Kalan failure/errorlar storage/query baseline'ındadır; plugin dilimi yeni
+  tam-paket regresyonu eklememiştir.
+- Ruff plugin/application kapsamı ve mypy ilgili source kapsamı başarılıdır.
+- Proje geneli Ruff: 197 bulgu.
+- Proje geneli mypy: 20 hata / 5 dosya.
+
+Kalan Q0 kalite borçları tamamlanmadan Report Engine veya yeni ürün özelliği
+başlatılmamalıdır.
+
+### Dilim 4 kabul kriterleri — karşılandı
 
 - Discovery startup sırasında en fazla bir kez ve deterministik çalışır.
 - Yalnız `BaseParser` alt sınıfları instantiate/register edilir.
@@ -265,6 +275,21 @@ Bu dilim ve kalan Q0 kalite borçları tamamlanmadan Report Engine veya yeni ür
 - Discovery devre dışıyken mevcut registry ve parser contractları gerilemez.
 - Yeni Ruff/mypy ihlali yoktur.
 - Tam test failure/error sayıları artmamıştır.
+
+## Sıradaki önerilen iş
+
+### Foundation Quality Recovery — Dilim 5: InMemoryEventStore
+
+1. `add()` typed domain exceptionlarını `ValueError` olarak sarmalamayacak.
+2. Duplicate reject/replace ve explicit ID collision sözleşmeleri sabitlenecek.
+3. `atomic=True` batch write gerçekten all-or-nothing çalışacak.
+4. Capacity/eviction/retention planı commit öncesinde doğrulanacak.
+5. `clear()` sonrasında sequence monotonluğu korunacak.
+6. Thread-safety fixture'ları canonical `LogEvent.raw_message` sözleşmesine
+   uyarlanacak; model gevşetilmeyecek.
+7. Query/aggregation fixture setup hataları ayrı ve görünür tutulacak.
+
+SQL, Redis, Elasticsearch veya başka bir harici kalıcı store eklenmeyecektir.
 
 ## Public contract notu
 

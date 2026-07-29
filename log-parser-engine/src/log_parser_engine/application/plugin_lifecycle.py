@@ -4,9 +4,7 @@ import importlib
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
-from importlib import metadata as importlib_metadata
 from time import perf_counter
-from typing import Any
 
 from log_parser_engine.core import BaseParser, ParserRegistry
 from log_parser_engine.exceptions import (
@@ -91,12 +89,15 @@ class PluginStartupLifecycle:
             if self._ran:
                 if registry is not self._registry:
                     raise PluginStartupError(
-                        "plugin startup lifecycle cannot be reused with another registry"
+                        "plugin startup lifecycle cannot be reused with "
+                        "another registry"
                     )
                 if self._startup_error is not None:
                     raise self._startup_error
                 if self._outcome is None:
-                    raise PluginStartupError("plugin startup did not produce an outcome")
+                    raise PluginStartupError(
+                        "plugin startup did not produce an outcome"
+                    )
                 return self._outcome
 
             self._ran = True
@@ -145,7 +146,10 @@ class PluginStartupLifecycle:
             candidate_count += len(selected)
 
             if binding.required and not selected:
-                if not self._has_failure_for_source(results, binding.loader.source_name):
+                if not self._has_failure_for_source(
+                    results,
+                    binding.loader.source_name,
+                ):
                     results.append(
                         self._failure_result(
                             self._source_candidate(binding),
@@ -219,7 +223,10 @@ class PluginStartupLifecycle:
         for package_name in self._options.package_names:
             try:
                 self._validate_package_manifest(package_name)
-                loader = PackagePluginLoader(package_name)
+                loader = PackagePluginLoader(
+                    package_name,
+                    require_manifest=self._options.require_package_manifest,
+                )
             except Exception as exc:  # noqa: BLE001
                 results.append(
                     self._failure_result(
@@ -241,13 +248,11 @@ class PluginStartupLifecycle:
             )
 
         if self._options.enable_entry_points:
-            # Accessing this function ensures importlib.metadata is loaded in a clean
-            # Python process before the backward-compatible loader uses it.
-            _ = importlib_metadata.entry_points
             bindings.append(
                 _LoaderBinding(
                     loader=EntryPointPluginLoader(
-                        group=self._options.entry_point_group
+                        group=self._options.entry_point_group,
+                        name_allowlist=self._options.entry_point_names,
                     ),
                     origin="plugin:entry_point",
                     required=True,
@@ -280,7 +285,9 @@ class PluginStartupLifecycle:
             raise PluginDiscoveryError("configured package has no plugin manifest")
         normalized = tuple(str(item).strip() for item in manifest if str(item).strip())
         if not normalized:
-            raise PluginDiscoveryError("configured package has an empty plugin manifest")
+            raise PluginDiscoveryError(
+                "configured package has an empty plugin manifest"
+            )
         for module_name in normalized:
             parts = module_name.split(".")
             if any(not part.isidentifier() or part.startswith("_") for part in parts):
@@ -293,6 +300,19 @@ class PluginStartupLifecycle:
     ) -> tuple[PluginCandidate, ...] | None:
         try:
             discovered = binding.loader.safe_discover()
+            valid_candidates = tuple(
+                candidate
+                for candidate in discovered
+                if isinstance(candidate, PluginCandidate)
+            )
+            invalid_count = len(discovered) - len(valid_candidates)
+            if invalid_count:
+                results.append(
+                    self._failure_result(
+                        self._source_candidate(binding),
+                        error_type="InvalidPluginCandidateError",
+                    )
+                )
         except Exception as exc:  # noqa: BLE001
             results.append(
                 self._failure_result(
@@ -303,7 +323,7 @@ class PluginStartupLifecycle:
             return None
         return tuple(
             sorted(
-                discovered,
+                valid_candidates,
                 key=lambda candidate: (
                     candidate.source,
                     candidate.origin,
@@ -527,7 +547,11 @@ class PluginStartupLifecycle:
         )
 
     def _source_candidate(self, binding: _LoaderBinding) -> PluginCandidate:
-        source = self._safe_token(binding.loader.source_name)
+        try:
+            source_name = binding.loader.source_name
+        except Exception:  # noqa: BLE001
+            source_name = "unknown"
+        source = self._safe_token(source_name)
         return self._synthetic_candidate(
             name=source,
             source=source,
@@ -568,4 +592,3 @@ class PluginStartupLifecycle:
             and self._safe_token(result.candidate.source) == normalized_source
             for result in results
         )
-

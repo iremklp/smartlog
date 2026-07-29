@@ -1,7 +1,7 @@
 # Parsel Engine Mimarisi
 
-Son güncelleme: 25 Temmuz 2026  
-Referans taban commit: `d278339`
+Son güncelleme: 29 Temmuz 2026
+Referans taban commit: `f9ac2d1`
 
 ## Kapsam
 
@@ -43,7 +43,8 @@ flowchart LR
     APP --> ANALYSIS[StatisticalAnalysisEngine]
     STORE --> QUERY[Query / Facet / Aggregation]
     STORE --> ANALYSIS
-    PLUGINS[Parser paketleri] -. keşif altyapısı mevcut,<br/>startup bağlantısı eksik .-> REG[ParserRegistry]
+    PLUGINS[Allowlist package / entry point] --> STARTUP[PluginStartupLifecycle]
+    STARTUP --> REG[ParserRegistry]
     PIPE --> REG
     BATCH --> REG
 ```
@@ -79,7 +80,7 @@ modellerini kullanır.
 |---|---|---|
 | `models` | Canonical event, parse, batch, query, store ve analysis modelleri | Enum wire contractı lowercase; validated event reconstruction sözleşmesi mevcut |
 | `core` | BaseParser, context, registry, manager ve detection | Ana sözleşmeler mevcut |
-| `plugins` | Package ve entry-point aday keşfi/yüklemesi | Application startup'a bağlı değil |
+| `plugins` | Allowlist package ve entry-point aday keşfi/yüklemesi | Startup lifecycle'a bağlı; varsayılan kapalı |
 | `parsers` | IIS, JSON, Redis, webserver, syslog ve Windows XML parserları | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor |
 | `ingestion` | Encoding, BOM, binary, line endings, archive ve metadata | Core ingestion büyük ölçüde tamam |
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
@@ -149,11 +150,26 @@ webserver parserı bu ortak yolu kullanır. Gerçek fixturelarla root/nested
 attributes, context içindeki iç içe koleksiyonlar, tags, JSON serialization ve
 round-trip sözleşmeleri test edilir.
 
-`PackagePluginLoader`, `EntryPointPluginLoader` ve discovery modelleri vardır.
-Loader/discovery/validation odak sözleşme testleri başarılıdır. Ancak güncel
-`ApplicationContainer` startup'ta bunları çalıştırmaz; sekiz built-in parserı
-doğrudan import edip registry'ye kaydeder. Bu nedenle plugin altyapısı mevcut
-olsa da runtime plugin lifecycle tamamlanmış sayılmaz.
+`PackagePluginLoader`, `EntryPointPluginLoader`, `PluginStartupOptions` ve
+`PluginStartupLifecycle` application başlangıcına bağlıdır. Harici discovery
+varsayılan kapalıdır. Etkinleştirildiğinde akış:
+
+1. Sekiz built-in parser sabit sırada ve `builtin` origin ile kaydedilir.
+2. Yalnız açıkça yapılandırılmış package manifestleri ve entry-point adları
+   keşfedilir.
+3. Adaylar deterministik sırada yüklenir ve gerçek `BaseParser` sözleşmesine
+   göre doğrulanır.
+4. Duplicate ve failure politikaları uygulanır.
+5. Strict/fail modunda staging registry başarılı olmadan gerçek registry
+   değiştirilmez.
+6. Warn modunda sağlıklı pluginler korunur; hata ayrıntıları bounded ve
+   sanitize edilmiş startup warninglerine dönüşür.
+7. Son registry snapshotı üzerinden parser manager, pipeline ve batch
+   orchestrator kurulur.
+
+Built-in replacement ayrı bir opt-in gerektirir. Plugin kodu process içinde
+çalışan güvenilir Python kodudur; sandbox, hot reload, remote indirme veya
+request üzerinden plugin konfigürasyonu yoktur.
 
 ## Tek kayıt ingestion ve parse akışı
 
