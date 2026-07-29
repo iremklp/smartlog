@@ -314,16 +314,15 @@ Frontend:
 
 Backend:
 
-- Tam backend paketi başarılıdır: **521 test geçti**.
-- Tam paket coverage sonucu **%85**'tir. Yalnız istatistiksel analiz modülünün
+- Tam backend paketi başarılıdır: **523 test geçti**.
+- Tam paket coverage sonucu **%86**'dır. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
 - Redis parser testleri 7/7, deep-immutability dahil built-in
   parser/pipeline/orchestration seçkisi 126/126 geçmiştir.
 - In-memory query, aggregation ve storage contract testleri başarılıdır.
 - Query/aggregation source kapsamı Ruff ve mypy kontrollerinden geçmektedir.
-- `mypy src` kontrolünde yalnız `batch/orchestrator.py` dosyasında 3 tip hatası
-  bulunmaktadır.
+- `mypy src` kontrolü 216 source dosyasının tamamında başarılıdır.
 - `ruff check .` kontrolünde satır uzunluğu, import sırası, kullanılmayan import
   ve kullanılmayan değişken borçları dahil 61 bulgu bulunmaktadır.
 
@@ -424,13 +423,11 @@ podda bulunan snapshotı görür.
 
 ### Production Öncesi Öncelikler
 
-1. Analiz dışındaki eski backend test uyumsuzluklarını gidermek
-2. Proje genelindeki kalan `mypy` tip hatalarını gidermek
-3. Proje genelindeki Ruff kalite bulgularını temizlemek
-4. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
+1. Proje genelindeki Ruff kalite bulgularını temizlemek
+2. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
    okumaya geçirmek
-5. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
-6. Frontend bundle'ı route-level code splitting ile küçültmek
+3. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
+4. Frontend bundle'ı route-level code splitting ile küçültmek
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
 başarılı olmalıdır:

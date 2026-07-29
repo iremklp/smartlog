@@ -2,9 +2,9 @@
 
 Son kalite kontrolü: 29 Temmuz 2026
 Branch: `main`
-Referans taban commit: `28d5ace`
-Remote durumu: InMemoryEventStore atomicity dilimi GitHub `main` branchine
-`28d5ace` olarak gönderildi. Bu dosyadaki query/aggregation dilimi henüz bu
+Referans taban commit: `fb53055`
+Remote durumu: Query/aggregation contract dilimi GitHub `main` branchine
+`fb53055` olarak gönderildi. Bu dosyadaki backend type-gate düzeltmesi henüz bu
 tabanın üzerinde doğrulanmıştır.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
@@ -12,25 +12,21 @@ tasarım hedefini production-readiness onayı olarak kullanmaz.
 
 ## Son tamamlanan iş
 
-Son tamamlanan teknik dilim **Foundation Quality Recovery — Query ve
-Aggregation Contract Recovery**dir.
+Son tamamlanan teknik dilim **Foundation Quality Recovery — Backend Type
+Gate**dir.
 
 Bu dilimde:
 
-- Pydantic v2 query ve aggregation validator sözleşmeleri düzeltildi,
-- query engine yalnız yapılandırılmış indexleri kullanır ve eksik indexte
-  full-scan fallback uygular,
-- parser name filtre, facet ve aggregation yollarında aynı canonical extractor
-  üzerinden okunur,
-- optional sort alanları deterministik ve `None` değerleri sonda olacak biçimde
-  sıralanır,
-- facet sonuçları bounded'dır,
-- sabit zaman bucketları UTC Unix epoch'a hizalanır,
-- duration örneği olmayan average bucketı `None` üretir,
-- canonical serialization desteklenmeyen nesneleri stringe çevirmek yerine
-  typed storage hatasına dönüştürür.
+- `BatchRecordTooLargeError` orchestratorın kullandığı typed metadata
+  sözleşmesini destekler,
+- exception `record_index`, `character_count` ve `max_characters` alanlarını
+  güvenli, deterministik bir mesajla taşır,
+- eski positional message kullanımı geriye uyumlu kalır,
+- oversized record ve `stop_on_error=True` yolu artık `TypeError` yerine
+  hedeflenen domain exceptionını üretir,
+- bütün backend source dosyaları mypy kontrolünden geçer.
 
-Tam backend paketi **521 passed** ve toplam coverage **%85** durumundadır.
+Tam backend paketi **523 passed** ve toplam coverage **%86** durumundadır.
 
 ## Repository snapshotı
 
@@ -89,7 +85,7 @@ production-ready anlamına gelmez.
 | Plugin discovery | ✅ | Default-off allowlist, strict staging, warn izolasyonu ve container lifecycle testleri başarılı |
 | Redis parser | ✅ | 7/7 test; server, Sentinel, systemd, enrichment ve immutability başarılı |
 | Built-in parser immutability | ✅ | Sekiz built-in parser root/nested attributes, context collections, tags ve JSON round-trip testlerinden geçiyor |
-| Batch orchestration | 🟡 | Ana akış var; orchestrator üç mypy call-arg hatası taşıyor |
+| Batch orchestration | ✅ | Oversized-record stop yolu typed exception ve metadata testiyle güvence altında |
 | InMemoryEventStore | ✅ | Typed write, duplicate/collision/capacity/clear ve thread testleri yeşil |
 | Atomic batch write | ✅ | Gerçek state/index/counter/sequence rollback uygulanmış ve testli |
 | Query engine | ✅ | Index fallback, parser dimensionları, optional sort, page limitleri ve deterministic output testli |
@@ -108,14 +104,14 @@ production-ready anlamına gelmez.
 
 | Komut | Sonuç | Ayrıntı |
 |---|---|---|
-| `poetry run pytest -q` | Başarılı | 521 passed |
-| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarılı | 521 passed; toplam coverage %85 |
+| `poetry run pytest -q` | Başarılı | 523 passed |
+| `poetry run pytest -q --cov=log_parser_engine --cov-report=term` | Başarılı | 523 passed; toplam coverage %86 |
 | Domain/pipeline/plugin/API odak contract seçkisi | Başarılı | 39 passed |
 | Redis parser odak seçkisi | Başarılı | 7 passed |
 | Built-in parser/pipeline/orchestration seçkisi | Başarılı | 126 passed |
 | `poetry run pytest -q tests/test_analysis_*.py tests/test_statistical_analysis_engine.py tests/test_latency_analysis.py tests/test_http_analysis.py` | Başarılı | 139 passed |
 | `poetry run ruff check . --statistics` | Başarısız | 61 bulgu |
-| `poetry run mypy src` | Başarısız | 1 dosyada 3 hata |
+| `poetry run mypy src` | Başarılı | 216 source dosyasında hata yok |
 | `poetry build` | Başarılı | sdist ve wheel üretildi |
 
 Sandbox yazılabilir sparse clone içinde yeni Poetry virtualenv oluşturamadığı
@@ -132,12 +128,8 @@ Ruff dağılımı:
 | `F401` unused import | 5 |
 | `F841` unused variable | 1 |
 
-Mypy hata dosyaları:
-
-- `batch/orchestrator.py`
-
 Başarısız backend testi kalmamıştır. İlk tam paket baseline'ı 399 passed /
-21 failed idi. Altı Foundation dilimi sonunda sonuç 521 passed durumuna
+21 failed idi. Type-gate düzeltmesi sonunda sonuç 523 passed durumuna
 ilerlemiştir. Canonical `LogEvent.raw_message` nonblank kuralı fixture hataları
 için gevşetilmemiştir.
 
@@ -337,14 +329,21 @@ SQL, Redis, Elasticsearch veya başka bir harici kalıcı store eklenmeyecektir.
 
 ### Foundation Quality Recovery — Dilim 7: Backend Type ve Lint Gate
 
+Tamamlanan type-gate kısmı:
+
 1. `batch/orchestrator.py` ile batch exception constructor sözleşmesi
-   eşleştirilecek.
-2. Kalan üç mypy hatası test davranışını değiştirmeden giderilecek.
-3. Import sırası ve kullanılmayan import/değişken bulguları mekanik olarak
+   eşleştirildi.
+2. Oversized record stop yolunun hedeflenen typed exceptionı ürettiği test
+   edildi.
+3. `poetry run mypy src` 216 source dosyasında başarılı oldu.
+
+Kalan lint kısmı:
+
+1. Import sırası ve kullanılmayan import/değişken bulguları mekanik olarak
    temizlenecek.
-4. Satır uzunluğu bulguları küçük, gözden geçirilebilir gruplar halinde
+2. Satır uzunluğu bulguları küçük, gözden geçirilebilir gruplar halinde
    düzeltilecek.
-5. Tam pytest, coverage, Ruff, mypy ve build kapıları yeniden çalıştırılacak.
+3. Tam pytest, coverage, Ruff, mypy ve build kapıları yeniden çalıştırılacak.
 
 ## Public contract notu
 

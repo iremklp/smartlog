@@ -37,8 +37,8 @@ Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
 Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-in
 parser canonical immutability ve plugin startup lifecycle dilimleri
 tamamlanmıştır. In-memory store write/atomicity ve query/aggregation contract
-dilimleri de bitmiştir. Sırada batch orchestrator type borcu, backend lint,
-frontend sözleşmeleri ve repository hijyeni vardır.
+dilimleri de bitmiştir. Batch orchestrator type kapısı da yeşildir. Sırada
+backend lint, frontend sözleşmeleri ve repository hijyeni vardır.
 
 ## Büyük aşamalar
 
@@ -48,7 +48,7 @@ frontend sözleşmeleri ve repository hijyeni vardır.
 | 2. Parser Core | ✅ | BaseParser, context, registry, manager, detection, normalization ve güvenli plugin startup lifecycle var | Yeni pluginler aynı allowlist, staging ve sözleşme testlerinden geçer | Güvenilir plugin kodu process yetkileriyle çalışır |
 | 3. Built-in Parsers | ✅ | Sekiz built-in parser fixture ve canonical deep-immutability testlerinden geçiyor | Yeni parserlar aynı validated reconstruction contract kapısından geçer | Yeni plugin parserın doğrulamayı atlayan güncelleme yapması |
 | 4. Ingestion | ✅ | Text/byte/path, encoding, BOM, binary, line ending, gzip/zip ve güvenlik kontrolleri var | Odak ingestion testleri yeşil; limitler belgeli | API upload route'u ingestion öncesinde boundsuz okuyor |
-| 5. Batch Orchestration | 🟡 | Line/document/stateful mode, sampling, session, error policy ve streaming var | Batch testleri ve mypy tamamen başarılı; public sınırlar tutarlı | Orchestrator tip hataları ve karmaşık lifecycle |
+| 5. Batch Orchestration | ✅ | Line/document/stateful mode, sampling, session, error policy, streaming ve typed oversized-record failure testli | Yeni policy yolları aynı typed exception ve stream testlerinden geçer | Karmaşık session lifecycle'ında regresyon riski |
 | 6. In-Memory Storage | ✅ | Typed single write, gerçek atomic rollback, retention, eviction, monoton sequence ve snapshot query var | Yeni write politikaları aynı rollback/index/thread testlerinden geçer | Process/pod restartında veri kaybı tasarım gereğidir |
 | 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
@@ -91,11 +91,11 @@ frontend sözleşmeleri ve repository hijyeni vardır.
 | Built-in Parsers | RFC3164/RFC5424 | ✅ | Syslog tokenizer | İki ayrı parser mevcut |
 | Ingestion | Text/bytes/path ve encoding | ✅ | Ingestion options | BOM, binary, encoding ve metadata var |
 | Ingestion | Gzip/Zip güvenliği | ✅ | Archive options | Entry seçimi ve archive güvenlik kuralları var |
-| Batch | Streaming ve parser session | 🟡 | Parser manager | İşlevsel; `batch/orchestrator.py` mypy hataları taşıyor |
+| Batch | Streaming ve parser session | ✅ | Parser manager | Oversized-record stop yolu typed exception üretir; source mypy temiz |
 | Storage | InMemoryEventStore | ✅ | LogEvent | Typed errors, duplicate/capacity/clear ve concurrency testleri yeşil |
 | Storage | Atomic batch write | ✅ | InMemoryEventStore | Store state/index/counter/sequence rollback testli |
-| Query | Filter/sort/pagination/index | 🟡 | StoredEvent snapshot | Davranış testleri yeşil; source lint/type borcu var |
-| Query | Facet/aggregation | 🔧 | Query engine | Testler yeşil; model validator ve bucket type sorunları var |
+| Query | Filter/sort/pagination/index | ✅ | StoredEvent snapshot | Deterministik davranış ve source type/lint kapısı yeşil |
+| Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
 | API | FastAPI routes/middleware | 🟡 | Application service | Request ID ve analiz limitleri var; versioning/upload güvenliği eksik |
 | UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları var; sözleşme ve test kapsamı yetersiz |
@@ -234,7 +234,6 @@ tam çalışmaya devam eder.
 ## Bir sonraki `devam et`
 
 Bir sonraki `devam et` komutunda Q0'ın yedinci dilimi uygulanacaktır:
-önce `batch/orchestrator.py` içindeki son üç mypy hatası giderilecek, ardından
-repository geneli Ruff bulguları davranış değiştirmeyen küçük gruplar halinde
-temizlenecektir.
+repository geneli kalan 61 Ruff bulgusu davranış değiştirmeyen küçük gruplar
+halinde temizlenecektir. Backend mypy kapısı artık tamamen yeşildir.
 SQL veya harici kalıcı veri tabanı eklenmeyecektir.

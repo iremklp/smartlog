@@ -85,7 +85,7 @@ modellerini kullanır.
 | `ingestion` | Encoding, BOM, binary, line endings, archive ve metadata | Core ingestion büyük ölçüde tamam |
 | `normalization` | Parser çıktısını canonical modele eşleme | Pipeline tarafından kullanılıyor |
 | `pipeline` | Detect, parse, normalize ve stage sonucu | Non-string ve errorsız non-success sonuçlar structured failure üretir |
-| `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; mypy borcu var |
+| `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; typed oversized-record failure sözleşmesi testli |
 | `storage` | EventStore protocol, atomik in-memory yazma, retention ve query snapshotı | Write/rollback ile typed query/aggregation sözleşmeleri testli |
 | `analysis` | Summary, dağılım, timeline, percentile, latency, HTTP ve comparison | Backend kapsamı odak testlerinde yeşil |
 | `application` | Bağımlılık lifecycle'ı ve use-case orchestration | API ile domain arasında sınır |

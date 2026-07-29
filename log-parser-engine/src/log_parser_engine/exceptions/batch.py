@@ -33,6 +33,29 @@ class BatchProgressCallbackError(BatchOrchestrationError):
 class BatchRecordTooLargeError(BatchOrchestrationError):
     """Raised when a batch record exceeds configured limits."""
 
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        record_index: int | None = None,
+        character_count: int | None = None,
+        max_characters: int | None = None,
+    ) -> None:
+        self.record_index = record_index
+        self.character_count = character_count
+        self.max_characters = max_characters
+        if message is None:
+            if None in {record_index, character_count, max_characters}:
+                raise TypeError(
+                    "record_index, character_count, and max_characters are required "
+                    "when message is omitted"
+                )
+            message = (
+                f"Batch record {record_index} contains {character_count} characters; "
+                f"the configured limit is {max_characters}."
+            )
+        super().__init__(message)
+
 
 class BatchSourceError(BatchOrchestrationError):
     """Raised when the batch source cannot be consumed safely."""
