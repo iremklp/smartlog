@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
 Son güncelleme: 29 Temmuz 2026
-Referans taban commit: `f9ac2d1`
+Doğrulama tabanı: `bdb3396` sonrası çalışma ağacı
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -34,12 +34,11 @@ tamamlandığında yeniden doğrulanmalıdır.
 ## Mevcut öncelik
 
 Sıradaki çalışma yeni Report Engine değildir. Önce **Foundation Quality
-Recovery** tamamlanmalıdır. Domain sözleşmesi, Redis stabilizasyonu, built-in
-parser canonical immutability ve plugin startup lifecycle dilimleri
-tamamlanmıştır. In-memory store write/atomicity ve query/aggregation contract
-dilimleri de bitmiştir. Batch orchestrator type kapısı da yeşildir. Sırada
-frontend sözleşmeleri ve repository hijyeni vardır. Backend pytest, coverage,
-Ruff, mypy ve build kapıları birlikte yeşildir.
+Recovery** tamamlanmalıdır. Backend ve frontend kalite kapıları birlikte
+yeşildir; frontend API tipleri gerçek backend sözleşmesine taşınmış, ESLint 9
+ve Vitest yapılandırılmış, generated dependency/cache dosyaları Git takibinden
+çıkarılmıştır. Sırada file upload akışının bounded/chunked hale getirilmesi ve
+API güvenlik sınırlarının test edilmesi vardır.
 
 ## Büyük aşamalar
 
@@ -54,7 +53,7 @@ Ruff, mypy ve build kapıları birlikte yeşildir.
 | 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory ve temel endpointler var | Versioned contract, bounded upload, güvenli error mapping, readiness ve limit testleri tamam | Çoğu endpoint versiyonsuz; file upload boundsuz |
-| 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa ve temel akışlar var | Backend contractlarıyla uyumlu, erişilebilir, testli ve lint/typecheck/build kapıları yeşil | Elle tutulan tipler backendden sapmış |
+| 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa, backend uyumlu temel contractlar ve yeşil kalite kapıları var | Analysis/comparison UI, erişilebilirlik ve route-level code splitting tamam | İstatistiksel analiz API'si henüz ekranda tüketilmiyor |
 | 11. Statistical Analysis | 🟡 | Engine ve `/api/v1/analysis*` API kapsamı tamam; 139 odak test geçiyor | Statistical Analysis UI, comparison ve dashboard entegrasyonu tamam | UI mevcut analiz API'sini tüketmiyor |
 | 12. Report Engine | ⏳ | Uygulama yok | Bounded HTML/Markdown/JSON/CSV çıktısı, güvenli download lifecycle ve testler | PDF/Excel dependency ve response boyutu |
 | 13. Rule Engine | ⏳ | Uygulama yok | Typed ve deterministik koşullar; `eval`/arbitrary code yok; testli API/UI | Güvensiz expression tasarımı |
@@ -73,12 +72,12 @@ Ruff, mypy ve build kapıları birlikte yeşildir.
 
 | Katman | Subsystem | Durum | Bağımlılık | Not |
 |---|---|---|---|---|
-| Foundation | Repository/package yapısı | 🟡 | Yok | Python ve frontend paketleri var; yaklaşık 9.928 `node_modules` dosyası izleniyor |
+| Foundation | Repository/package yapısı | ✅ | Yok | Python ve frontend paketleri var; dependency ve build-cache çıktıları Git dışında |
 | Foundation | Domain models | ✅ | Pydantic v2 | Canonical enum çıktıları lowercase; legacy uppercase input kabul ediliyor |
 | Foundation | Exception hierarchy | 🟡 | Domain models | Geniş hiyerarşi var; storage ve API mapping tutarlılığı eksik |
 | Foundation | Configuration | 🟡 | Application container | Bazı options/env kullanımları var; merkezi ve doğrulanmış config yüzeyi yok |
 | Foundation | Logging conventions | ⏳ | Request ID | Structured logging ve redaction standardı yok |
-| Foundation | Quality tooling | 🔧 | Poetry/npm | Backend Ruff/mypy ve frontend ESLint/Prettier başarısız |
+| Foundation | Quality tooling | ✅ | Poetry/npm | Backend pytest/coverage/Ruff/mypy/build ve frontend typecheck/ESLint/Vitest/Prettier/build başarılı |
 | Parser Core | BaseParser/metadata/context | ✅ | Domain models | Sözleşme ve güvenli wrapperlar mevcut |
 | Parser Core | Registry/manager/detection | ✅ | BaseParser | Confidence, ambiguity ve registry yüzeyleri mevcut |
 | Parser Core | Plugin discovery | ✅ | Registry | Default-off allowlist, strict staging, warn izolasyonu ve container startup testleri yeşil |
@@ -99,7 +98,7 @@ Ruff, mypy ve build kapıları birlikte yeşildir.
 | Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
 | API | FastAPI routes/middleware | 🟡 | Application service | Request ID ve analiz limitleri var; versioning/upload güvenliği eksik |
-| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları var; sözleşme ve test kapsamı yetersiz |
+| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları ve contract/component testleri var; analysis UI bekliyor |
 | Analysis | StatisticalAnalysisEngine | ✅ | Store snapshot | Summary, distribution, timeline, latency, HTTP, comparison ve insight var |
 | Analysis | Analysis UI/dashboard | ⏳ | Analysis API | `/api/v1/analysis` ve compare UI tarafından çağrılmıyor |
 
@@ -171,10 +170,22 @@ Ruff, mypy ve build kapıları birlikte yeşildir.
      davranış değiştirmeyen temizliklerle giderildi.
    - Sonuç: 523 test, %86 coverage, repository geneli Ruff ve mypy başarılı;
      wheel/sdist build başarılı.
-8. Frontend API tiplerini gerçek backend sözleşmesiyle eşleştir; ESLint 9
-   konfigürasyonunu ve temel component/contract testlerini ekle.
-9. `node_modules`, TypeScript build cache ve generated Vite dosyalarını
-   Git takibinden çıkarıp `.gitignore` kurallarını düzelt.
+8. **Frontend API sözleşmesini ve kalite araçlarını düzelt — tamamlandı.**
+   - Canonical `LogEvent`, parse, batch, pagination, query ve analysis tipleri
+     backend response modelleriyle eşleştirildi.
+   - Parser kimliği `attributes.parser_name` üzerinden okunuyor; pagination
+     backendin serialize ettiği `offset`, `limit`, `returned` ve `total`
+     alanlarından türetiliyor.
+   - `/api/v1/analysis` ve `/api/v1/analysis/compare` istemcileri eklendi.
+   - ESLint 9 flat config, Vitest jsdom/setup ve Prettier kapıları çalışıyor.
+   - Sonuç: 11 frontend testi, typecheck, lint, format check ve production
+     build başarılı; backend paketi 525 test ve %86 coverage ile yeşil.
+9. **Generated frontend dosyalarını Git takibinden çıkar — tamamlandı.**
+   - `node_modules`, `.vite`, `coverage`, `*.tsbuildinfo` ve `.DS_Store`
+     ignore kuralları eklendi.
+   - Dependency manifesti ve `package-lock.json` kaynak kontrolünde korunuyor.
+   - Build ve test cache'leri yeniden üretilebilir yerel çıktılar olarak
+     değerlendiriliyor.
 10. File upload akışını bounded/chunked yap; CORS/request ID/security header
     davranışlarını test et.
 
@@ -240,7 +251,7 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q0'ın sekizinci dilimi uygulanacaktır:
-frontend API tipleri gerçek backend response modelleriyle eşleştirilecek,
-ESLint 9 flat config ve temel contract/component testleri eklenecektir.
-SQL veya harici kalıcı veri tabanı eklenmeyecektir.
+Bir sonraki `devam et` komutunda Q0'ın onuncu dilimi uygulanacaktır: file
+upload route'u bounded/chunked okunacak; upload limiti, request ID, CORS ve
+security header davranışları odak API testleriyle sabitlenecektir. SQL veya
+harici kalıcı veri tabanı eklenmeyecektir.

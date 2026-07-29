@@ -50,6 +50,8 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 - `POST /batch/parse/store`
 - `POST /query`
 - `POST /aggregate`
+- `POST /api/v1/analysis`
+- `POST /api/v1/analysis/compare`
 - `GET /events/{event_id}`
 - `DELETE /events/{event_id}`
 
@@ -65,7 +67,7 @@ UI source lives in [frontend](frontend).
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -73,6 +75,13 @@ Environment:
 
 - Copy `.env.example` to `.env`
 - Set `VITE_API_BASE_URL=http://localhost:8000`
+
+Frontend quality gates:
+
+```bash
+npm run check
+npm run build
+```
 
 ## Linting
 
@@ -307,14 +316,18 @@ Eventler yalnızca çalışan process belleğinde tutulur:
 
 Frontend:
 
-- Vitest smoke testi başarılıdır.
-- TypeScript ve Vite production build başarılıdır.
-- Üretilen ana JavaScript bundle'ı yaklaşık 779 kB olduğundan ileride route
-  bazlı code splitting uygulanması önerilir.
+- TypeScript, ESLint 9, Prettier ve Vite production build kontrolleri
+  başarılıdır.
+- Dört test dosyasında **11 Vitest testi** geçmektedir; API URL/body
+  sözleşmesi, pagination ve backend biçimli event tablosu fixture'ı kapsanır.
+- `node_modules`, Vite cache ve TypeScript build info dosyaları Git tarafından
+  izlenmez; kurulum `package-lock.json` üzerinden `npm ci` ile tekrarlanır.
+- Üretilen ana JavaScript bundle'ı yaklaşık 780 kB olduğundan route bazlı code
+  splitting halen önerilir.
 
 Backend:
 
-- Tam backend paketi başarılıdır: **523 test geçti**.
+- Tam backend paketi başarılıdır: **525 test geçti**.
 - Tam paket coverage sonucu **%86**'dır. Yalnız istatistiksel analiz modülünün
   odak testleri 139/139 geçmiş ve modül coverage değeri %92 olmuştur.
 - Domain/pipeline/plugin/API contract odak seçkisi 39/39 geçmiştir.
@@ -424,7 +437,7 @@ podda bulunan snapshotı görür.
 
 1. Dosya upload akışını tek seferde belleğe almak yerine bounded/chunked
    okumaya geçirmek
-2. Frontend'i `/api/v1/analysis` sözleşmesine bağlamak
+2. Frontend'de `/api/v1/analysis` ve comparison sonuç ekranlarını geliştirmek
 3. Frontend bundle'ı route-level code splitting ile küçültmek
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı
@@ -437,7 +450,6 @@ poetry run ruff check .
 poetry run mypy src
 
 cd frontend
-npm test
-npm run lint
+npm run check
 npm run build
 ```

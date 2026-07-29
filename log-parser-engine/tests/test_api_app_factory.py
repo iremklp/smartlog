@@ -55,6 +55,22 @@ def test_api_parse_endpoint_uses_injected_service() -> None:
     assert response.json()["success"] is True
 
 
+def test_api_parse_with_parser_uses_path_parser_name() -> None:
+    parser = FakeParser("fake", source_type=LogSourceType.FILE)
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False),
+        registry=ParserRegistry([parser]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post("/parse/fake", json={"raw_log": "hello world"})
+
+    assert response.status_code == 200
+    assert response.json()["events"][0]["raw_message"] == "hello world"
+
+
 def test_api_parse_store_route_not_shadowed_by_parser_name_route() -> None:
     parser = FakeParser(
         "fake",
@@ -205,5 +221,21 @@ def test_api_query_severity_filter_returns_matching_events() -> None:
     assert query_response.status_code == 200
     body = query_response.json()
     assert body["page"]["total"] == 1
+    assert body["page"]["returned"] == 1
     assert len(body["events"]) == 1
     assert body["events"][0]["event"]["severity"] == "error"
+
+
+def test_api_missing_event_returns_404() -> None:
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False),
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.get("/events/missing")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "event not found"

@@ -5,6 +5,7 @@ import {
   useReactTable
 } from "@tanstack/react-table";
 
+import { getEventParserName } from "../lib/api/contracts";
 import type { StoredEvent } from "../lib/api/types";
 import { formatDate } from "../lib/utils/format";
 
@@ -29,11 +30,11 @@ const columns = [
     id: "severity",
     header: "Severity"
   }),
-  columnHelper.accessor((row) => row.event.parser_name ?? "-", {
+  columnHelper.accessor((row) => getEventParserName(row.event) ?? "-", {
     id: "parser",
     header: "Parser"
   }),
-  columnHelper.accessor((row) => row.event.message ?? row.event.raw_log.slice(0, 80), {
+  columnHelper.accessor((row) => row.event.message, {
     id: "message",
     header: "Message"
   })
@@ -53,8 +54,13 @@ export function EventsTable({ rows, onSelect }: EventsTableProps) {
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-inkSoft">
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                <th
+                  key={header.id}
+                  className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-inkSoft"
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>

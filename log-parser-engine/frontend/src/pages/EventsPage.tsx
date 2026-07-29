@@ -4,8 +4,9 @@ import { useMutation } from "@tanstack/react-query";
 
 import { EventsTable } from "../components/EventsTable";
 import { Panel } from "../components/Panel";
+import { eventPageHasMore } from "../lib/api/contracts";
 import { queryEvents } from "../lib/api/endpoints";
-import type { EventQuery, EventQueryResult } from "../lib/api/types";
+import type { EventQuery, EventQueryResult, LogSeverity } from "../lib/api/types";
 import { formatNumber } from "../lib/utils/format";
 
 export function EventsPage() {
@@ -13,7 +14,7 @@ export function EventsPage() {
   const [message, setMessage] = useState("");
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
-  const [severity, setSeverity] = useState("");
+  const [severity, setSeverity] = useState<LogSeverity | "">("");
 
   const mutation = useMutation({
     mutationFn: async (query: EventQuery) => queryEvents(query),
@@ -55,7 +56,7 @@ export function EventsPage() {
           />
           <select
             value={severity}
-            onChange={(event) => setSeverity(event.target.value)}
+            onChange={(event) => setSeverity(event.target.value as LogSeverity | "")}
             className="rounded-xl border-white/20 bg-black/20"
           >
             <option value="">any severity</option>
@@ -94,18 +95,22 @@ export function EventsPage() {
             : "Run a query to load events"
         }
       >
-        {mutation.isPending ? <p className="mb-3 text-sm text-inkSoft">Query calisiyor...</p> : null}
+        {mutation.isPending ? (
+          <p className="mb-3 text-sm text-inkSoft">Query calisiyor...</p>
+        ) : null}
         {mutation.error ? <p className="mb-3 text-sm text-err">{mutation.error.message}</p> : null}
         {result ? (
           <>
             <div className="mb-3 text-sm text-inkSoft">
-              Total: {result.page.total ?? "n/a"} | Has next: {String(result.page.has_next)}
+              Total: {result.page.total ?? "n/a"} | Has more:{" "}
+              {String(eventPageHasMore(result.page))}
             </div>
             {result.events.length > 0 ? (
               <EventsTable rows={result.events} onSelect={(id) => navigate(`/events/${id}`)} />
             ) : (
               <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-6 text-sm text-inkSoft">
-                Sorgu tamamlandi ancak event bulunamadi. Analysis ekraninda Store secenegiyle veri yazip tekrar deneyin.
+                Sorgu tamamlandi ancak event bulunamadi. Analysis ekraninda Store secenegiyle veri
+                yazip tekrar deneyin.
               </div>
             )}
           </>

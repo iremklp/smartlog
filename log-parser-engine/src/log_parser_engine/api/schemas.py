@@ -180,7 +180,6 @@ class ParseWithParserRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     raw_log: str
-    parser_name: str
     context: ParserContext | None = None
     allow_disabled_parser: bool = False
 

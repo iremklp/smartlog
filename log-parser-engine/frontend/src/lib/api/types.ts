@@ -1,8 +1,55 @@
-export type Primitive = string | number | boolean | null;
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
 
 export interface ApiErrorShape {
-  detail?: string;
+  detail?: unknown;
+  error?: {
+    code?: unknown;
+    message?: unknown;
+  };
 }
+
+export type LogSeverity =
+  "trace" | "debug" | "info" | "notice" | "warning" | "error" | "critical" | "fatal" | "unknown";
+
+export type LogSourceType =
+  | "file"
+  | "syslog"
+  | "http"
+  | "database"
+  | "windows_event"
+  | "application"
+  | "iis"
+  | "redis"
+  | "json"
+  | "xml"
+  | "csv"
+  | "nginx"
+  | "apache"
+  | "linux_syslog"
+  | "kubernetes"
+  | "openshift"
+  | "jenkins"
+  | "unknown";
+
+export type ParseStatus = "success" | "failed" | "partial";
+
+export type ErrorType =
+  | "unknown"
+  | "parsing"
+  | "validation"
+  | "ingestion"
+  | "unknown_format"
+  | "empty_input"
+  | "internal_error"
+  | "detection_failed"
+  | "parse_failed"
+  | "validation_failed"
+  | "invalid_timestamp"
+  | "invalid_encoding";
 
 export interface ApplicationHealth {
   status: "healthy" | "degraded";
@@ -23,6 +70,13 @@ export interface RuntimeStatistics {
   enabled_parser_count: number;
   startup_warnings: string[];
   store_statistics: EventStoreStatistics;
+  analysis_operations_total: number;
+  analysis_operations_failed: number;
+  comparison_operations_total: number;
+  comparison_operations_failed: number;
+  analyzed_events_total: number;
+  average_analysis_duration_ms: number;
+  maximum_analysis_duration_ms: number;
 }
 
 export interface EventStoreStatistics {
@@ -50,21 +104,33 @@ export interface EventStoreStatistics {
   last_retention_at: string | null;
 }
 
+export interface ParserMetadata {
+  name: string;
+  display_name: string;
+  version: string;
+  source_type: LogSourceType;
+  description: string | null;
+  author: string | null;
+  homepage: string | null;
+  supported_extensions: string[];
+  supported_content_types: string[];
+  priority: number;
+  enabled_by_default: boolean;
+  supports_multiline: boolean;
+  supports_batch: boolean;
+  thread_safe: boolean;
+  experimental: boolean;
+  tags: string[];
+}
+
 export interface ParserRegistration {
   parser_name: string;
   parser_version: string;
-  source_type: string;
+  source_type: LogSourceType;
   enabled: boolean;
   registered_at: string;
   registration_order: number;
-  metadata: {
-    name: string;
-    version: string;
-    source_type: string;
-    display_name?: string | null;
-    supports_batch?: boolean;
-    tags?: string[];
-  };
+  metadata: ParserMetadata;
   origin: string | null;
   notes: string | null;
 }
@@ -74,15 +140,20 @@ export interface ParserContextInput {
   file_path?: string | null;
   content_type?: string | null;
   encoding?: string;
+  line_number?: number | null;
+  environment?: string | null;
+  application?: string | null;
+  service?: string | null;
+  host?: string | null;
   strict?: boolean;
   preserve_raw?: boolean;
-  attributes?: Record<string, unknown>;
+  attributes?: JsonObject;
 }
 
 export interface ParseRequest {
   raw_log: string;
   context?: ParserContextInput | null;
-  options?: Record<string, unknown> | null;
+  options?: JsonObject;
 }
 
 export interface ParseWithParserRequest {
@@ -91,17 +162,26 @@ export interface ParseWithParserRequest {
   allow_disabled_parser?: boolean;
 }
 
+export type DuplicatePolicy = "reject" | "ignore" | "replace";
+
 export interface EventWriteOptions {
   event_id?: string | null;
   deduplicate?: boolean | null;
-  duplicate_policy?: "ignore" | "replace" | "error" | null;
+  duplicate_policy?: DuplicatePolicy | null;
   apply_retention_before_write?: boolean;
   source_batch_id?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: JsonObject;
+}
+
+export interface ParseError {
+  message: string;
+  status: ParseStatus;
+  error_type: ErrorType;
+  details: Record<string, string> | null;
 }
 
 export interface ParseResult {
-  status: string;
+  status: ParseStatus;
   events: LogEvent[];
   errors: ParseError[];
 }
@@ -110,69 +190,133 @@ export interface PipelineResult {
   success: boolean;
   event: LogEvent | null;
   parse_result: ParseResult | null;
-  normalization_result: Record<string, unknown> | null;
-  selection: Record<string, unknown> | null;
+  normalization_result: JsonObject | null;
+  selection: JsonObject | null;
   errors: ParseError[];
-  warnings: Array<Record<string, unknown>>;
-  stages: Array<Record<string, unknown>>;
+  warnings: JsonObject[];
+  stages: JsonObject[];
   duration_ms: number;
   parser_name: string | null;
   parser_version: string | null;
-  source_type: string | null;
+  source_type: LogSourceType | null;
   ambiguous: boolean;
   normalized: boolean;
-}
-
-export interface ParseError {
-  code?: string;
-  message: string;
-  details?: Record<string, Primitive>;
 }
 
 export interface BatchParseRequest {
   text: string;
   context?: ParserContextInput | null;
-  options?: Record<string, unknown> | null;
+  options?: JsonObject;
+}
+
+export type BatchRecordType = "data" | "header" | "comment" | "blank" | "document";
+export type BatchItemStatus = "success" | "failure" | "skipped" | "header" | "comment";
+
+export interface BatchItem {
+  index: number;
+  source_line_start: number | null;
+  source_line_end: number | null;
+  raw_record: string | null;
+  raw_record_preview: string | null;
+  record_type: BatchRecordType;
+  context_attributes: JsonObject;
+  character_count: number;
+}
+
+export interface BatchItemResult {
+  item: BatchItem;
+  status: BatchItemStatus;
+  parser_name: string | null;
+  event: LogEvent | null;
+  parse_result: ParseResult | null;
+  error_code: string | null;
+  error_message: string | null;
+  duration_ms: number | null;
+  detection_performed: boolean;
+  redetection_performed: boolean;
+  state_updates: JsonObject;
+  attributes: JsonObject;
+}
+
+export interface BatchParseStatistics {
+  records_seen: number;
+  records_attempted: number;
+  records_succeeded: number;
+  records_failed: number;
+  records_skipped: number;
+  headers_seen: number;
+  comments_seen: number;
+  blank_records_seen: number;
+  events_collected: number;
+  failures_collected: number;
+  failures_dropped: number;
+  parser_detection_count: number;
+  parser_redetection_count: number;
+  parser_switch_count: number;
+  bytes_or_characters_processed: number;
+  max_record_characters_seen: number;
+  total_duration_ms: number;
+  detection_duration_ms: number;
+  parsing_duration_ms: number;
+  earliest_event_timestamp: string | null;
+  latest_event_timestamp: string | null;
+  stopped_early: boolean;
+  stop_reason: string | null;
+  parser_counts: Record<string, number>;
+  error_counts: Record<string, number>;
+  status_counts: Record<string, number>;
+}
+
+export interface ParserSessionInfo {
+  parser_name: string;
+  parser_version: string;
+  selected_by: "explicit" | "detection" | "redetection";
+  detection_confidence: number | null;
+  detection_reason: string | null;
+  started_at_record: number;
+  ended_at_record: number | null;
+  records_attempted: number;
+  records_succeeded: number;
+  records_failed: number;
+  stateful: boolean;
+  attributes: JsonObject;
 }
 
 export interface BatchParseResult {
   events: LogEvent[];
   failures: BatchItemResult[];
   statistics: BatchParseStatistics;
-  sessions: Array<Record<string, unknown>>;
+  sessions: ParserSessionInfo[];
   warnings: string[];
   source_id: string | null;
 }
 
-export interface BatchItemResult {
-  index: number;
-  raw_record?: string | null;
-  success: boolean;
-  event?: LogEvent | null;
-  error?: ParseError | null;
-}
-
-export interface BatchParseStatistics {
-  records_seen: number;
-  records_succeeded: number;
-  records_failed: number;
-  stopped_early: boolean;
-  duration_ms: number;
-}
-
 export interface LogEvent {
+  schema_version: string;
+  event_id: string;
   timestamp: string;
-  severity: string;
-  source_type: string;
-  raw_log: string;
-  event_type?: string | null;
-  parser_name?: string | null;
-  parser_version?: string | null;
-  message?: string | null;
-  host?: string | null;
-  service?: string | null;
-  tags?: string[];
-  attributes?: Record<string, Primitive | Primitive[] | Record<string, Primitive>>;
+  ingested_at: string;
+  source_type: LogSourceType;
+  severity: LogSeverity;
+  event_type: string | null;
+  message: string;
+  raw_message: string;
+  service: string | null;
+  application: string | null;
+  environment: string | null;
+  host: string | null;
+  source: string | null;
+  trace_id: string | null;
+  correlation_id: string | null;
+  user_id: string | null;
+  client_ip: string | null;
+  server_ip: string | null;
+  http_method: string | null;
+  http_path: string | null;
+  http_status: number | null;
+  duration_ms: number | null;
+  attributes: JsonObject;
+  tags: string[];
 }
 
 export interface StoredEvent {
@@ -183,7 +327,7 @@ export interface StoredEvent {
   content_hash: string;
   estimated_size_bytes: number;
   source_batch_id: string | null;
-  metadata: Record<string, unknown>;
+  metadata: JsonObject;
 }
 
 export interface EventWriteResult {
@@ -201,6 +345,39 @@ export interface BatchWriteResult {
   atomic: boolean;
 }
 
+export interface EventFilter {
+  event_ids?: string[];
+  exclude_event_ids?: string[];
+  start_time?: string | null;
+  end_time?: string | null;
+  severities?: LogSeverity[];
+  source_types?: LogSourceType[];
+  event_types?: string[];
+  parser_names?: string[];
+  hosts?: string[];
+  services?: string[];
+  tags_any?: string[];
+  tags_all?: string[];
+  message_contains?: string | null;
+  message_case_sensitive?: boolean;
+  client_ips?: string[];
+  user_ids?: string[];
+  correlation_ids?: string[];
+  attribute_exists?: string[];
+  attribute_equals?: Record<string, JsonPrimitive>;
+}
+
+export type EventSortField =
+  "timestamp" | "inserted_at" | "sequence" | "severity" | "event_type" | "host";
+
+export interface EventSort {
+  field: EventSortField;
+  direction: "asc" | "desc";
+}
+
+export type FacetField =
+  "severity" | "source_type" | "event_type" | "parser_name" | "host" | "service" | "tags";
+
 export interface EventQuery {
   filter?: EventFilter;
   sort?: EventSort[];
@@ -209,26 +386,16 @@ export interface EventQuery {
   include_events?: boolean;
   include_total?: boolean;
   include_facets?: boolean;
-  facet_fields?: string[];
+  facet_fields?: FacetField[];
+  include_null_facet?: boolean;
   aggregation?: EventAggregationRequest | null;
 }
 
-export interface EventFilter {
-  message_contains?: string | null;
-  severities?: string[];
-  source_types?: string[];
-  parser_names?: string[];
-  hosts?: string[];
-  services?: string[];
-  tags_any?: string[];
-  tags_all?: string[];
-  start_time?: string | null;
-  end_time?: string | null;
-}
-
-export interface EventSort {
-  field: string;
-  direction: "asc" | "desc";
+export interface EventPage {
+  offset: number;
+  limit: number;
+  returned: number;
+  total: number | null;
 }
 
 export interface FacetBucket {
@@ -238,13 +405,8 @@ export interface FacetBucket {
 
 export interface EventQueryResult {
   events: StoredEvent[];
-  page: {
-    offset: number;
-    limit: number;
-    total: number | null;
-    has_next: boolean;
-  };
-  facets: Record<string, FacetBucket[]>;
+  page: EventPage;
+  facets: Partial<Record<FacetField, FacetBucket[]>>;
   aggregation: EventAggregationResult | null;
   query_duration_ms: number;
   snapshot_size: number;
@@ -272,11 +434,6 @@ export interface EventAggregationRequest {
   limit?: number;
 }
 
-export interface EventAggregationResult {
-  request: EventAggregationRequest;
-  buckets: AggregationBucket[];
-}
-
 export interface AggregationBucket {
   group_value: string | number;
   event_count: number;
@@ -284,4 +441,78 @@ export interface AggregationBucket {
   sample_count: number | null;
   bucket_start_time: string | null;
   bucket_end_time: string | null;
+}
+
+export interface EventAggregationResult {
+  request: EventAggregationRequest;
+  buckets: AggregationBucket[];
+}
+
+export interface AnalysisRequest {
+  filter?: EventFilter | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  time_bucket_seconds?: number | null;
+  group_fields?: string[];
+  top_n?: number | null;
+  percentiles?: number[];
+  include_summary?: boolean;
+  include_distributions?: boolean;
+  include_timeline?: boolean;
+  include_latency?: boolean;
+  include_http?: boolean;
+  include_insights?: boolean;
+  include_samples?: boolean;
+  sample_size?: number;
+  duration_field?: string | null;
+  status_field?: string | null;
+  method_field?: string | null;
+  path_field?: string | null;
+  metadata?: JsonObject;
+}
+
+export interface AnalysisResponse {
+  analysis_id: string;
+  generated_at: string;
+  input_event_count: number;
+  matched_event_count: number;
+  analysis_duration_ms: number;
+  summary: JsonObject | null;
+  timeline: JsonObject | null;
+  distributions: JsonObject[];
+  latency: JsonObject | null;
+  http: JsonObject | null;
+  insights: JsonObject[];
+  samples: JsonObject[];
+  warnings: string[];
+}
+
+export interface ComparisonRequest {
+  baseline_filter?: EventFilter | null;
+  comparison_filter?: EventFilter | null;
+  baseline_label?: string;
+  comparison_label?: string;
+  metrics?: string[];
+  group_by?: string[];
+  top_n?: number;
+  minimum_group_count?: number;
+  significant_change_percent?: number | null;
+  normalize_by_time_span?: boolean;
+  include_new_groups?: boolean;
+  include_disappeared_groups?: boolean;
+  metadata?: JsonObject;
+}
+
+export interface ComparisonResponse {
+  baseline_label: string;
+  comparison_label: string;
+  baseline_summary: JsonObject;
+  comparison_summary: JsonObject;
+  baseline_event_count: number;
+  comparison_event_count: number;
+  duration_ms: number;
+  metric_comparisons: JsonObject[];
+  group_comparisons: JsonObject[];
+  insights: JsonObject[];
+  warnings: string[];
 }

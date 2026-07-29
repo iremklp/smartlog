@@ -14,6 +14,42 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS ?? 20000);
 
+function readStringProperty(value: unknown, property: string): string | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const candidate = (value as Record<string, unknown>)[property];
+  return typeof candidate === "string" && candidate.trim() ? candidate.trim() : undefined;
+}
+
+function readErrorDetail(payload: ApiErrorShape): string | undefined {
+  if (typeof payload.detail === "string") {
+    const detail = payload.detail.trim();
+    return detail || undefined;
+  }
+
+  if (Array.isArray(payload.detail)) {
+    const messages = payload.detail
+      .map(
+        (item) =>
+          readStringProperty(item, "message") ??
+          readStringProperty(item, "msg") ??
+          readStringProperty(item, "code")
+      )
+      .filter((message): message is string => message !== undefined);
+    if (messages.length > 0) {
+      return messages.join("; ");
+    }
+  }
+
+  return (
+    readStringProperty(payload.detail, "message") ??
+    readStringProperty(payload.detail, "code") ??
+    readStringProperty(payload.error, "message") ??
+    readStringProperty(payload.error, "code")
+  );
+}
+
 function buildUrl(path: string): string {
   const rawBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
   const base = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
@@ -60,7 +96,7 @@ export async function requestJson<TResponse>(
     let detail: string | undefined;
     try {
       const payload = (await response.json()) as ApiErrorShape;
-      detail = payload.detail;
+      detail = readErrorDetail(payload);
     } catch {
       detail = undefined;
     }

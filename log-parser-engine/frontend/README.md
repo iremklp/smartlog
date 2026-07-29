@@ -15,7 +15,7 @@ Production-oriented Log Analysis UI for `log-parser-engine`.
 ## Setup
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
@@ -48,10 +48,27 @@ UI is designed around these backend endpoints:
 - `POST /batch/parse/store`
 - `POST /query`
 - `POST /aggregate`
+- `POST /api/v1/analysis`
+- `POST /api/v1/analysis/compare`
 - `GET /events/{event_id}`
 - `DELETE /events/{event_id}`
+
+## Quality gates
+
+```bash
+npm run check
+npm run build
+```
+
+`npm run check`; TypeScript, ESLint 9, Vitest ve Prettier kontrollerini
+birlikte çalıştırır. Dependency klasörü ve Vite/TypeScript cache çıktıları
+Git'e eklenmez; tekrarlanabilir kurulum için `package-lock.json` korunur.
 
 ## Notes
 
 - Backend parser/store logic stays in Python layers. UI does not duplicate parser algorithms.
 - Current store is memory-backed; data resets on API restart.
+- Event pagination, parser metadata and canonical event fields are derived from
+  the backend wire contract; UI does not invent response fields.
+- Analysis and comparison API clients exist, while their dedicated result
+  screens remain a later UI milestone.

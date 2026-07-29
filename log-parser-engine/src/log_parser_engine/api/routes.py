@@ -281,8 +281,11 @@ def add_many_events(
 def get_event(
     event_id: str,
     service: LogAnalysisApplicationService = Depends(get_service),
-) -> StoredEvent | None:
-    return service.get_event(event_id)
+) -> StoredEvent:
+    event = service.get_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="event not found")
+    return event
 
 
 @router.delete("/events/{event_id}")

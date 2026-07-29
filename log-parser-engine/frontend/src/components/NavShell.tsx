@@ -16,8 +16,12 @@ export function NavShell() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-panel/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <div>
-            <h1 className="font-display text-xl tracking-widest text-accent">SMARTLOG CONTROL ROOM</h1>
-            <p className="text-xs uppercase tracking-[0.2em] text-inkSoft">Observe. Parse. Decide.</p>
+            <h1 className="font-display text-xl tracking-widest text-accent">
+              SMARTLOG CONTROL ROOM
+            </h1>
+            <p className="text-xs uppercase tracking-[0.2em] text-inkSoft">
+              Observe. Parse. Decide.
+            </p>
           </div>
           <nav className="flex flex-wrap gap-2">
             {navItems.map((item) => (

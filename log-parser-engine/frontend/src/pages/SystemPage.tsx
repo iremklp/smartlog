@@ -28,10 +28,7 @@ export function SystemPage() {
         subtitle="Live health probe"
         rightSlot={
           health ? (
-            <StatusBadge
-              label={health.status}
-              tone={health.status === "healthy" ? "ok" : "warn"}
-            />
+            <StatusBadge label={health.status} tone={health.status === "healthy" ? "ok" : "warn"} />
           ) : undefined
         }
       >
@@ -53,9 +50,18 @@ export function SystemPage() {
         {runtime ? (
           <dl className="grid gap-2 text-sm">
             <Field label="Observed at" value={formatDate(runtime.observed_at)} />
-            <Field label="Store writes" value={formatNumber(runtime.store_statistics.write_count)} />
-            <Field label="Store queries" value={formatNumber(runtime.store_statistics.query_count)} />
-            <Field label="Estimated memory" value={formatNumber(runtime.store_statistics.estimated_memory_bytes)} />
+            <Field
+              label="Store writes"
+              value={formatNumber(runtime.store_statistics.write_count)}
+            />
+            <Field
+              label="Store queries"
+              value={formatNumber(runtime.store_statistics.query_count)}
+            />
+            <Field
+              label="Estimated memory"
+              value={formatNumber(runtime.store_statistics.estimated_memory_bytes)}
+            />
             <Field label="Startup warnings" value={String(runtime.startup_warnings.length)} />
           </dl>
         ) : (

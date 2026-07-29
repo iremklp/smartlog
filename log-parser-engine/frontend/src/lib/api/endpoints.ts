@@ -1,9 +1,13 @@
 import { requestJson } from "./client";
 import type {
+  AnalysisRequest,
+  AnalysisResponse,
   ApplicationHealth,
   BatchParseRequest,
   BatchParseResult,
   BatchWriteResult,
+  ComparisonRequest,
+  ComparisonResponse,
   EventAggregationRequest,
   EventAggregationResult,
   EventQuery,
@@ -111,7 +115,9 @@ export async function parseFile(
   formData.set("batch_mode", String(Boolean(options.batchMode)));
   formData.set("allow_disabled_parser", String(Boolean(options.allowDisabledParser)));
 
-  return requestJson<PipelineResult | ParseResult | BatchParseResult | EventWriteResult | BatchWriteResult>(
+  return requestJson<
+    PipelineResult | ParseResult | BatchParseResult | EventWriteResult | BatchWriteResult
+  >(
     "/parse/file",
     {
       method: "POST",
@@ -141,8 +147,28 @@ export function aggregateEvents(
   );
 }
 
+export function analyzeEvents(payload: AnalysisRequest, signal?: AbortSignal) {
+  return requestJson<AnalysisResponse>(
+    "/api/v1/analysis",
+    { method: "POST", body: JSON.stringify(payload) },
+    signal
+  );
+}
+
+export function compareEvents(payload: ComparisonRequest, signal?: AbortSignal) {
+  return requestJson<ComparisonResponse>(
+    "/api/v1/analysis/compare",
+    { method: "POST", body: JSON.stringify(payload) },
+    signal
+  );
+}
+
 export function getEventById(eventId: string, signal?: AbortSignal) {
-  return requestJson<StoredEvent>(`/events/${encodeURIComponent(eventId)}`, { method: "GET" }, signal);
+  return requestJson<StoredEvent>(
+    `/events/${encodeURIComponent(eventId)}`,
+    { method: "GET" },
+    signal
+  );
 }
 
 export function deleteEventById(eventId: string, signal?: AbortSignal) {

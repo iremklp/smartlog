@@ -17,7 +17,8 @@ import { formatNumber } from "../lib/utils/format";
 export function DashboardPage() {
   const severityAgg = useQuery({
     queryKey: ["dashboard", "severity"],
-    queryFn: ({ signal }) => aggregateEvents({ group_by: "severity", metric: "count", limit: 10 }, undefined, signal)
+    queryFn: ({ signal }) =>
+      aggregateEvents({ group_by: "severity", metric: "count", limit: 10 }, undefined, signal)
   });
 
   const parserFacet = useQuery({
@@ -36,10 +37,11 @@ export function DashboardPage() {
       )
   });
 
-  const severityData = severityAgg.data?.buckets?.map((bucket) => ({
-    group: String(bucket.group_value),
-    count: bucket.event_count
-  })) ?? [];
+  const severityData =
+    severityAgg.data?.buckets?.map((bucket) => ({
+      group: String(bucket.group_value),
+      count: bucket.event_count
+    })) ?? [];
 
   const facetData = parserFacet.data?.facets?.parser_name ?? [];
 
@@ -66,7 +68,10 @@ export function DashboardPage() {
         <ul className="grid gap-2">
           {facetData.length ? (
             facetData.map((item) => (
-              <li key={item.value} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
+              <li
+                key={item.value}
+                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm"
+              >
                 <span className="font-medium text-ink">{item.value || "(empty)"}</span>
                 <span className="ml-2 text-inkSoft">{formatNumber(item.count)}</span>
               </li>
