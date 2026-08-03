@@ -30,6 +30,10 @@ describe("StatisticalAnalysisPage", () => {
     expect(screen.getByText("2 event")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Event hareketi" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Severity" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Latency analizi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "HTTP analizi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deterministik bulgular" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Örnek eventler" })).toBeInTheDocument();
 
     await user.click(screen.getByText("Erişilebilir timeline tablosu"));
     expect(
@@ -59,6 +63,9 @@ describe("StatisticalAnalysisPage", () => {
     expect(analyzeEventsMock.mock.calls[1]?.[0]).toMatchObject({
       top_n: 5,
       group_fields: ["severity", "service", "event_type"],
+      include_latency: true,
+      include_http: true,
+      include_insights: true,
       include_samples: false
     });
     expect(analyzeEventsMock.mock.calls[1]?.[0]).not.toHaveProperty("time_bucket_seconds");

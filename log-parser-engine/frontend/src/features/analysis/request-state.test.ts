@@ -19,9 +19,9 @@ describe("analysis request state", () => {
       include_summary: true,
       include_timeline: true,
       include_distributions: true,
-      include_latency: false,
-      include_http: false,
-      include_insights: false,
+      include_latency: true,
+      include_http: true,
+      include_insights: true,
       include_samples: false
     });
     expect(request).not.toHaveProperty("start_time");

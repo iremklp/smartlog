@@ -4,11 +4,15 @@ import { Link } from "react-router-dom";
 
 import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
+import { AnalysisInsightsPanel } from "../features/analysis/AnalysisInsightsPanel";
 import { AnalysisRequestForm } from "../features/analysis/AnalysisRequestForm";
+import { AnalysisSamplesPanel } from "../features/analysis/AnalysisSamplesPanel";
 import { AnalysisSummaryCards } from "../features/analysis/AnalysisSummaryCards";
 import { AnalysisTimelineChart } from "../features/analysis/AnalysisTimelineChart";
 import { AnalyticsTabs } from "../features/analysis/AnalyticsTabs";
 import { DistributionPanels } from "../features/analysis/DistributionPanels";
+import { HttpAnalysisPanel } from "../features/analysis/HttpAnalysisPanel";
+import { LatencyAnalysisPanel } from "../features/analysis/LatencyAnalysisPanel";
 import {
   DEFAULT_ANALYSIS_REQUEST_STATE,
   buildAnalysisRequest,
@@ -158,6 +162,18 @@ export function StatisticalAnalysisPage() {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-panel/90 p-5 shadow-panel">
                   <DistributionPanels distributions={result.distributions} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-panel/90 p-5 shadow-panel">
+                  <LatencyAnalysisPanel latency={result.latency} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-panel/90 p-5 shadow-panel">
+                  <HttpAnalysisPanel http={result.http} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-panel/90 p-5 shadow-panel">
+                  <AnalysisInsightsPanel insights={result.insights} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-panel/90 p-5 shadow-panel">
+                  <AnalysisSamplesPanel samples={result.samples} />
                 </div>
               </>
             )}
