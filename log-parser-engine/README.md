@@ -323,18 +323,20 @@ Eventler yalnızca çalışan process belleğinde tutulur:
 
 ### Güncel Geliştirme Durumu
 
-> Durum notu: 29 Temmuz 2026 tarihinde yapılan yerel kalite kontrolünün
+> Durum notu: 3 Ağustos 2026 tarihinde yapılan yerel kalite kontrolünün
 > özetidir. Sonraki değişikliklerden sonra komutlar yeniden çalıştırılmalıdır.
 
 Frontend:
 
 - TypeScript, ESLint 9, Prettier ve Vite production build kontrolleri
   başarılıdır.
-- Dört test dosyasında **11 Vitest testi** geçmektedir; API URL/body
-  sözleşmesi, pagination ve backend biçimli event tablosu fixture'ı kapsanır.
+- Dokuz test dosyasında **34 Vitest testi** geçmektedir; API URL/body ve
+  structured error sözleşmeleri, analiz/comparison tipleri, request-state,
+  bounded presentation, erişilebilir analiz görünümü, pagination ve backend
+  biçimli event tablosu fixture'ı kapsanır.
 - `node_modules`, Vite cache ve TypeScript build info dosyaları Git tarafından
   izlenmez; kurulum `package-lock.json` üzerinden `npm ci` ile tekrarlanır.
-- Üretilen ana JavaScript bundle'ı yaklaşık 780 kB olduğundan route bazlı code
+- Üretilen ana JavaScript bundle'ı yaklaşık 840 kB olduğundan route bazlı code
   splitting halen önerilir.
 
 Backend:
@@ -445,11 +447,21 @@ yaşar; uygulama veya pod yeniden başladığında silinir ve OpenShift'te farkl
 replica'lar arasında paylaşılmaz. Analiz endpointleri yalnız istek anında ilgili
 podda bulunan snapshotı görür.
 
+Frontend'deki `/analytics` çalışma alanı `/api/v1/analysis` sözleşmesini
+doğrudan tüketir. Özet metrikler, en fazla 120 görsel noktaya indirgenen timeline
+ve boyut başına en fazla 20 satırlık dağılımlar sunulur. Grafiklerin eşdeğer
+semantik tabloları vardır; empty, warning, `413` ve `429` durumları güvenli ve
+izlenebilir şekilde gösterilir. Timeline aralığı varsayılan olarak backend'in
+bounded otomatik seçimine bırakılır; elle seçilen bucketlar UTC hizalıdır.
+Comparison request-state ve response tipleri hazırdır; comparison sonuç ekranı
+sonraki UI dilimidir.
+
 ### Production Öncesi Öncelikler
 
-1. Frontend'de `/api/v1/analysis` ve comparison sonuç ekranlarını geliştirmek
-2. Frontend bundle'ı route-level code splitting ile küçültmek
-3. Merkezi doğrulanmış configuration ve redacted structured logging
+1. Frontend'de `/api/v1/analysis/compare` form ve sonuç ekranını geliştirmek
+2. Latency, HTTP ve deterministic insight analiz modüllerini görünür kılmak
+3. Frontend bundle'ı route-level code splitting ile küçültmek
+4. Merkezi doğrulanmış configuration ve redacted structured logging
    sözleşmesini tamamlamak
 
 Production adayı bir sürüm oluşturulmadan önce aşağıdaki kontrollerin tamamı

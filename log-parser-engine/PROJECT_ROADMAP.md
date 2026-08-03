@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
-Son güncelleme: 29 Temmuz 2026
-Doğrulama tabanı: `79d8ec3` sonrası çalışma ağacı
+Son güncelleme: 3 Ağustos 2026
+Doğrulama tabanı: `500bdd2` sonrası çalışma ağacı
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -33,10 +33,10 @@ tamamlandığında yeniden doğrulanmalıdır.
 
 ## Mevcut öncelik
 
-**Foundation Quality Recovery tamamlandı.** Backend ve frontend kalite kapıları
-birlikte yeşildir; upload akışı bounded/chunked çalışır, güvenli request ID,
-explicit CORS ve temel API security header sözleşmeleri testlerle sabittir.
-Sıradaki ürün dilimi **Q1 Statistical Analysis UI entegrasyonu**dur.
+**Q1 Statistical Analysis UI entegrasyonu başladı.** Backend/frontend kalite
+kapıları yeşildir; `/analytics` çalışma alanında typed request-state, özet,
+bounded timeline ve tanısal dağılımlar kullanılabilir. Sıradaki ürün dilimi
+comparison formu ile metric/group change sonuçlarının görünür hale gelmesidir.
 
 ## Büyük aşamalar
 
@@ -51,8 +51,8 @@ Sıradaki ürün dilimi **Q1 Statistical Analysis UI entegrasyonu**dur.
 | 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory, bounded upload, güvenli request ID/CORS/header davranışları ve temel endpointler var | Versioned contract, ortak error envelope ve readiness tamam | Çoğu endpoint versiyonsuz; error sözleşmesi tamamen birleşik değil |
-| 10. Web UI | 🟡 | React/Vite UI'da yedi sayfa, backend uyumlu temel contractlar ve yeşil kalite kapıları var | Analysis/comparison UI, erişilebilirlik ve route-level code splitting tamam | İstatistiksel analiz API'si henüz ekranda tüketilmiyor |
-| 11. Statistical Analysis | 🟡 | Engine ve `/api/v1/analysis*` API kapsamı tamam; 139 odak test geçiyor | Statistical Analysis UI, comparison ve dashboard entegrasyonu tamam | UI mevcut analiz API'sini tüketmiyor |
+| 10. Web UI | 🟡 | React/Vite UI'da sekiz sayfa, exact analysis/comparison contractları, erişilebilir bounded chart/table görünümleri ve yeşil kalite kapıları var | Comparison, latency/HTTP/insight UI ve route-level code splitting tamam | Comparison ve derin analiz modülleri henüz görünür değil |
+| 11. Statistical Analysis | 🟡 | Engine, `/api/v1/analysis*` API ve summary/timeline/distribution UI tamam; 139 backend odak testi var | Comparison, latency/HTTP/insight ve dashboard drill-down entegrasyonu tamam | İlk UI dilimi yalnız overview modüllerini gösteriyor |
 | 12. Report Engine | ⏳ | Uygulama yok | Bounded HTML/Markdown/JSON/CSV çıktısı, güvenli download lifecycle ve testler | PDF/Excel dependency ve response boyutu |
 | 13. Rule Engine | ⏳ | Uygulama yok | Typed ve deterministik koşullar; `eval`/arbitrary code yok; testli API/UI | Güvensiz expression tasarımı |
 | 14. Alert Engine | ⏳ | Uygulama yok | In-memory state, deduplication, suppression, cooldown ve acknowledgement testli | Restartta state kaybı |
@@ -96,9 +96,9 @@ Sıradaki ürün dilimi **Q1 Statistical Analysis UI entegrasyonu**dur.
 | Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
 | API | FastAPI routes/middleware | 🟡 | Application service | Bounded upload, güvenli request ID/CORS/header ve analiz limitleri var; ortak versioning eksik |
-| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system akışları ve contract/component testleri var; analysis UI bekliyor |
+| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system ve `/analytics` overview akışları; 34 frontend testi var |
 | Analysis | StatisticalAnalysisEngine | ✅ | Store snapshot | Summary, distribution, timeline, latency, HTTP, comparison ve insight var |
-| Analysis | Analysis UI/dashboard | ⏳ | Analysis API | `/api/v1/analysis` ve compare UI tarafından çağrılmıyor |
+| Analysis | Analysis UI/dashboard | 🟡 | Analysis API | `/analytics` summary/timeline/distribution tüketiyor; comparison ve derin modüller bekliyor |
 
 ## Yakın dönem teslimat sırası
 
@@ -218,12 +218,32 @@ Q0 durumu: **tamamlandı**.
 
 ### Q1 — Statistical Analysis UI entegrasyonu
 
-- Analysis ve comparison request builder.
-- Summary, distribution, timeline, latency ve HTTP görünümleri.
-- Bounded chart/table rendering.
-- Loading, empty, partial ve güvenli error state'leri.
-- Dashboard global filtreleri ve drill-down.
-- Component, API contract ve accessibility testleri.
+1. **Typed analysis/comparison contract ve overview UI — tamamlandı.**
+   - Backend allowlistleri TypeScript literal unionlarıyla sabitlendi; nested
+     response modelleri generic `JsonObject` castlerinden çıkarıldı.
+   - Analysis ve comparison için Zod doğrulamalı, timezone-aware request-state
+     builderları eklendi; timeline bucketı varsayılan olarak backend'in bounded
+     auto-selection davranışına bırakıldı.
+   - Yeni `/analytics` sayfası summary, timeline ve distribution modüllerini
+     tüketiyor; mevcut `/analysis` ingest akışı korunuyor.
+   - Timeline en fazla 120 görsel noktaya deterministik birleştiriliyor;
+     percentile değerleri birleştirilmiyor. Dağılımlar boyut başına 20 satırla
+     sınırlı.
+   - Grafiklerin eşdeğer semantik tabloları, reduced-motion, loading, empty,
+     warning ve structured `413`/`429` error durumları eklendi.
+   - Sonuç: 9 dosyada 34 frontend testi, typecheck, lint, Prettier ve build
+     kapıları başarılı.
+2. **Comparison çalışma alanı — sırada.**
+   - Dönem filtreleri ve presetler.
+   - Metric/group değişim tabloları ve significant-change göstergeleri.
+   - New/disappeared group ve güvenli empty/error state'leri.
+3. **Derin analiz modülleri.**
+   - Latency, HTTP, deterministic insight ve bounded sample görünümleri.
+4. **Dashboard entegrasyonu.**
+   - Global filtreler, URL state ve event explorer drill-down.
+5. **Son UI kalite dilimi.**
+   - Route-level code splitting, accessibility regresyonları ve response-size
+     kontrolleri.
 
 Bağımlılık: Q0.
 
@@ -266,8 +286,8 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q1'in ilk dilimi uygulanacaktır: frontend için
-typed analysis/comparison request-state altyapısı kurulacak, ardından summary,
-timeline ve distribution sonuçları bounded ve erişilebilir görünümlerle
+Bir sonraki `devam et` komutunda Q1'in ikinci dilimi uygulanacaktır: typed
+comparison request-state gerçek forma bağlanacak; baseline/comparison özetleri,
+metric değişimleri ve bounded group comparison sonuçları erişilebilir tablolarla
 sunulacaktır. Backend analiz sözleşmesi değiştirilmeden kullanılacak; SQL veya
 harici kalıcı veri tabanı eklenmeyecektir.

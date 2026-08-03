@@ -8,6 +8,7 @@ import { EventsPage } from "../pages/EventsPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ParsersPage } from "../pages/ParsersPage";
 import { StorePage } from "../pages/StorePage";
+import { StatisticalAnalysisPage } from "../pages/StatisticalAnalysisPage";
 import { SystemPage } from "../pages/SystemPage";
 
 export const router = createBrowserRouter([
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <AnalysisPage /> },
       { path: "analysis", element: <AnalysisPage /> },
+      { path: "analytics", element: <StatisticalAnalysisPage /> },
       { path: "events", element: <EventsPage /> },
       { path: "events/:eventId", element: <EventDetailPage /> },
       { path: "dashboard", element: <DashboardPage /> },

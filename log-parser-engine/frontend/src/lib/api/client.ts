@@ -1,14 +1,29 @@
-import type { ApiErrorShape } from "./types";
+import type { ApiErrorShape, JsonObject, JsonValue } from "./types";
+
+export interface ApiErrorMetadata {
+  code?: string;
+  requestId?: string;
+  details?: JsonObject;
+  retryAfter?: string;
+}
 
 export class ApiError extends Error {
   readonly status: number;
   readonly detail?: string;
+  readonly code?: string;
+  readonly requestId?: string;
+  readonly details?: JsonObject;
+  readonly retryAfter?: string;
 
-  constructor(status: number, message: string, detail?: string) {
+  constructor(status: number, message: string, detail?: string, metadata: ApiErrorMetadata = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
+    this.code = metadata.code;
+    this.requestId = metadata.requestId;
+    this.details = metadata.details;
+    this.retryAfter = metadata.retryAfter;
   }
 }
 
@@ -20,6 +35,47 @@ function readStringProperty(value: unknown, property: string): string | undefine
   }
   const candidate = (value as Record<string, unknown>)[property];
   return typeof candidate === "string" && candidate.trim() ? candidate.trim() : undefined;
+}
+
+function isJsonValue(value: unknown): value is JsonValue {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  ) {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonValue);
+  }
+  if (typeof value !== "object") {
+    return false;
+  }
+  return Object.values(value).every(isJsonValue);
+}
+
+function readJsonObjectProperty(value: unknown, property: string): JsonObject | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const candidate = (value as Record<string, unknown>)[property];
+  if (
+    typeof candidate !== "object" ||
+    candidate === null ||
+    Array.isArray(candidate) ||
+    !isJsonValue(candidate)
+  ) {
+    return undefined;
+  }
+  return candidate as JsonObject;
+}
+
+function readApiErrorShape(value: unknown): ApiErrorShape | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as ApiErrorShape;
 }
 
 function readErrorDetail(payload: ApiErrorShape): string | undefined {
@@ -94,13 +150,35 @@ export async function requestJson<TResponse>(
   if (!response.ok) {
     const fallback = `Request failed with status ${response.status}`;
     let detail: string | undefined;
+    let code: string | undefined;
+    let requestId: string | undefined;
+    let details: JsonObject | undefined;
     try {
-      const payload = (await response.json()) as ApiErrorShape;
-      detail = readErrorDetail(payload);
+      const payload = readApiErrorShape(await response.json());
+      if (payload !== undefined) {
+        detail = readErrorDetail(payload);
+        code =
+          readStringProperty(payload.error, "code") ?? readStringProperty(payload.detail, "code");
+        requestId =
+          readStringProperty(payload.error, "request_id") ??
+          readStringProperty(payload.detail, "request_id");
+        details =
+          readJsonObjectProperty(payload.error, "details") ??
+          readJsonObjectProperty(payload.detail, "details");
+      }
     } catch {
       detail = undefined;
+      code = undefined;
+      requestId = undefined;
+      details = undefined;
     }
-    throw new ApiError(response.status, detail ?? fallback, detail);
+    const retryAfter = response.headers.get("Retry-After")?.trim() || undefined;
+    throw new ApiError(response.status, detail ?? fallback, detail, {
+      code,
+      requestId,
+      details,
+      retryAfter
+    });
   }
 
   if (response.status === 204) {

@@ -1,5 +1,5 @@
 import { analyzeEvents, compareEvents, getHealth, parseWithParser, queryEvents } from "./endpoints";
-import type { EventQuery } from "./types";
+import type { ComparisonRequest, EventQuery } from "./types";
 
 function installFetchResponse(
   payload: unknown,
@@ -70,7 +70,7 @@ describe("API endpoints", () => {
 
   it("posts comparison payloads directly to the versioned endpoint", async () => {
     const fetchMock = installFetchResponse({});
-    const payload = {
+    const payload: ComparisonRequest = {
       baseline_label: "Before",
       comparison_label: "After",
       metrics: ["event_count"]

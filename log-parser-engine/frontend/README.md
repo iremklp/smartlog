@@ -24,7 +24,8 @@ Default API target is `http://localhost:8000` via `VITE_API_BASE_URL`.
 
 ## Routes
 
-- `/analysis`: text and file parse workflows
+- `/analysis`: text/file ingest, parse and optional store workflows
+- `/analytics`: statistical summary, bounded timeline and diagnostic distributions
 - `/events`: server-side query and event list
 - `/events/:eventId`: event detail
 - `/dashboard`: aggregation/facet charts
@@ -70,5 +71,18 @@ Git'e eklenmez; tekrarlanabilir kurulum için `package-lock.json` korunur.
 - Current store is memory-backed; data resets on API restart.
 - Event pagination, parser metadata and canonical event fields are derived from
   the backend wire contract; UI does not invent response fields.
-- Analysis and comparison API clients exist, while their dedicated result
-  screens remain a later UI milestone.
+- Statistical analysis and comparison requests use backend-aligned literal
+  unions and concrete response contracts. Unknown `JsonObject` casts are not
+  required for summary, timeline, distribution, latency, HTTP or comparison
+  results.
+- `/analytics` automatically analyzes the current process-local snapshot, then
+  supports timezone-aware range selection, backend-bounded automatic bucket
+  sizing, optional explicit UTC buckets, bounded Top-N dimensions and retry-safe
+  refresh.
+- Timeline rendering is bounded to 120 visual points. Larger responses are
+  merged deterministically without combining percentile values. Distribution
+  rendering is bounded to 20 rows per dimension.
+- Recharts visualizations have equivalent semantic tables, and loading, empty,
+  warning and structured API error states remain usable without the charts.
+- Comparison request state is typed and tested; its dedicated form/result view
+  is the next UI slice.

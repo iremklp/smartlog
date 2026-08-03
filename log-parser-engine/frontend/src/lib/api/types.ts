@@ -9,6 +9,8 @@ export interface ApiErrorShape {
   error?: {
     code?: unknown;
     message?: unknown;
+    request_id?: unknown;
+    details?: unknown;
   };
 }
 
@@ -448,12 +450,29 @@ export interface EventAggregationResult {
   buckets: AggregationBucket[];
 }
 
+export type AnalysisGroupField =
+  | "severity"
+  | "source_type"
+  | "event_type"
+  | "parser_name"
+  | "parser"
+  | "service"
+  | "host"
+  | "tags"
+  | "tag"
+  | "http_method"
+  | "method"
+  | "http_status"
+  | "status_code"
+  | "status_class"
+  | "endpoint";
+
 export interface AnalysisRequest {
   filter?: EventFilter | null;
   start_time?: string | null;
   end_time?: string | null;
   time_bucket_seconds?: number | null;
-  group_fields?: string[];
+  group_fields?: AnalysisGroupField[];
   top_n?: number | null;
   percentiles?: number[];
   include_summary?: boolean;
@@ -471,29 +490,282 @@ export interface AnalysisRequest {
   metadata?: JsonObject;
 }
 
+export interface AnalysisSummary {
+  input_event_count: number;
+  matched_event_count: number;
+  trace_count: number;
+  debug_count: number;
+  info_count: number;
+  warning_count: number;
+  error_count: number;
+  critical_count: number;
+  unknown_count: number;
+  error_or_critical_count: number;
+  error_rate: number;
+  critical_rate: number;
+  unique_event_type_count: number;
+  unique_service_count: number;
+  unique_host_count: number;
+  unique_parser_count: number;
+  unique_source_type_count: number;
+  earliest_timestamp: string | null;
+  latest_timestamp: string | null;
+  time_span_seconds: number | null;
+  events_per_second: number | null;
+  events_per_minute: number | null;
+  events_with_duration: number;
+  events_with_http_status: number;
+  duplicate_content_count: number;
+  out_of_order_timestamp_count: number;
+}
+
+export interface RankedItem {
+  rank: number;
+  key: string;
+  display_value: string;
+  count: number;
+  percentage: number;
+  metric_value: number | null;
+  metric_unit: string | null;
+  attributes: JsonObject;
+}
+
+export interface DistributionResult {
+  field: string;
+  total_count: number;
+  matched_value_count: number;
+  missing_count: number;
+  unique_value_count: number;
+  items: RankedItem[];
+  other_count: number;
+  truncated: boolean;
+}
+
+export interface TimelineBucket {
+  start: string;
+  end: string;
+  event_count: number;
+  warning_count: number;
+  error_count: number;
+  critical_count: number;
+  error_rate: number;
+  average_duration_ms: number | null;
+  p95_duration_ms: number | null;
+  status_5xx_count: number;
+}
+
+export interface TimelineResult {
+  bucket_seconds: number;
+  start: string | null;
+  end: string | null;
+  buckets: TimelineBucket[];
+  empty_bucket_count: number;
+  max_bucket_event_count: number;
+  average_bucket_event_count: number;
+  peak_bucket_start: string | null;
+  warnings: string[];
+}
+
+export interface PercentileSummary {
+  sample_count: number;
+  minimum: number | null;
+  maximum: number | null;
+  mean: number | null;
+  median: number | null;
+  standard_deviation: number | null;
+  percentile_values: Record<string, number | null>;
+  missing_count: number;
+  invalid_count: number;
+  percentile_sample_count: number | null;
+  percentiles_approximated: boolean;
+}
+
+export interface LatencyBucket {
+  lower_bound_ms: number | null;
+  upper_bound_ms: number | null;
+  count: number;
+  percentage: number;
+  label: string;
+}
+
+export interface SlowEvent {
+  event_id: string;
+  timestamp: string;
+  duration_ms: number;
+  event_type: string | null;
+  service: string | null;
+  host: string | null;
+  path: string | null;
+  message_preview: string | null;
+}
+
+export interface EndpointLatency {
+  key: string;
+  sample_count: number;
+  minimum_ms: number | null;
+  maximum_ms: number | null;
+  mean_ms: number | null;
+  p95_ms: number | null;
+  missing_count: number;
+}
+
+export interface LatencyAnalysis {
+  detected_field: string | null;
+  unit: string;
+  total_events: number;
+  sample_count: number;
+  missing_count: number;
+  invalid_count: number;
+  minimum_ms: number | null;
+  maximum_ms: number | null;
+  mean_ms: number | null;
+  median_ms: number | null;
+  standard_deviation_ms: number | null;
+  percentiles: PercentileSummary;
+  slowest_events: SlowEvent[];
+  latency_buckets: LatencyBucket[];
+  per_service: EndpointLatency[];
+  per_event_type: EndpointLatency[];
+  per_endpoint: EndpointLatency[];
+  warnings: string[];
+}
+
+export interface HTTPStatusBreakdown {
+  key: string;
+  total_count: number;
+  informational_count: number;
+  success_count: number;
+  redirect_count: number;
+  client_error_count: number;
+  server_error_count: number;
+  unknown_status_count: number;
+  error_rate: number;
+}
+
+export interface EndpointAnalysis {
+  endpoint: string;
+  request_count: number;
+  percentage: number;
+  error_count: number;
+  error_rate: number;
+  client_error_count: number;
+  server_error_count: number;
+  latency_sample_count: number;
+  average_duration_ms: number | null;
+  p95_duration_ms: number | null;
+  max_duration_ms: number | null;
+  methods: string[];
+  top_status_codes: RankedItem[];
+  services: string[];
+  first_seen: string | null;
+  last_seen: string | null;
+  attributes: JsonObject;
+}
+
+export interface HTTPAnalysis {
+  http_event_count: number;
+  events_with_status: number;
+  events_with_method: number;
+  events_with_path: number;
+  informational_count: number;
+  success_count: number;
+  redirect_count: number;
+  non_error_count: number;
+  client_error_count: number;
+  server_error_count: number;
+  unknown_status_count: number;
+  success_rate: number;
+  non_error_rate: number;
+  client_error_rate: number;
+  server_error_rate: number;
+  total_error_rate: number;
+  status_class_distribution: DistributionResult;
+  status_code_distribution: DistributionResult;
+  method_distribution: DistributionResult;
+  endpoint_distribution: DistributionResult;
+  slowest_endpoints: EndpointAnalysis[];
+  highest_error_endpoints: EndpointAnalysis[];
+  status_by_method: HTTPStatusBreakdown[];
+  status_by_service: HTTPStatusBreakdown[];
+  timeline: TimelineResult | null;
+  warnings: string[];
+}
+
+export type AnalysisInsightLevel = "info" | "warning" | "critical";
+
+export interface AnalysisInsight {
+  code: string;
+  level: AnalysisInsightLevel;
+  title: string;
+  message: string;
+  metric: string | null;
+  current_value: number | null;
+  reference_value: number | null;
+  unit: string | null;
+  evidence: JsonObject;
+  recommendations: string[];
+}
+
+export interface AnalysisEventSample {
+  event_id: string;
+  timestamp: string;
+  severity: LogSeverity;
+  source_type: LogSourceType;
+  message_preview: string;
+  event_type: string | null;
+  service: string | null;
+  host: string | null;
+  parser_name: string | null;
+}
+
 export interface AnalysisResponse {
   analysis_id: string;
   generated_at: string;
   input_event_count: number;
   matched_event_count: number;
   analysis_duration_ms: number;
-  summary: JsonObject | null;
-  timeline: JsonObject | null;
-  distributions: JsonObject[];
-  latency: JsonObject | null;
-  http: JsonObject | null;
-  insights: JsonObject[];
-  samples: JsonObject[];
+  summary: AnalysisSummary | null;
+  timeline: TimelineResult | null;
+  distributions: DistributionResult[];
+  latency: LatencyAnalysis | null;
+  http: HTTPAnalysis | null;
+  insights: AnalysisInsight[];
+  samples: AnalysisEventSample[];
   warnings: string[];
 }
+
+export type ComparisonMetric =
+  | "event_count"
+  | "error_rate"
+  | "critical_rate"
+  | "average_duration_ms"
+  | "p50_duration_ms"
+  | "p95_duration_ms"
+  | "p99_duration_ms"
+  | "server_error_rate"
+  | "client_error_rate"
+  | "throughput";
+
+export type ComparisonGroup =
+  | "endpoint"
+  | "event_type"
+  | "host"
+  | "http_status"
+  | "parser"
+  | "parser_name"
+  | "service"
+  | "severity"
+  | "status_code";
+
+export type ComparisonGroupField = ComparisonGroup;
 
 export interface ComparisonRequest {
   baseline_filter?: EventFilter | null;
   comparison_filter?: EventFilter | null;
   baseline_label?: string;
   comparison_label?: string;
-  metrics?: string[];
-  group_by?: string[];
+  metrics?: ComparisonMetric[];
+  group_by?: ComparisonGroupField[];
   top_n?: number;
   minimum_group_count?: number;
   significant_change_percent?: number | null;
@@ -503,16 +775,51 @@ export interface ComparisonRequest {
   metadata?: JsonObject;
 }
 
+export type ChangeDirection =
+  "increase" | "decrease" | "unchanged" | "new" | "removed" | "undefined";
+
+export type MetricInterpretation = "improved" | "degraded" | "neutral" | "unknown";
+
+export interface MetricComparison {
+  metric: string;
+  unit: string | null;
+  baseline_value: number | null;
+  comparison_value: number | null;
+  absolute_change: number | null;
+  percent_change: number | null;
+  direction: ChangeDirection;
+  significant: boolean;
+  interpretation: MetricInterpretation;
+  notes: string[];
+}
+
+export interface GroupComparison {
+  group_field: string;
+  key: string;
+  baseline_count: number;
+  comparison_count: number;
+  absolute_change: number;
+  percent_change: number | null;
+  baseline_percentage: number;
+  comparison_percentage: number;
+  percentage_point_change: number;
+  new_group: boolean;
+  disappeared_group: boolean;
+  significant: boolean;
+  metric_comparisons: MetricComparison[];
+  attributes: JsonObject;
+}
+
 export interface ComparisonResponse {
   baseline_label: string;
   comparison_label: string;
-  baseline_summary: JsonObject;
-  comparison_summary: JsonObject;
+  baseline_summary: AnalysisSummary;
+  comparison_summary: AnalysisSummary;
   baseline_event_count: number;
   comparison_event_count: number;
   duration_ms: number;
-  metric_comparisons: JsonObject[];
-  group_comparisons: JsonObject[];
-  insights: JsonObject[];
+  metric_comparisons: MetricComparison[];
+  group_comparisons: GroupComparison[];
+  insights: AnalysisInsight[];
   warnings: string[];
 }

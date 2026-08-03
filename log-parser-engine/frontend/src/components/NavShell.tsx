@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
-  { path: "/analysis", label: "Analysis" },
+  { path: "/analysis", label: "Ingest" },
+  { path: "/analytics", label: "Analytics" },
   { path: "/events", label: "Events" },
   { path: "/dashboard", label: "Dashboard" },
   { path: "/parsers", label: "Parsers" },
