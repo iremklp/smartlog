@@ -780,9 +780,11 @@ export type ChangeDirection =
 
 export type MetricInterpretation = "improved" | "degraded" | "neutral" | "unknown";
 
+export type ComparisonUnit = "count" | "ratio" | "ms" | "events_per_minute";
+
 export interface MetricComparison {
-  metric: string;
-  unit: string | null;
+  metric: ComparisonMetric;
+  unit: ComparisonUnit | null;
   baseline_value: number | null;
   comparison_value: number | null;
   absolute_change: number | null;
@@ -794,7 +796,7 @@ export interface MetricComparison {
 }
 
 export interface GroupComparison {
-  group_field: string;
+  group_field: ComparisonGroupField;
   key: string;
   baseline_count: number;
   comparison_count: number;

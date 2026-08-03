@@ -330,7 +330,7 @@ Frontend:
 
 - TypeScript, ESLint 9, Prettier ve Vite production build kontrolleri
   başarılıdır.
-- Dokuz test dosyasında **34 Vitest testi** geçmektedir; API URL/body ve
+- On iki test dosyasında **52 Vitest testi** geçmektedir; API URL/body ve
   structured error sözleşmeleri, analiz/comparison tipleri, request-state,
   bounded presentation, erişilebilir analiz görünümü, pagination ve backend
   biçimli event tablosu fixture'ı kapsanır.
@@ -453,13 +453,35 @@ ve boyut başına en fazla 20 satırlık dağılımlar sunulur. Grafiklerin eşd
 semantik tabloları vardır; empty, warning, `413` ve `429` durumları güvenli ve
 izlenebilir şekilde gösterilir. Timeline aralığı varsayılan olarak backend'in
 bounded otomatik seçimine bırakılır; elle seçilen bucketlar UTC hizalıdır.
-Comparison request-state ve response tipleri hazırdır; comparison sonuç ekranı
-sonraki UI dilimidir.
+
+`/analytics/compare` çalışma alanı aynı process-local `InMemoryEventStore`
+snapshotından iki zorunlu zaman aralığını karşılaştırır. Her aralık yarı-açıktır:
+başlangıç dahildir, bitiş dahil değildir (`start <= timestamp < end`). Bu ekran
+ayrı veri tabanlarını, podları veya kalıcı datasetleri karşılaştırmaz. `Son 1
+saat / önceki 1 saat`, `son 24 saat / önceki 24 saat` ve `son 7 gün / önceki 7
+gün` presetleri eşit uzunluklu ve bitişik dönemler üretir; manuel kullanımda da
+dört dönem sınırının tamamı zorunludur.
+
+Karşılaştırma metrikleri event sayısı, hata ve kritik oranları, HTTP 4xx/5xx
+oranları, ortalama/P50/P95/P99 süreleri ve throughput'tur. En fazla dört grup
+boyutu istenebilir ve her boyutun sonucu en fazla 20 satırla gösterilir. Ratio
+değerleri yüzde, iki ratio arasındaki mutlak fark yüzde puan, `percent_change`
+ise backend'in ürettiği göreli yüzde değişim olarak sunulur; bu ölçüler birbirine
+dönüştürülmez. `significant` işareti yalnız yapılandırılmış göreli değişim
+eşiğinin aşıldığını bildirir, istatistiksel anlamlılık testi değildir. Düşük
+örnek sayısı ayrıca uyarılır ve kesin iyileşme/kötüleşme iddiası kurulmaz.
+
+Karşılaştırma ilk sayfa açılışında otomatik istek göndermez. Kullanıcı
+gönderdikten sonra loading, partial/empty, structured error ve aynı istekle
+retry durumları görünürdür. İki dönem de boşsa açık empty state gösterilir;
+yalnız bir dönem boşsa yeni veya kaybolan gruplar yine listelenir. Sonuçlar
+geçicidir: ilgili podun belleğindeki snapshota aittir, restartta kaybolur ve
+OpenShift replica'ları arasında paylaşılmaz.
 
 ### Production Öncesi Öncelikler
 
-1. Frontend'de `/api/v1/analysis/compare` form ve sonuç ekranını geliştirmek
-2. Latency, HTTP ve deterministic insight analiz modüllerini görünür kılmak
+1. Latency, HTTP ve deterministic insight analiz modüllerini görünür kılmak
+2. Dashboard filtrelerini analysis/comparison drill-down akışına bağlamak
 3. Frontend bundle'ı route-level code splitting ile küçültmek
 4. Merkezi doğrulanmış configuration ve redacted structured logging
    sözleşmesini tamamlamak

@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 import { NavShell } from "../components/NavShell";
 import { AnalysisPage } from "../pages/AnalysisPage";
+import { ComparisonAnalysisPage } from "../pages/ComparisonAnalysisPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { EventDetailPage } from "../pages/EventDetailPage";
 import { EventsPage } from "../pages/EventsPage";
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { index: true, element: <AnalysisPage /> },
       { path: "analysis", element: <AnalysisPage /> },
       { path: "analytics", element: <StatisticalAnalysisPage /> },
+      { path: "analytics/compare", element: <ComparisonAnalysisPage /> },
       { path: "events", element: <EventsPage /> },
       { path: "events/:eventId", element: <EventDetailPage /> },
       { path: "dashboard", element: <DashboardPage /> },

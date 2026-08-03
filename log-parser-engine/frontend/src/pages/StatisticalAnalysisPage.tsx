@@ -7,6 +7,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { AnalysisRequestForm } from "../features/analysis/AnalysisRequestForm";
 import { AnalysisSummaryCards } from "../features/analysis/AnalysisSummaryCards";
 import { AnalysisTimelineChart } from "../features/analysis/AnalysisTimelineChart";
+import { AnalyticsTabs } from "../features/analysis/AnalyticsTabs";
 import { DistributionPanels } from "../features/analysis/DistributionPanels";
 import {
   DEFAULT_ANALYSIS_REQUEST_STATE,
@@ -69,6 +70,8 @@ export function StatisticalAnalysisPage() {
           ) : null}
         </div>
       </header>
+
+      <AnalyticsTabs />
 
       <Panel
         title="Analiz kapsamı"

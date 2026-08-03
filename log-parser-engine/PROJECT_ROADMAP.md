@@ -33,10 +33,12 @@ tamamlandığında yeniden doğrulanmalıdır.
 
 ## Mevcut öncelik
 
-**Q1 Statistical Analysis UI entegrasyonu başladı.** Backend/frontend kalite
-kapıları yeşildir; `/analytics` çalışma alanında typed request-state, özet,
-bounded timeline ve tanısal dağılımlar kullanılabilir. Sıradaki ürün dilimi
-comparison formu ile metric/group change sonuçlarının görünür hale gelmesidir.
+**Q1 Statistical Analysis UI entegrasyonu ilerliyor.** `/analytics` overview ve
+`/analytics/compare` dönem karşılaştırma çalışma alanları kullanılabilir.
+Karşılaştırma aynı process-local snapshotta zorunlu yarı-açık dönemleri, bounded
+metric/group sonuçlarını ve temkinli eşik yorumlarını gösterir. Sıradaki ürün
+dilimi latency, HTTP ve deterministic insight modüllerinin görünür hale
+gelmesidir.
 
 ## Büyük aşamalar
 
@@ -51,8 +53,8 @@ comparison formu ile metric/group change sonuçlarının görünür hale gelmesi
 | 7. Query Engine | ✅ | Typed ve deterministik filter, sort, pagination, facet ve aggregation sözleşmeleri testli | API/UI contractı aynı modellerle sabitlenir | Büyük snapshotlarda O(n log n) sort maliyeti |
 | 8. Application Service | 🟡 | Container parsing/store/query/analysis ve tek seferlik plugin startup lifecycle'ı bağlıyor | Güvenli response mapping ve merkezi config testleri tamam | API lifecycle/config boşlukları sürüyor |
 | 9. REST API | 🟡 | FastAPI app factory, bounded upload, güvenli request ID/CORS/header davranışları ve temel endpointler var | Versioned contract, ortak error envelope ve readiness tamam | Çoğu endpoint versiyonsuz; error sözleşmesi tamamen birleşik değil |
-| 10. Web UI | 🟡 | React/Vite UI'da sekiz sayfa, exact analysis/comparison contractları, erişilebilir bounded chart/table görünümleri ve yeşil kalite kapıları var | Comparison, latency/HTTP/insight UI ve route-level code splitting tamam | Comparison ve derin analiz modülleri henüz görünür değil |
-| 11. Statistical Analysis | 🟡 | Engine, `/api/v1/analysis*` API ve summary/timeline/distribution UI tamam; 139 backend odak testi var | Comparison, latency/HTTP/insight ve dashboard drill-down entegrasyonu tamam | İlk UI dilimi yalnız overview modüllerini gösteriyor |
+| 10. Web UI | 🟡 | React/Vite UI'da overview ve dönem karşılaştırma dahil exact analysis contractları, erişilebilir bounded chart/table görünümleri ve yeşil kalite kapıları var | Latency/HTTP/insight UI ve route-level code splitting tamam | Derin analiz modülleri henüz görünür değil |
+| 11. Statistical Analysis | 🟡 | Engine, `/api/v1/analysis*` API ve summary/timeline/distribution/comparison UI tamam; 139 backend odak testi var | Latency/HTTP/insight ve dashboard drill-down entegrasyonu tamam | Derin analiz ve dashboard bağlantıları bekliyor |
 | 12. Report Engine | ⏳ | Uygulama yok | Bounded HTML/Markdown/JSON/CSV çıktısı, güvenli download lifecycle ve testler | PDF/Excel dependency ve response boyutu |
 | 13. Rule Engine | ⏳ | Uygulama yok | Typed ve deterministik koşullar; `eval`/arbitrary code yok; testli API/UI | Güvensiz expression tasarımı |
 | 14. Alert Engine | ⏳ | Uygulama yok | In-memory state, deduplication, suppression, cooldown ve acknowledgement testli | Restartta state kaybı |
@@ -63,7 +65,7 @@ comparison formu ile metric/group change sonuçlarının görünür hale gelmesi
 | 19. Security Hardening | 🟡 | Parser/analysis limitleri, bounded upload, explicit CORS, güvenli request ID ve temel response headerları var | Threat model, dependency/static/secret scan, auth readiness, CSP ve container kontrolleri yeşil | Auth ve otomatik supply-chain taramaları eksik |
 | 20. Deployment | ⏳ | Containerfile veya OpenShift manifesti yok | Non-root, read-only, resource/probe tanımlı image ve OpenShift manifestleri doğrulanmış | Process-local verinin replica'larda ayrışması |
 | 21. CI/CD | ⏳ | Workflow yok | Backend/frontend quality gate, image scan, SBOM, release ve rollback akışı var | Kırık kalite kapılarının otomatikleşmemesi |
-| 22. Performance/Stability | 🟡 | Bazı bounds, concurrency ve memory testleri var | Parser/store/query/analysis benchmark, API load, soak ve kapasite rehberi tamam | 779 kB frontend bundle ve belirsiz kapasite |
+| 22. Performance/Stability | 🟡 | Bazı bounds, concurrency ve memory testleri var | Parser/store/query/analysis benchmark, API load, soak ve kapasite rehberi tamam | 873 kB frontend bundle ve belirsiz kapasite |
 | 23. AI Analysis | ⛔ | Uygulama yok | Yalnız açık talep sonrası provider abstraction, redaction, evidence ve cost limitleri | Veri dış servise çıkışı ve hallucination |
 
 ## Aktif subsystem envanteri
@@ -96,9 +98,9 @@ comparison formu ile metric/group change sonuçlarının görünür hale gelmesi
 | Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
 | API | FastAPI routes/middleware | 🟡 | Application service | Bounded upload, güvenli request ID/CORS/header ve analiz limitleri var; ortak versioning eksik |
-| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system ve `/analytics` overview akışları; 34 frontend testi var |
+| UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system ile `/analytics` overview ve `/analytics/compare` akışları; 52 frontend testi var |
 | Analysis | StatisticalAnalysisEngine | ✅ | Store snapshot | Summary, distribution, timeline, latency, HTTP, comparison ve insight var |
-| Analysis | Analysis UI/dashboard | 🟡 | Analysis API | `/analytics` summary/timeline/distribution tüketiyor; comparison ve derin modüller bekliyor |
+| Analysis | Analysis UI/dashboard | 🟡 | Analysis API | `/analytics` summary/timeline/distribution ve `/analytics/compare` dönem karşılaştırmasını tüketiyor; derin modüller bekliyor |
 
 ## Yakın dönem teslimat sırası
 
@@ -233,11 +235,21 @@ Q0 durumu: **tamamlandı**.
      warning ve structured `413`/`429` error durumları eklendi.
    - Sonuç: 9 dosyada 34 frontend testi, typecheck, lint, Prettier ve build
      kapıları başarılı.
-2. **Comparison çalışma alanı — sırada.**
-   - Dönem filtreleri ve presetler.
-   - Metric/group değişim tabloları ve significant-change göstergeleri.
-   - New/disappeared group ve güvenli empty/error state'leri.
-3. **Derin analiz modülleri.**
+2. **Comparison çalışma alanı — tamamlandı.**
+   - Aynı process-local store snapshotındaki iki zorunlu yarı-açık dönem
+     karşılaştırılıyor; boş filtreyle örtük whole-store karşılaştırması yok.
+   - Eşit ve bitişik son/önceki 1 saat, 24 saat ve 7 gün presetleri ile manuel
+     dört-sınır doğrulaması var.
+   - Event count, rate, duration percentile ve throughput metrikleri; en fazla
+     dört grup boyutu ve boyut başına en fazla 20 sonuç destekleniyor.
+   - Ratio yüzdesi, yüzde puan farkı ve göreli yüzde değişim ayrı sunuluyor.
+     `significant` yalnız eşik kontrolüdür; istatistiksel anlamlılık iddiası
+     değildir ve low-sample uyarıları görünürdür.
+   - New/disappeared group, initial/loading/partial-empty/structured-error ve
+     aynı istekle retry durumları erişilebilir biçimde gösteriliyor.
+   - Sonuçların pod-local ve restartta kaybolan in-memory veriye dayandığı UI ve
+     dokümantasyonda açıktır.
+3. **Derin analiz modülleri — sırada.**
    - Latency, HTTP, deterministic insight ve bounded sample görünümleri.
 4. **Dashboard entegrasyonu.**
    - Global filtreler, URL state ve event explorer drill-down.
@@ -286,8 +298,7 @@ tam çalışmaya devam eder.
 
 ## Bir sonraki `devam et`
 
-Bir sonraki `devam et` komutunda Q1'in ikinci dilimi uygulanacaktır: typed
-comparison request-state gerçek forma bağlanacak; baseline/comparison özetleri,
-metric değişimleri ve bounded group comparison sonuçları erişilebilir tablolarla
-sunulacaktır. Backend analiz sözleşmesi değiştirilmeden kullanılacak; SQL veya
-harici kalıcı veri tabanı eklenmeyecektir.
+Bir sonraki `devam et` komutunda Q1'in üçüncü dilimi uygulanacaktır: latency,
+HTTP ve deterministic insight sonuçları bounded, erişilebilir grafik ve
+tablolarla görünür hale getirilecektir. Backend analiz sözleşmesi değiştirilmeden
+kullanılacak; SQL veya harici kalıcı veri tabanı eklenmeyecektir.

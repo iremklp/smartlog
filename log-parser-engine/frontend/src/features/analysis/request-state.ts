@@ -27,6 +27,8 @@ const analysisGroupValues = ANALYSIS_GROUP_OPTIONS.map((option) => option.value)
 
 const optionalLocalDateTime = z.string().trim();
 
+const requiredLocalDateTime = (label: string) => z.string().trim().min(1, `${label} zorunludur`);
+
 export const analysisRequestStateSchema = z
   .object({
     startTime: optionalLocalDateTime,
@@ -49,40 +51,88 @@ export const DEFAULT_ANALYSIS_REQUEST_STATE: AnalysisRequestState = {
   groupFields: ["severity", "service", "event_type"]
 };
 
-const comparisonMetricValues = [
-  "event_count",
-  "error_rate",
-  "critical_rate",
-  "average_duration_ms",
-  "p50_duration_ms",
-  "p95_duration_ms",
-  "p99_duration_ms",
-  "server_error_rate",
-  "client_error_rate",
-  "throughput"
-] as const satisfies readonly ComparisonMetric[];
+export const COMPARISON_METRIC_OPTIONS = [
+  { value: "event_count", label: "Event sayısı" },
+  { value: "error_rate", label: "Hata + kritik oranı" },
+  { value: "critical_rate", label: "Kritik + fatal oranı" },
+  { value: "average_duration_ms", label: "Ortalama süre" },
+  { value: "p50_duration_ms", label: "P50 süre" },
+  { value: "p95_duration_ms", label: "P95 süre" },
+  { value: "p99_duration_ms", label: "P99 süre" },
+  { value: "server_error_rate", label: "HTTP 5xx oranı" },
+  { value: "client_error_rate", label: "HTTP 4xx oranı" },
+  { value: "throughput", label: "Throughput" }
+] as const satisfies ReadonlyArray<{ value: ComparisonMetric; label: string }>;
 
-const comparisonGroupValues = [
-  "endpoint",
-  "event_type",
-  "host",
-  "http_status",
-  "parser_name",
-  "service",
-  "severity"
-] as const satisfies readonly ComparisonGroup[];
+export const COMPARISON_GROUP_OPTIONS = [
+  { value: "endpoint", label: "Endpoint" },
+  { value: "event_type", label: "Event type" },
+  { value: "host", label: "Host" },
+  { value: "http_status", label: "HTTP status" },
+  { value: "parser_name", label: "Parser" },
+  { value: "service", label: "Service" },
+  { value: "severity", label: "Severity" }
+] as const satisfies ReadonlyArray<{ value: ComparisonGroup; label: string }>;
+
+const comparisonMetricValues = COMPARISON_METRIC_OPTIONS.map((option) => option.value) as [
+  ComparisonMetric,
+  ...ComparisonMetric[]
+];
+
+const comparisonGroupValues = COMPARISON_GROUP_OPTIONS.map((option) => option.value) as [
+  ComparisonGroup,
+  ...ComparisonGroup[]
+];
+
+export const COMPARISON_PERIOD_PRESET_OPTIONS = [
+  {
+    value: "last_hour",
+    label: "Son 1 saat / önceki 1 saat",
+    baselineLabel: "Önceki 1 saat",
+    comparisonLabel: "Son 1 saat",
+    durationMs: 60 * 60 * 1_000
+  },
+  {
+    value: "last_24_hours",
+    label: "Son 24 saat / önceki 24 saat",
+    baselineLabel: "Önceki 24 saat",
+    comparisonLabel: "Son 24 saat",
+    durationMs: 24 * 60 * 60 * 1_000
+  },
+  {
+    value: "last_7_days",
+    label: "Son 7 gün / önceki 7 gün",
+    baselineLabel: "Önceki 7 gün",
+    comparisonLabel: "Son 7 gün",
+    durationMs: 7 * 24 * 60 * 60 * 1_000
+  }
+] as const;
+
+export type ComparisonPeriodPreset = (typeof COMPARISON_PERIOD_PRESET_OPTIONS)[number]["value"];
 
 export const comparisonRequestStateSchema = z
   .object({
-    baselineLabel: z.string().trim().min(1).max(100),
-    comparisonLabel: z.string().trim().min(1).max(100),
-    baselineStartTime: optionalLocalDateTime,
-    baselineEndTime: optionalLocalDateTime,
-    comparisonStartTime: optionalLocalDateTime,
-    comparisonEndTime: optionalLocalDateTime,
-    metrics: z.array(z.enum(comparisonMetricValues)).max(10),
-    groupBy: z.array(z.enum(comparisonGroupValues)).max(9),
-    topN: z.coerce.number().int().min(1).max(20)
+    baselineLabel: z
+      .string()
+      .trim()
+      .min(1, "Referans etiketi boş olamaz")
+      .max(100, "Referans etiketi en fazla 100 karakter olabilir"),
+    comparisonLabel: z
+      .string()
+      .trim()
+      .min(1, "Karşılaştırma etiketi boş olamaz")
+      .max(100, "Karşılaştırma etiketi en fazla 100 karakter olabilir"),
+    baselineStartTime: requiredLocalDateTime("Referans başlangıcı"),
+    baselineEndTime: requiredLocalDateTime("Referans bitişi"),
+    comparisonStartTime: requiredLocalDateTime("Karşılaştırma başlangıcı"),
+    comparisonEndTime: requiredLocalDateTime("Karşılaştırma bitişi"),
+    metrics: z.array(z.enum(comparisonMetricValues)).max(10, "En fazla 10 metrik seçilebilir"),
+    groupBy: z.array(z.enum(comparisonGroupValues)).max(4, "En fazla dört boyut seçilebilir"),
+    topN: z.coerce
+      .number()
+      .int("Top N tam sayı olmalıdır")
+      .min(1, "Top N en az 1 olmalıdır")
+      .max(20, "Top N en fazla 20 olabilir")
   })
   .superRefine((value, context) => {
     validateTimeRange(value.baselineStartTime, value.baselineEndTime, context, "baseline");
@@ -98,7 +148,7 @@ export const comparisonRequestStateSchema = z
 
 export type ComparisonRequestState = z.infer<typeof comparisonRequestStateSchema>;
 
-export const DEFAULT_COMPARISON_REQUEST_STATE: ComparisonRequestState = {
+const COMPARISON_REQUEST_BASE_STATE: ComparisonRequestState = {
   baselineLabel: "Önceki dönem",
   comparisonLabel: "Karşılaştırma dönemi",
   baselineStartTime: "",
@@ -109,6 +159,47 @@ export const DEFAULT_COMPARISON_REQUEST_STATE: ComparisonRequestState = {
   groupBy: ["service", "severity"],
   topN: 10
 };
+
+export const DEFAULT_COMPARISON_REQUEST_STATE: ComparisonRequestState = applyComparisonPeriodPreset(
+  COMPARISON_REQUEST_BASE_STATE,
+  "last_hour"
+);
+
+export function applyComparisonPeriodPreset(
+  input: ComparisonRequestState,
+  preset: ComparisonPeriodPreset,
+  now: Date = new Date()
+): ComparisonRequestState {
+  const nowMilliseconds = now.getTime();
+  if (!Number.isFinite(nowMilliseconds)) {
+    throw new RangeError("Preset zamanı geçerli olmalıdır");
+  }
+
+  const option = COMPARISON_PERIOD_PRESET_OPTIONS.find((item) => item.value === preset);
+  if (!option) {
+    throw new RangeError("Desteklenmeyen karşılaştırma preseti");
+  }
+
+  const comparisonStart = new Date(nowMilliseconds - option.durationMs);
+  const baselineStart = new Date(nowMilliseconds - option.durationMs * 2);
+  return {
+    ...input,
+    metrics: [...input.metrics],
+    groupBy: [...input.groupBy],
+    baselineLabel: option.baselineLabel,
+    comparisonLabel: option.comparisonLabel,
+    baselineStartTime: toLocalDateTimeInput(baselineStart),
+    baselineEndTime: toLocalDateTimeInput(comparisonStart),
+    comparisonStartTime: toLocalDateTimeInput(comparisonStart),
+    comparisonEndTime: toLocalDateTimeInput(now)
+  };
+}
+
+export function createDefaultComparisonRequestState(
+  now: Date = new Date()
+): ComparisonRequestState {
+  return applyComparisonPeriodPreset(COMPARISON_REQUEST_BASE_STATE, "last_hour", now);
+}
 
 export function buildAnalysisRequest(input: AnalysisRequestState): AnalysisRequest {
   const value = analysisRequestStateSchema.parse(input);
@@ -169,6 +260,11 @@ function toUtcIso(value: string): string | undefined {
     return undefined;
   }
   return new Date(value).toISOString();
+}
+
+function toLocalDateTimeInput(value: Date): string {
+  const localMilliseconds = value.getTime() - value.getTimezoneOffset() * 60_000;
+  return new Date(localMilliseconds).toISOString().slice(0, 16);
 }
 
 function validateTimeRange(

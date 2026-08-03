@@ -26,6 +26,7 @@ Default API target is `http://localhost:8000` via `VITE_API_BASE_URL`.
 
 - `/analysis`: text/file ingest, parse and optional store workflows
 - `/analytics`: statistical summary, bounded timeline and diagnostic distributions
+- `/analytics/compare`: adjacent-period metric and group comparison workspace
 - `/events`: server-side query and event list
 - `/events/:eventId`: event detail
 - `/dashboard`: aggregation/facet charts
@@ -79,10 +80,32 @@ Git'e eklenmez; tekrarlanabilir kurulum için `package-lock.json` korunur.
   supports timezone-aware range selection, backend-bounded automatic bucket
   sizing, optional explicit UTC buckets, bounded Top-N dimensions and retry-safe
   refresh.
+- `/analytics/compare` compares two required, timezone-aware, half-open periods
+  (`start <= timestamp < end`) from the same process-local
+  `InMemoryEventStore` snapshot. It does not compare separate stores, pods or
+  persisted datasets.
+- The comparison form offers equal, adjacent `1 hour`, `24 hour` and `7 day`
+  presets. Manual input still requires all four period boundaries; an empty
+  filter is not submitted as an implicit whole-store comparison.
+- Supported metrics are event count, error/critical/HTTP 4xx/HTTP 5xx rates,
+  average/P50/P95/P99 duration and throughput. A request accepts at most four
+  group dimensions, and group result tables render at most 20 rows per
+  dimension.
+- Ratio values are rendered as percentages, the difference between two ratios
+  as percentage points, and `percent_change` as the backend-provided relative
+  percentage. These three quantities are not interchangeable.
+- A `significant` flag means only that the configured relative-change threshold
+  was reached; it is not a statistical significance test. Low-sample warnings
+  are shown explicitly and suppress overconfident interpretation.
+- The comparison route does not run automatically on first render. It provides
+  explicit initial, loading, partial/empty, structured error and same-request
+  retry states; new and disappeared groups remain visible when only one period
+  is empty.
 - Timeline rendering is bounded to 120 visual points. Larger responses are
   merged deterministically without combining percentile values. Distribution
   rendering is bounded to 20 rows per dimension.
 - Recharts visualizations have equivalent semantic tables, and loading, empty,
   warning and structured API error states remain usable without the charts.
-- Comparison request state is typed and tested; its dedicated form/result view
-  is the next UI slice.
+- Comparison request state, form and result presentation are typed against the
+  backend contract. As with every analysis view, results are temporary and
+  pod-local: restarting the API loses events, and replicas do not share them.

@@ -81,7 +81,7 @@ describe("statistical analysis API contracts", () => {
       metric_comparisons: [
         {
           metric: "event_count",
-          unit: "events",
+          unit: "count",
           baseline_value: 0,
           comparison_value: 0,
           absolute_change: 0,
