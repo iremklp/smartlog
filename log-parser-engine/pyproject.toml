@@ -41,13 +41,31 @@ select = ["E", "F", "I"]
 python_version = "3.11"
 mypy_path = "src"
 warn_return_any = true
-warn_unused_configs = true
+warn_unused_configs = false
 disallow_untyped_defs = true
 no_implicit_optional = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["tests", "tests.*"]
+module = ["tests.*"]
 disallow_untyped_defs = false
 check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+	"tests.helpers.fake_parser",
+	"tests.test_analysis_distributions",
+	"tests.test_analysis_extractors",
+	"tests.test_analysis_insights",
+	"tests.test_base_parser",
+	"tests.test_detector",
+	"tests.test_entry_point_loader",
+	"tests.test_event_identity",
+	"tests.test_event_query_models",
+	"tests.test_event_store_options",
+	"tests.test_http_analysis",
+	"tests.test_latency_analysis",
+	"tests.test_memory_event_store",
+	"tests.test_plugin_validation",
+]
 disable_error_code = ["arg-type", "operator", "return-value"]

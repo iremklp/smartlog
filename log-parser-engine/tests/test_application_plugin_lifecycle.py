@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Literal
 
 import pytest
 
@@ -59,8 +60,8 @@ class RecordingLoader(BasePluginLoader):
 
 def _options(
     *,
-    failure_policy: str = "fail",
-    duplicate_policy: str = "reject",
+    failure_policy: Literal["fail", "warn"] = "fail",
+    duplicate_policy: Literal["reject", "replace"] = "reject",
     enable_builtin_parsers: bool = False,
     allow_builtin_replacement: bool = False,
     max_startup_warnings: int = 20,

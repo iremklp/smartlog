@@ -11,7 +11,8 @@ from log_parser_engine.models import (
     PipelineOptions,
 )
 from log_parser_engine.normalization import LogNormalizer
-from log_parser_engine.pipeline import LogProcessingPipeline, PipelineStage
+from log_parser_engine.pipeline import PipelineStage
+from log_parser_engine.pipeline.pipeline import LogProcessingPipeline
 from tests.helpers.fake_parser import FakeParser
 
 

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -14,7 +16,7 @@ from log_parser_engine.pipeline import PipelineStage
 
 def test_pipeline_result_succeeded_and_properties() -> None:
     event = LogEvent(
-        timestamp="2024-01-01T00:00:00+00:00",
+        timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc),
         source_type=LogSourceType.application,
         message="hello",
         raw_message="hello",

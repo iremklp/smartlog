@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 import pytest
 
@@ -343,7 +344,9 @@ def test_parser_name_filter_facet_and_aggregation_use_canonical_extractor(
 
 
 @pytest.mark.parametrize("direction", ["asc", "desc"])
-def test_optional_sort_values_are_always_last(direction: str) -> None:
+def test_optional_sort_values_are_always_last(
+    direction: Literal["asc", "desc"],
+) -> None:
     """Optional sort values do not crash and remain last in either direction."""
 
     store = InMemoryEventStore(EventStoreOptions(max_events=10))
