@@ -39,7 +39,16 @@ def test_analysis_options_reject_invalid_limits(
     value: int,
 ) -> None:
     with pytest.raises(ValidationError):
-        AnalysisOptions(**{field: value})
+        if field == "max_events":
+            AnalysisOptions(max_events=value)
+        elif field == "max_groups":
+            AnalysisOptions(max_groups=value)
+        elif field == "max_timeline_buckets":
+            AnalysisOptions(max_timeline_buckets=value)
+        elif field == "max_attribute_depth":
+            AnalysisOptions(max_attribute_depth=value)
+        else:  # pragma: no cover - guarded by parametrization
+            raise AssertionError(f"unexpected field {field!r}")
 
 
 def test_analysis_options_reject_invalid_threshold_order() -> None:
@@ -72,4 +81,12 @@ def test_analysis_options_reject_invalid_threshold_order() -> None:
 )
 def test_analysis_options_reject_non_finite_thresholds(field: str) -> None:
     with pytest.raises(ValidationError, match="finite"):
-        AnalysisOptions(**{field: float("nan")})
+        value = float("nan")
+        if field == "significant_change_percent":
+            AnalysisOptions(significant_change_percent=value)
+        elif field == "latency_warning_percentile_ms":
+            AnalysisOptions(latency_warning_percentile_ms=value)
+        elif field == "dominant_group_warning_percentage":
+            AnalysisOptions(dominant_group_warning_percentage=value)
+        else:  # pragma: no cover - guarded by parametrization
+            raise AssertionError(f"unexpected field {field!r}")

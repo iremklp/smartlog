@@ -55,7 +55,16 @@ def test_analysis_request_rejects_sensitive_field_overrides(
     value: str,
 ) -> None:
     with pytest.raises(ValidationError, match="sensitive"):
-        AnalysisRequest(**{field_name: value})
+        if field_name == "duration_field":
+            AnalysisRequest(duration_field=value)
+        elif field_name == "status_field":
+            AnalysisRequest(status_field=value)
+        elif field_name == "method_field":
+            AnalysisRequest(method_field=value)
+        elif field_name == "path_field":
+            AnalysisRequest(path_field=value)
+        else:  # pragma: no cover - guarded by parametrization
+            raise AssertionError(f"unexpected field {field_name!r}")
 
 
 def test_analysis_request_rejects_sensitive_groups_and_unbounded_dimensions() -> None:

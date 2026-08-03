@@ -23,14 +23,14 @@ class TrackingBytesIO(BytesIO):
         super().__init__(value)
         self.read_sizes: list[int] = []
 
-    def read(self, size: int = -1) -> bytes:
-        self.read_sizes.append(size)
+    def read(self, size: int | None = -1) -> bytes:
+        self.read_sizes.append(-1 if size is None else size)
         return super().read(size)
 
 
 class FailingBytesIO(TrackingBytesIO):
-    def read(self, size: int = -1) -> bytes:
-        self.read_sizes.append(size)
+    def read(self, size: int | None = -1) -> bytes:
+        self.read_sizes.append(-1 if size is None else size)
         raise OSError("simulated read failure")
 
 

@@ -39,8 +39,15 @@ select = ["E", "F", "I"]
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = "src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 no_implicit_optional = true
 check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests", "tests.*"]
+disallow_untyped_defs = false
+check_untyped_defs = false
+disable_error_code = ["arg-type", "operator", "return-value"]

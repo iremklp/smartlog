@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from log_parser_engine.analysis import AnalysisOptions
 from log_parser_engine.api import create_app
@@ -240,19 +242,19 @@ def test_analysis_api_bounds_request_body_before_json_materialization() -> None:
 
 
 def test_analysis_body_limit_handles_chunked_body_without_content_length() -> None:
-    async def exercise_middleware() -> tuple[bool, list[dict[str, Any]]]:
+    async def exercise_middleware() -> tuple[bool, list[Message]]:
         downstream_called = False
 
         async def downstream(
-            scope: dict[str, Any],
-            receive: Any,
-            send: Any,
+            scope: Scope,
+            receive: Receive,
+            send: Send,
         ) -> None:
             nonlocal downstream_called
             downstream_called = True
 
         middleware = AnalysisRequestSizeLimitMiddleware(
-            downstream,
+            cast(ASGIApp, downstream),
             max_body_bytes=256,
         )
         incoming = iter(
@@ -269,12 +271,12 @@ def test_analysis_body_limit_handles_chunked_body_without_content_length() -> No
                 },
             )
         )
-        sent: list[dict[str, Any]] = []
+        sent: list[Message] = []
 
-        async def receive() -> dict[str, Any]:
+        async def receive() -> Message:
             return next(incoming)
 
-        async def send(message: dict[str, Any]) -> None:
+        async def send(message: Message) -> None:
             sent.append(message)
 
         await middleware(
@@ -362,7 +364,7 @@ def test_analysis_api_rejects_work_when_concurrency_slots_are_full() -> None:
     client = _client(
         application_overrides={"max_concurrent_analysis_operations": 1}
     )
-    container = client.app.state.container
+    container = cast(FastAPI, client.app).state.container
     assert container.try_acquire_analysis_slot()
     try:
         response = client.post("/api/v1/analysis", json={})
