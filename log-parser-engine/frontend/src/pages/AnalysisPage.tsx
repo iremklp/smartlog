@@ -100,6 +100,12 @@ export function AnalysisPage() {
     onSuccess: (data) => setOutput(data)
   });
 
+  const textErrorMessage = textMutation.error ? formatErrorMessage(textMutation.error) : null;
+  const fileErrorMessage = fileMutation.error ? formatErrorMessage(fileMutation.error) : null;
+  const showStoreParseHint =
+    textForm.watch("storeResult") &&
+    (isCanonicalStoreFailure(textErrorMessage) || isNoParserMatchedFailure(output));
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
       <Panel
@@ -206,10 +212,20 @@ export function AnalysisPage() {
           ) : null}
         </div>
         {textMutation.error ? (
-          <p className="mb-3 text-sm text-err">{textMutation.error.message}</p>
+          <p className="mb-3 text-sm text-err">{textErrorMessage}</p>
         ) : null}
         {fileMutation.error ? (
-          <p className="mb-3 text-sm text-err">{fileMutation.error.message}</p>
+          <p className="mb-3 text-sm text-err">{fileErrorMessage}</p>
+        ) : null}
+        {showStoreParseHint ? (
+          <div className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
+            <p className="font-semibold">Store için parser eşleşmesi gerekli.</p>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              <li>Tek satır JSON gönderin (kod bloğu işaretleri eklemeyin).</li>
+              <li>Çok satırlı JSON/JSONL için Batch seçeneğini açın.</li>
+              <li>Auto detection yerine parser olarak json_log seçip tekrar deneyin.</li>
+            </ul>
+          </div>
         ) : null}
         {output ? (
           <JsonView value={output} />
@@ -305,4 +321,110 @@ function FileParseForm({
       </button>
     </form>
   );
+}
+
+function formatErrorMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    const directMessage = error.message?.trim();
+    if (directMessage && directMessage !== "[object Object]") {
+      return directMessage;
+    }
+    const nestedMessage = extractErrorMessage(error as unknown as Record<string, unknown>);
+    if (nestedMessage) {
+      return nestedMessage;
+    }
+    return "Beklenmeyen bir hata oluştu.";
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const extracted = extractErrorMessage(error as Record<string, unknown>);
+    if (extracted) {
+      return extracted;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
+  return "Beklenmeyen bir hata oluştu.";
+}
+
+function extractErrorMessage(input: Record<string, unknown>): string | null {
+  const direct = readStringValue(input.message) ?? readStringValue(input.detail);
+  if (direct) {
+    return direct;
+  }
+
+  const nestedError = input.error;
+  if (typeof nestedError === "object" && nestedError !== null) {
+    const nested = nestedError as Record<string, unknown>;
+    const message = readStringValue(nested.message) ?? readStringValue(nested.detail);
+    if (message) {
+      return message;
+    }
+  }
+
+  const detailList = input.detail;
+  if (Array.isArray(detailList)) {
+    const messages = detailList
+      .map((item) => {
+        if (typeof item !== "object" || item === null) {
+          return null;
+        }
+        const record = item as Record<string, unknown>;
+        return readStringValue(record.message) ?? readStringValue(record.msg);
+      })
+      .filter((value): value is string => Boolean(value));
+    if (messages.length > 0) {
+      return messages.join("; ");
+    }
+  }
+
+  return null;
+}
+
+function readStringValue(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function isCanonicalStoreFailure(message: string | null): boolean {
+  if (!message) {
+    return false;
+  }
+  const lowered = message.toLowerCase();
+  return (
+    lowered.includes("canonical event") ||
+    lowered.includes("no parser matched") ||
+    lowered.includes("parser did not produce")
+  );
+}
+
+function isNoParserMatchedFailure(output: unknown): boolean {
+  if (typeof output !== "object" || output === null) {
+    return false;
+  }
+
+  const candidate = output as {
+    success?: unknown;
+    errors?: Array<{ message?: unknown }>;
+  };
+
+  if (candidate.success !== false || !Array.isArray(candidate.errors)) {
+    return false;
+  }
+
+  return candidate.errors.some((error) => {
+    const message = readStringValue(error.message);
+    return Boolean(message && message.toLowerCase().includes("no parser matched"));
+  });
 }
