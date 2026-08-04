@@ -101,6 +101,7 @@ export function LatencyAnalysisPanel({ latency }: LatencyAnalysisPanelProps) {
           </summary>
           <div className="max-h-72 overflow-auto border-t border-white/10">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">Latency percentile dağılımı (milisaniye)</caption>
               <thead className="sticky top-0 bg-panel text-xs uppercase tracking-wide text-inkSoft">
                 <tr>
                   <th scope="col" className="px-3 py-2">
@@ -112,14 +113,22 @@ export function LatencyAnalysisPanel({ latency }: LatencyAnalysisPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {percentileRows.map((row) => (
-                  <tr key={row.percentile} className="border-t border-white/5">
-                    <th scope="row" className="px-3 py-2 font-medium text-ink">
-                      P{row.percentile}
-                    </th>
-                    <td className="px-3 py-2 text-right">{formatMilliseconds(row.value)}</td>
+                {percentileRows.length > 0 ? (
+                  percentileRows.map((row) => (
+                    <tr key={row.percentile} className="border-t border-white/5">
+                      <th scope="row" className="px-3 py-2 font-medium text-ink">
+                        P{row.percentile}
+                      </th>
+                      <td className="px-3 py-2 text-right">{formatMilliseconds(row.value)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-t border-white/5">
+                    <td className="px-3 py-3 text-inkSoft" colSpan={2}>
+                      Percentile verisi bulunamadı.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -131,6 +140,7 @@ export function LatencyAnalysisPanel({ latency }: LatencyAnalysisPanelProps) {
           </summary>
           <div className="max-h-72 overflow-auto border-t border-white/10">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">En yavaş event örnekleri (milisaniye)</caption>
               <thead className="sticky top-0 bg-panel text-xs uppercase tracking-wide text-inkSoft">
                 <tr>
                   <th scope="col" className="px-3 py-2">
@@ -148,18 +158,26 @@ export function LatencyAnalysisPanel({ latency }: LatencyAnalysisPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {latency.slowest_events.map((event) => (
-                  <tr key={event.event_id} className="border-t border-white/5">
-                    <th scope="row" className="px-3 py-2 font-medium text-ink">
-                      {formatUtcDateTime(event.timestamp)}
-                    </th>
-                    <td className="px-3 py-2 text-right">
-                      {formatMilliseconds(event.duration_ms)}
+                {latency.slowest_events.length > 0 ? (
+                  latency.slowest_events.map((event) => (
+                    <tr key={event.event_id} className="border-t border-white/5">
+                      <th scope="row" className="px-3 py-2 font-medium text-ink">
+                        {formatUtcDateTime(event.timestamp)}
+                      </th>
+                      <td className="px-3 py-2 text-right">
+                        {formatMilliseconds(event.duration_ms)}
+                      </td>
+                      <td className="px-3 py-2">{event.service ?? "—"}</td>
+                      <td className="px-3 py-2">{event.event_type ?? "—"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-t border-white/5">
+                    <td className="px-3 py-3 text-inkSoft" colSpan={4}>
+                      Yavaş event örneği bulunamadı.
                     </td>
-                    <td className="px-3 py-2">{event.service ?? "—"}</td>
-                    <td className="px-3 py-2">{event.event_type ?? "—"}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

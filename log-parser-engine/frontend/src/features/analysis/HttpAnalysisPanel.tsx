@@ -107,6 +107,7 @@ export function HttpAnalysisPanel({ http }: HttpAnalysisPanelProps) {
           </summary>
           <div className="max-h-72 overflow-auto border-t border-white/10">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">HTTP method dağılımı</caption>
               <thead className="sticky top-0 bg-panel text-xs uppercase tracking-wide text-inkSoft">
                 <tr>
                   <th scope="col" className="px-3 py-2">
@@ -121,15 +122,23 @@ export function HttpAnalysisPanel({ http }: HttpAnalysisPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {http.method_distribution.items.map((item) => (
-                  <tr key={item.key} className="border-t border-white/5">
-                    <th scope="row" className="px-3 py-2 font-medium text-ink">
-                      {item.display_value}
-                    </th>
-                    <td className="px-3 py-2 text-right">{formatNumber(item.count)}</td>
-                    <td className="px-3 py-2 text-right">{item.percentage.toFixed(1)}%</td>
+                {http.method_distribution.items.length > 0 ? (
+                  http.method_distribution.items.map((item) => (
+                    <tr key={item.key} className="border-t border-white/5">
+                      <th scope="row" className="px-3 py-2 font-medium text-ink">
+                        {item.display_value}
+                      </th>
+                      <td className="px-3 py-2 text-right">{formatNumber(item.count)}</td>
+                      <td className="px-3 py-2 text-right">{item.percentage.toFixed(1)}%</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-t border-white/5">
+                    <td className="px-3 py-3 text-inkSoft" colSpan={3}>
+                      Method dağılımı bulunamadı.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -141,6 +150,7 @@ export function HttpAnalysisPanel({ http }: HttpAnalysisPanelProps) {
           </summary>
           <div className="max-h-72 overflow-auto border-t border-white/10">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">Endpoint hata oranı sıralaması</caption>
               <thead className="sticky top-0 bg-panel text-xs uppercase tracking-wide text-inkSoft">
                 <tr>
                   <th scope="col" className="px-3 py-2">
@@ -158,16 +168,26 @@ export function HttpAnalysisPanel({ http }: HttpAnalysisPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {http.highest_error_endpoints.map((endpoint) => (
-                  <tr key={endpoint.endpoint} className="border-t border-white/5">
-                    <th scope="row" className="px-3 py-2 font-medium text-ink">
-                      {endpoint.endpoint}
-                    </th>
-                    <td className="px-3 py-2 text-right">{formatNumber(endpoint.request_count)}</td>
-                    <td className="px-3 py-2 text-right">{formatNumber(endpoint.error_count)}</td>
-                    <td className="px-3 py-2 text-right">{formatRatio(endpoint.error_rate)}</td>
+                {http.highest_error_endpoints.length > 0 ? (
+                  http.highest_error_endpoints.map((endpoint) => (
+                    <tr key={endpoint.endpoint} className="border-t border-white/5">
+                      <th scope="row" className="px-3 py-2 font-medium text-ink">
+                        {endpoint.endpoint}
+                      </th>
+                      <td className="px-3 py-2 text-right">
+                        {formatNumber(endpoint.request_count)}
+                      </td>
+                      <td className="px-3 py-2 text-right">{formatNumber(endpoint.error_count)}</td>
+                      <td className="px-3 py-2 text-right">{formatRatio(endpoint.error_rate)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-t border-white/5">
+                    <td className="px-3 py-3 text-inkSoft" colSpan={4}>
+                      Endpoint hata oranı verisi bulunamadı.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
