@@ -47,6 +47,9 @@ export function DistributionPanels({ distributions }: DistributionPanelsProps) {
 function DistributionCard({ distribution }: { distribution: DistributionResult }) {
   const bounded = boundDistributionItems(distribution);
   const items = bounded.items;
+  const hiddenCategoryCount =
+    (distribution.truncated ? Math.max(distribution.unique_value_count - items.length, 0) : 0) +
+    bounded.hiddenItemCount;
   const chartHeight = Math.max(220, items.length * 34 + 44);
   const fieldLabel = formatFieldLabel(distribution.field);
 
@@ -123,6 +126,14 @@ function DistributionCard({ distribution }: { distribution: DistributionResult }
           : null}
       </figcaption>
 
+      {distribution.truncated || bounded.clientTruncated ? (
+        <p className="rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">
+          Görünüm sınırı aktif: {formatNumber(hiddenCategoryCount)} kategori ve{" "}
+          {formatNumber(distribution.other_count + bounded.hiddenEventCount)} event tabloda
+          gösterilmiyor.
+        </p>
+      ) : null}
+
       <details className="rounded-lg border border-white/10">
         <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
           {fieldLabel} dağılım tablosu
@@ -149,16 +160,31 @@ function DistributionCard({ distribution }: { distribution: DistributionResult }
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={`${item.rank}-${item.key}`} className="border-t border-white/5">
-                  <td className="px-3 py-2">{item.rank}</td>
-                  <th scope="row" className="px-3 py-2 font-medium">
-                    {item.display_value}
-                  </th>
-                  <td className="px-3 py-2 text-right">{formatNumber(item.count)}</td>
-                  <td className="px-3 py-2 text-right">{item.percentage.toFixed(1)}%</td>
+              {items.length > 0 ? (
+                items.map((item) => (
+                  <tr key={`${item.rank}-${item.key}`} className="border-t border-white/5">
+                    <td className="px-3 py-2">{item.rank}</td>
+                    <th scope="row" className="px-3 py-2 font-medium">
+                      {item.display_value}
+                    </th>
+                    <td className="px-3 py-2 text-right">{formatNumber(item.count)}</td>
+                    <td className="px-3 py-2 text-right">{item.percentage.toFixed(1)}%</td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="border-t border-white/5">
+                  <td colSpan={4} className="px-3 py-3 text-inkSoft">
+                    Bu boyut için dağılım satırı bulunamadı.
+                  </td>
                 </tr>
-              ))}
+              )}
+              {hiddenCategoryCount > 0 ? (
+                <tr className="border-t border-white/10 bg-warn/5 text-xs text-warn">
+                  <td colSpan={4} className="px-3 py-2">
+                    {formatNumber(hiddenCategoryCount)} kategori görünüm sınırı nedeniyle gizlendi.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
