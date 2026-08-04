@@ -16,7 +16,7 @@ import {
   parseText,
   parseWithParser
 } from "../lib/api/endpoints";
-import type { PipelineResult } from "../lib/api/types";
+import type { LogEvent, PipelineResult } from "../lib/api/types";
 
 const textSchema = z.object({
   rawLog: z.string().min(1, "Log satiri bos olamaz"),
@@ -79,10 +79,21 @@ export function AnalysisPage() {
         // instead of a generic canonical-event store error.
         const pipelineResult = await parseText({ raw_log: values.rawLog });
         if (!pipelineResult.success || !pipelineResult.event) {
+          const fallbackEvent = await tryJsonStoreFallback(values.rawLog);
+          if (fallbackEvent) {
+            const writeResult = await addEvent(fallbackEvent);
+            return {
+              result: pipelineResult,
+              write_result: writeResult,
+              store_skipped: false,
+              store_fallback_parser: "json_log"
+            };
+          }
           return {
             result: pipelineResult,
             write_result: null,
-            store_skipped: true
+            store_skipped: true,
+            store_fallback_parser: null
           };
         }
 
@@ -247,6 +258,9 @@ export function AnalysisPage() {
           <p className="mb-3 text-xs text-warn">
             Store seçiliydi ancak canonical event üretilemediği için kayıt yapılmadı.
           </p>
+        ) : null}
+        {isStoreFallbackResult(output) ? (
+          <p className="mb-3 text-xs text-info">Auto fallback parser `json_log` ile store edildi.</p>
         ) : null}
         {output ? (
           <JsonView value={output} />
@@ -470,5 +484,50 @@ function isStoreSkippedResult(output: unknown): output is {
     typeof candidate.result === "object" &&
     candidate.result !== null &&
     candidate.write_result === null
+  );
+}
+
+function isStoreFallbackResult(output: unknown): output is {
+  result: PipelineResult;
+  write_result: unknown;
+  store_skipped: false;
+  store_fallback_parser: "json_log";
+} {
+  if (typeof output !== "object" || output === null) {
+    return false;
+  }
+  const candidate = output as {
+    store_skipped?: unknown;
+    store_fallback_parser?: unknown;
+    write_result?: unknown;
+  };
+  return (
+    candidate.store_skipped === false &&
+    candidate.store_fallback_parser === "json_log" &&
+    candidate.write_result !== null &&
+    candidate.write_result !== undefined
+  );
+}
+
+async function tryJsonStoreFallback(rawLog: string): Promise<LogEvent | null> {
+  const trimmed = rawLog.trim();
+  if (!looksLikeJson(trimmed)) {
+    return null;
+  }
+
+  try {
+    const parsed = await parseWithParser("json_log", { raw_log: rawLog });
+    return parsed.events?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeJson(value: string): boolean {
+  return (
+    value.startsWith("{") ||
+    value.startsWith("[") ||
+    value.startsWith("{\n") ||
+    value.startsWith("[\n")
   );
 }
