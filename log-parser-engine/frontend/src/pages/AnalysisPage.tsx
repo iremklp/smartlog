@@ -12,11 +12,11 @@ import {
   batchParseAndStoreText,
   batchParseText,
   listParsers,
-  parseAndStoreText,
   parseFile,
   parseText,
   parseWithParser
 } from "../lib/api/endpoints";
+import type { PipelineResult } from "../lib/api/types";
 
 const textSchema = z.object({
   rawLog: z.string().min(1, "Log satiri bos olamaz"),
@@ -75,7 +75,23 @@ export function AnalysisPage() {
         return result;
       }
       if (values.storeResult) {
-        return parseAndStoreText({ raw_log: values.rawLog });
+        // First parse without storing so parse failures surface as structured output
+        // instead of a generic canonical-event store error.
+        const pipelineResult = await parseText({ raw_log: values.rawLog });
+        if (!pipelineResult.success || !pipelineResult.event) {
+          return {
+            result: pipelineResult,
+            write_result: null,
+            store_skipped: true
+          };
+        }
+
+        const writeResult = await addEvent(pipelineResult.event);
+        return {
+          result: pipelineResult,
+          write_result: writeResult,
+          store_skipped: false
+        };
       }
       return parseText({ raw_log: values.rawLog });
     },
@@ -226,6 +242,11 @@ export function AnalysisPage() {
               <li>Auto detection yerine parser olarak json_log seçip tekrar deneyin.</li>
             </ul>
           </div>
+        ) : null}
+        {isStoreSkippedResult(output) ? (
+          <p className="mb-3 text-xs text-warn">
+            Store seçiliydi ancak canonical event üretilemediği için kayıt yapılmadı.
+          </p>
         ) : null}
         {output ? (
           <JsonView value={output} />
@@ -427,4 +448,27 @@ function isNoParserMatchedFailure(output: unknown): boolean {
     const message = readStringValue(error.message);
     return Boolean(message && message.toLowerCase().includes("no parser matched"));
   });
+}
+
+function isStoreSkippedResult(output: unknown): output is {
+  result: PipelineResult;
+  write_result: null;
+  store_skipped: true;
+} {
+  if (typeof output !== "object" || output === null) {
+    return false;
+  }
+
+  const candidate = output as {
+    store_skipped?: unknown;
+    result?: unknown;
+    write_result?: unknown;
+  };
+
+  return (
+    candidate.store_skipped === true &&
+    typeof candidate.result === "object" &&
+    candidate.result !== null &&
+    candidate.write_result === null
+  );
 }
