@@ -6,7 +6,12 @@ interface AnalysisSamplesPanelProps {
   samples: AnalysisEventSample[];
 }
 
+const MAX_SAMPLE_ROWS = 100;
+
 export function AnalysisSamplesPanel({ samples }: AnalysisSamplesPanelProps) {
+  const visibleSamples = samples.slice(0, MAX_SAMPLE_ROWS);
+  const hiddenSampleCount = Math.max(samples.length - visibleSamples.length, 0);
+
   return (
     <section aria-labelledby="analysis-samples-heading" className="grid gap-3">
       <div>
@@ -27,6 +32,11 @@ export function AnalysisSamplesPanel({ samples }: AnalysisSamplesPanelProps) {
         </p>
       ) : (
         <div className="rounded-xl border border-white/10 bg-black/15">
+          {hiddenSampleCount > 0 ? (
+            <p className="border-b border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">
+              Görünüm sınırı aktif: {formatNumber(hiddenSampleCount)} örnek event gösterilmiyor.
+            </p>
+          ) : null}
           <div className="max-h-80 overflow-auto">
             <table className="w-full min-w-[740px] text-left text-sm">
               <caption className="sr-only">Analiz için dönen bounded örnek event listesi</caption>
@@ -50,7 +60,7 @@ export function AnalysisSamplesPanel({ samples }: AnalysisSamplesPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {samples.map((sample) => (
+                {visibleSamples.map((sample) => (
                   <tr key={sample.event_id} className="border-t border-white/5">
                     <th scope="row" className="px-3 py-2 font-medium text-ink">
                       {formatUtcDateTime(sample.timestamp)}
@@ -65,7 +75,7 @@ export function AnalysisSamplesPanel({ samples }: AnalysisSamplesPanelProps) {
             </table>
           </div>
           <p className="border-t border-white/10 px-3 py-2 text-xs text-inkSoft">
-            {formatNumber(samples.length)} örnek event gösteriliyor.
+            {formatNumber(visibleSamples.length)} örnek event gösteriliyor.
           </p>
         </div>
       )}
