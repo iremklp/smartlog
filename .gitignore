@@ -39,6 +39,11 @@ ENV/
 *.egg-info/
 build/
 dist/
+pip-wheel-metadata/
+
+# Poetry local/cache artifacts
+.cache/pypoetry/
+poetry.toml
 
 # -----------------------------
 # Node/Vite caches and outputs

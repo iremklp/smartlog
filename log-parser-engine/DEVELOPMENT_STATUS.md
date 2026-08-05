@@ -10,6 +10,127 @@ tabanın üzerinde doğrulanmıştır.
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
+## Guncel Sonuc - Sprint 3 Frontend Temiz Kurulum ve Quality Gate (2026-08-05)
+
+Bu bolum yalniz guncel frontend quality gate sonucunu ozetler.
+
+Calistirilan komutlar:
+
+- `cd frontend && rm -rf node_modules`
+- `cd frontend && npm ci`
+- `cd frontend && npm run typecheck`
+- `cd frontend && npm run lint`
+- `cd frontend && npm run format --if-present`
+- `cd frontend && npm run test`
+- `cd frontend && npm run build`
+
+Gercek sonuclar:
+
+- `npm ci`: basarili (`401 package` audit edildi)
+- `typecheck`: basarili
+- `lint`: basarili
+- `format`: basarili (`src/app/providers.tsx` yeniden formatlandi)
+- `test`: `17 file`, `62 test`, tamami basarili
+- `build`: basarili (`vite v5.4.21`)
+
+Bundle/chunk ozeti:
+
+- `dist/assets/BarChart-*.js`: `373.08 kB` (gzip `103.45 kB`)
+- `dist/assets/index-*.js`: `243.64 kB` (gzip `78.73 kB`)
+- `dist/assets/types-*.js`: `83.35 kB` (gzip `22.99 kB`)
+- `dist/assets/StatisticalAnalysisPage-*.js`: `70.64 kB` (gzip `16.68 kB`)
+- `dist/assets/EventsPage-*.js`: `56.81 kB` (gzip `15.44 kB`)
+
+Dependency ve config dogrulamasi:
+
+- `frontend/node_modules` Git tarafindan takip edilmiyor.
+- Package scriptleri `typecheck`, `lint`, `format`, `test`, `build` adimlarini
+  kapsiyor.
+- Vite/Vitest/ESLint/Prettier konfigleri beklenen kalite kapilarini sagliyor.
+- React Query Devtools yalnız development ortaminda lazy mount edilecek sekilde
+  guncellendi.
+
+Kalan riskler:
+
+- `npm audit` uyarisinda `8 vulnerability` devam ediyor
+  (`5 moderate`, `2 high`, `1 critical`).
+- Vitest calisirken React Router v7 future-flag warningleri goruluyor; testleri
+  bozmasa da teknik borc olarak takip edilmelidir.
+
+## History
+
+## Sprint kaydi: Backend Temiz Kurulum ve Quality Gate (2026-08-05)
+
+Bu sprintte yalniz backend quality gate kapsami ele alindi.
+
+Calistirilan komutlar:
+
+- `poetry install`
+- `poetry run pytest`
+- `poetry run pytest --cov=log_parser_engine --cov-report=term-missing`
+- `poetry run ruff check .`
+- `poetry run mypy src`
+- `poetry build`
+
+Gercek sonuclar:
+
+- `poetry install`: basarili
+- `pytest`: `555 passed`
+- `coverage`: `TOTAL 12502`, `1790 missing`, toplam `%86`
+- `ruff`: ilk calistirmada `tests/test_analysis_api.py` icin `E501` (tek satir)
+  bulundu; satir kirilarak duzeltildi ve tekrar calistirmada basarili oldu.
+- `mypy src`: `Success: no issues found in 218 source files`
+- `build`: `sdist` ve `wheel` basarili
+
+## Sprint kaydi: Repository Temizligi ve Kaynak Kontrol Hijyeni (2026-08-05)
+
+Bu sprintte yalniz repository hijyeni ve kaynak kontrol duzeni ele alindi.
+Uygulama davranisi, parser implementasyonlari ve API endpoint semantigi
+degistirilmedi.
+
+Yapilan hijyen islemleri:
+
+- `git ls-files` ile tracked dosyalar tarandi.
+- Generated/cache artefakt paterni icin zorunlu grep sorgusu calistirildi ve
+  eslesen tracked dosya bulunmadi.
+- Kapsamli ignore politikasi Poetry cache/build artefaklariyla tamamlandi:
+  - `pip-wheel-metadata/`
+  - `.cache/pypoetry/`
+  - `poetry.toml`
+- `.dockerignore` varligi kontrol edildi; dosya bulunmadi (bu sprintte
+  olusturulmadi, yalniz raporlandi).
+
+Calistirilan zorunlu komutlar:
+
+- `git status --short`
+- `git ls-files`
+- `git ls-files | grep -E '(__pycache__|\.pyc$|node_modules|\.venv|dist/|\.coverage|\.DS_Store|__MACOSX|tsbuildinfo)' || true`
+- `git check-ignore -v <ornek-dosyalar>`
+
+Ek dogrulama ve olcumler:
+
+- `du -sh .`
+- `git ls-files -z | xargs -0 stat -f '%z %N' | sort -nr | head -n 15`
+
+Gercek sonuclar:
+
+- Tracked generated/cache artefakt eslesmesi: yok
+- Repository toplam boyutu: `67M`
+- En buyuk tracked dosyalar: `frontend/package-lock.json` (~214 KB),
+  `poetry.lock` (~156 KB)
+
+Test sonucu:
+
+- `poetry run pytest tests/test_report_models.py tests/test_analysis_api.py`
+  -> `22 passed`
+
+Kalan riskler (hijyen kapsaminda):
+
+- `.dockerignore` bulunmuyor; container build baglami acildiginda ayrica
+  tanimlanmalidir.
+- Frontend bagimlilik agacinda `npm audit` uyarilari onceki sprintlerden beri
+  devam etmektedir.
+
 ## Sprint kaydi: Report Engine Foundation (2026-08-05)
 
 Bu sprintte yalniz Report Engine Foundation kapsami ele alindi. Yeni subsystem,

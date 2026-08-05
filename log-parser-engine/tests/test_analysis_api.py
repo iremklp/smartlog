@@ -248,7 +248,10 @@ def test_analysis_validation_error_fields_are_deduplicated_and_bounded() -> None
     assert isinstance(fields, list)
     assert len(fields) == 20
     assert len(fields) == len(set(fields))
-    assert all(isinstance(field, str) and field and "body" not in field for field in fields)
+    assert all(
+        isinstance(field, str) and field and "body" not in field
+        for field in fields
+    )
 
 
 def test_analysis_api_bounds_request_body_before_json_materialization() -> None:

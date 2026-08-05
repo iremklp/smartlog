@@ -119,7 +119,7 @@ poetry run ruff check .
 ## Type checking
 
 ```bash
-poetry run mypy
+poetry run mypy src
 ```
 
 ## Backend Quality Gate
@@ -127,11 +127,48 @@ poetry run mypy
 ```bash
 poetry install
 poetry run pytest
-poetry run pytest --cov
+poetry run pytest --cov=log_parser_engine --cov-report=term-missing
 poetry run ruff check
-poetry run mypy
+poetry run mypy src
 poetry build
 ```
+
+## Sprint 2 - Backend Temiz Kurulum ve Quality Gate
+
+Bu sprintte backend bagimliliklari temiz kurulumla dogrulanir ve kalite
+kapilari tek tek calistirilir.
+
+Calistirilan komutlar:
+
+```bash
+poetry install
+poetry run pytest
+poetry run pytest --cov=log_parser_engine --cov-report=term-missing
+poetry run ruff check .
+poetry run mypy src
+poetry build
+```
+
+## Sprint 3 - Frontend Temiz Kurulum ve Quality Gate
+
+Bu sprintte frontend temiz kurulum ve kalite kapilari dogrulanir.
+
+Calistirilan komutlar:
+
+```bash
+cd frontend && rm -rf node_modules
+cd frontend && npm ci
+cd frontend && npm run typecheck
+cd frontend && npm run lint
+cd frontend && npm run format --if-present
+cd frontend && npm run test
+cd frontend && npm run build
+```
+
+Not:
+
+- React Query Devtools yalniz development ortaminda mount edilir; production
+  bundleda kosulsuz include edilmez.
 
 ## API Contract Hardening Sprint
 

@@ -38,3 +38,11 @@ npm run lint
 npm run test
 npm run build
 ```
+
+## Kaynak Kontrol Hijyeni
+
+- `node_modules/`, `.venv/`, `dist/`, `build/`, `__pycache__/`, `*.pyc`,
+	`.coverage*`, `.DS_Store`, `__MACOSX` ve `*.tsbuildinfo` dosyalari
+	kaynak kod artefakti degildir ve Git'e eklenmemelidir.
+- Kurulum her zaman tekrar uretilebilir komutlarla yapilmalidir:
+	`poetry install` ve `npm ci`.

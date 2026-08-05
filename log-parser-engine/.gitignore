@@ -25,6 +25,7 @@ venv/
 env/
 ENV/
 .env
+poetry.toml
 
 .coverage
 .coverage.*
@@ -35,6 +36,8 @@ dist/
 build/
 .eggs/
 *.egg-info/
+pip-wheel-metadata/
+.cache/pypoetry/
 
 node_modules/
 .vite/
