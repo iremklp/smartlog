@@ -238,12 +238,8 @@ export function AnalysisPage() {
             <StatusBadge label="error" tone="err" />
           ) : null}
         </div>
-        {textMutation.error ? (
-          <p className="mb-3 text-sm text-err">{textErrorMessage}</p>
-        ) : null}
-        {fileMutation.error ? (
-          <p className="mb-3 text-sm text-err">{fileErrorMessage}</p>
-        ) : null}
+        {textMutation.error ? <p className="mb-3 text-sm text-err">{textErrorMessage}</p> : null}
+        {fileMutation.error ? <p className="mb-3 text-sm text-err">{fileErrorMessage}</p> : null}
         {showStoreParseHint ? (
           <div className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
             <p className="font-semibold">Store için parser eşleşmesi gerekli.</p>
@@ -260,7 +256,9 @@ export function AnalysisPage() {
           </p>
         ) : null}
         {isStoreFallbackResult(output) ? (
-          <p className="mb-3 text-xs text-info">Auto fallback parser `json_log` ile store edildi.</p>
+          <p className="mb-3 text-xs text-info">
+            Auto fallback parser `json_log` ile store edildi.
+          </p>
         ) : null}
         {output ? (
           <JsonView value={output} />
