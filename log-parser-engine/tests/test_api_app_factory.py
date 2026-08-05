@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from log_parser_engine.api import create_app
 from log_parser_engine.application import ApplicationContainer, ApplicationOptions
 from log_parser_engine.core import ParserRegistry
-from log_parser_engine.models import LogSeverity, LogSourceType
+from log_parser_engine.models import LogEvent, LogSeverity, LogSourceType
 from log_parser_engine.storage import InMemoryEventStore
 from tests.helpers.fake_parser import FakeParser
 
@@ -206,7 +206,10 @@ def test_api_query_severity_filter_returns_matching_events() -> None:
         reason="match",
     )
     container = ApplicationContainer.build(
-        options=ApplicationOptions(enable_builtin_parsers=False),
+        options=ApplicationOptions(
+            enable_builtin_parsers=False,
+            allow_public_event_write=True,
+        ),
         registry=ParserRegistry([parser]),
         store=InMemoryEventStore(),
     )
@@ -278,7 +281,10 @@ def test_api_event_detail_includes_raw_message() -> None:
         reason="match",
     )
     container = ApplicationContainer.build(
-        options=ApplicationOptions(enable_builtin_parsers=False),
+        options=ApplicationOptions(
+            enable_builtin_parsers=False,
+            allow_public_event_write=True,
+        ),
         registry=ParserRegistry([parser]),
         store=InMemoryEventStore(),
     )
@@ -303,3 +309,244 @@ def test_api_event_detail_includes_raw_message() -> None:
     detail_response = client.get(f"/events/{event_id}")
     assert detail_response.status_code == 200
     assert detail_response.json()["event"]["raw_message"] == "seed raw"
+
+
+def test_events_write_is_forbidden_when_public_write_is_disabled() -> None:
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False),
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event": {
+                "timestamp": "2026-07-25T20:05:31Z",
+                "source_type": "APPLICATION",
+                "severity": "ERROR",
+                "message": "seed",
+                "raw_message": "seed raw",
+            }
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "HTTP_403"
+
+
+def test_store_clear_requires_capability_and_confirmation() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        allow_public_store_clear=True,
+        store_clear_confirmation="confirm-wipe",
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    bad = client.post("/api/v1/store/clear", json={"confirmation": "wrong"})
+    good = client.post(
+        "/api/v1/store/clear",
+        json={"confirmation": "confirm-wipe"},
+    )
+
+    assert bad.status_code == 400
+    assert bad.json()["error"]["code"] == "HTTP_400"
+    assert good.status_code == 200
+    assert good.json()["cleared"] == 0
+
+
+def test_store_clear_is_forbidden_when_public_capability_is_disabled() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        allow_public_store_clear=False,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/store/clear",
+        json={"confirmation": options.store_clear_confirmation},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "HTTP_403"
+
+
+def test_query_rejects_excessive_facet_field_count() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        max_query_facet_fields=1,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/query",
+        json={
+            "query": {
+                "facet_fields": ["severity", "service"],
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "HTTP_400"
+
+
+def test_aggregate_rejects_excessive_bucket_limit() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        max_aggregation_buckets=2,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/aggregate",
+        json={
+            "request": {
+                "group_by": "severity",
+                "metric": "count",
+                "limit": 3,
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "HTTP_400"
+
+
+def test_event_delete_is_forbidden_when_public_delete_is_disabled() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        allow_public_event_delete=False,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.delete("/api/v1/events/nonexistent")
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "HTTP_403"
+
+
+def test_events_reject_metadata_size_over_limit() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        allow_public_event_write=True,
+        max_metadata_bytes=64,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event": {
+                "timestamp": "2026-07-25T20:05:31Z",
+                "source_type": "APPLICATION",
+                "severity": "ERROR",
+                "message": "seed",
+                "raw_message": "seed raw",
+            },
+            "options": {"metadata": {"k": "x" * 200}},
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "HTTP_413"
+
+
+def test_events_reject_metadata_depth_over_limit() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        allow_public_event_write=True,
+        max_metadata_depth=2,
+    )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event": {
+                "timestamp": "2026-07-25T20:05:31Z",
+                "source_type": "APPLICATION",
+                "severity": "ERROR",
+                "message": "seed",
+                "raw_message": "seed raw",
+            },
+            "options": {"metadata": {"a": {"b": {"c": 1}}}},
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "HTTP_400"
+
+
+def test_query_rejects_response_over_estimated_byte_limit() -> None:
+    options = ApplicationOptions(
+        enable_builtin_parsers=False,
+        max_response_estimated_bytes=1024,
+    )
+    store = InMemoryEventStore()
+    for index in range(20):
+        store.add(
+            LogEvent(
+                timestamp=f"2026-07-25T20:05:{index:02d}Z",
+                source_type="APPLICATION",
+                severity="ERROR",
+                message="seed-" + ("x" * 120),
+                raw_message="raw-" + ("y" * 120),
+            )
+        )
+    container = ApplicationContainer.build(
+        options=options,
+        registry=ParserRegistry([]),
+        store=store,
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.post("/api/v1/query", json={"query": {}})
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "RESPONSE_LIMIT_EXCEEDED"

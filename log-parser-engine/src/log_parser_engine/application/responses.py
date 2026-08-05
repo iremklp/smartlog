@@ -93,6 +93,7 @@ class PublicApiCapabilitiesResponse(BaseModel):
 
     can_clear_store: bool
     can_delete_events: bool
+    can_write_events_directly: bool
     includes_raw_message_in_event_detail: bool
     includes_runtime_metrics: bool
     supports_file_upload: bool

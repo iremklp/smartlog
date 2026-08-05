@@ -37,6 +37,40 @@ class ApplicationOptions(BaseModel):
         ge=1,
         le=1024 * 1024 * 1024,
     )
+    max_text_characters: int = Field(
+        default=1_048_576,
+        ge=1,
+        le=8_388_608,
+    )
+    max_metadata_bytes: int = Field(
+        default=16_384,
+        ge=64,
+        le=1_048_576,
+    )
+    max_metadata_depth: int = Field(
+        default=8,
+        ge=1,
+        le=32,
+    )
+    max_query_facet_fields: int = Field(
+        default=8,
+        ge=1,
+        le=32,
+    )
+    max_aggregation_buckets: int = Field(
+        default=200,
+        ge=1,
+        le=1_000,
+    )
+    max_response_estimated_bytes: int = Field(
+        default=2 * 1024 * 1024,
+        ge=1_024,
+        le=64 * 1024 * 1024,
+    )
+    allow_public_event_write: bool = False
+    allow_public_event_delete: bool = False
+    allow_public_store_clear: bool = False
+    store_clear_confirmation: str = Field(default="CLEAR")
     cors_allowed_origins: tuple[str, ...] = (
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -57,6 +91,14 @@ class ApplicationOptions(BaseModel):
         if not 0.0 <= value <= 1.0:
             raise ValueError("confidence value must be between 0.0 and 1.0")
         return value
+
+    @field_validator("store_clear_confirmation")
+    @classmethod
+    def validate_store_clear_confirmation(cls, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) < 3:
+            raise ValueError("store_clear_confirmation must be at least 3 characters")
+        return cleaned
 
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod

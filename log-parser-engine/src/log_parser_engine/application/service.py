@@ -9,7 +9,10 @@ from typing import Literal, cast
 
 from log_parser_engine.batch import BatchParseOptions
 from log_parser_engine.core import ParserContext
-from log_parser_engine.exceptions import AnalysisConcurrencyLimitError
+from log_parser_engine.exceptions import (
+    AnalysisConcurrencyLimitError,
+    InputTooLargeError,
+)
 from log_parser_engine.models import (
     BatchParseResult,
     BatchWriteResult,
@@ -124,8 +127,9 @@ class LogAnalysisApplicationService:
                 max_response_items=options.batch_parse_options.max_buffered_results,
             ),
             capabilities=PublicApiCapabilitiesResponse(
-                can_clear_store=True,
-                can_delete_events=True,
+                can_clear_store=options.allow_public_store_clear,
+                can_delete_events=options.allow_public_event_delete,
+                can_write_events_directly=options.allow_public_event_write,
                 includes_raw_message_in_event_detail=True,
                 includes_runtime_metrics=True,
                 supports_file_upload=True,
@@ -267,6 +271,7 @@ class LogAnalysisApplicationService:
         *,
         source_name: str | None = None,
     ) -> IngestionResult:
+        self._validate_text_characters(text)
         return self._container.ingestion_service.ingest_text(
             text,
             source_name=source_name,
@@ -443,6 +448,8 @@ class LogAnalysisApplicationService:
         batch_mode: bool,
         allow_disabled_parser: bool,
     ) -> ParseOperationResponse:
+        self._validate_text_characters(raw_log)
+
         if batch_mode:
             if store_result:
                 batch_write_result = self.batch_parse_and_store_text(
@@ -477,6 +484,11 @@ class LogAnalysisApplicationService:
 
         pipeline_result = self.parse_text(raw_log, context=context, options=options)
         return ParseOperationResponse(result=pipeline_result)
+
+    def _validate_text_characters(self, value: str) -> None:
+        if len(value) <= self._container.options.max_text_characters:
+            return
+        raise InputTooLargeError("text input exceeds the configured size limit")
 
     def _resolve_version(self) -> str:
         from log_parser_engine import __version__

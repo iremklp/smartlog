@@ -310,8 +310,8 @@ class ComparisonApiResponse(BaseModel):
         return cls.model_validate(payload)
 
 
-class AnalysisApiErrorDetail(BaseModel):
-    """Stable, safe error envelope for analysis endpoints."""
+class ApiErrorDetail(BaseModel):
+    """Standard, safe API error envelope detail."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -322,10 +322,21 @@ class AnalysisApiErrorDetail(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
-class AnalysisApiErrorResponse(BaseModel):
-    """Backward-compatible analysis error response."""
+class ApiErrorResponse(BaseModel):
+    """Standard API error response model used across all routes."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     detail: str
-    error: AnalysisApiErrorDetail
+    error: ApiErrorDetail
+
+
+class StoreClearRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    confirmation: str
+
+
+# Backward-compatible aliases for existing analysis-specific imports.
+AnalysisApiErrorDetail = ApiErrorDetail
+AnalysisApiErrorResponse = ApiErrorResponse

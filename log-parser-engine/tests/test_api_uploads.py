@@ -108,9 +108,9 @@ def test_parse_file_rejects_oversized_upload_with_safe_413_response() -> None:
     )
 
     assert response.status_code == 413
-    assert response.json() == {
-        "detail": "input exceeds the configured size limit"
-    }
+    body = response.json()
+    assert body["detail"] == "input exceeds the configured size limit"
+    assert body["error"]["code"] == "REQUEST_ENTITY_TOO_LARGE"
     assert "abcde" not in response.text
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-content-type-options"] == "nosniff"
@@ -138,7 +138,9 @@ def test_parse_file_rejects_empty_upload() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "uploaded file is empty"}
+    body = response.json()
+    assert body["detail"] == "uploaded file is empty"
+    assert body["error"]["code"] == "HTTP_400"
 
 
 def test_parse_file_maps_binary_ingestion_failure_without_echoing_input() -> None:
@@ -157,9 +159,9 @@ def test_parse_file_maps_binary_ingestion_failure_without_echoing_input() -> Non
     )
 
     assert response.status_code == 400
-    assert response.json() == {
-        "detail": "uploaded file could not be ingested"
-    }
+    body = response.json()
+    assert body["detail"] == "uploaded file could not be ingested"
+    assert body["error"]["code"] == "BINARY_CONTENT_NOT_ALLOWED"
     assert "private-value" not in response.text
 
 

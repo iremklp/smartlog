@@ -27,6 +27,7 @@ def _client(
     option_values = {"max_events": max_events, **(analysis_overrides or {})}
     options = ApplicationOptions(
         enable_builtin_parsers=False,
+        allow_public_event_write=True,
         analysis_options=AnalysisOptions(**option_values),
         **(application_overrides or {}),
     )

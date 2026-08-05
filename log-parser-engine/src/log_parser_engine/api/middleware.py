@@ -13,7 +13,7 @@ from .request_id import (
     request_id_context,
     resolve_request_id,
 )
-from .schemas import AnalysisApiErrorDetail, AnalysisApiErrorResponse
+from .schemas import ApiErrorDetail, ApiErrorResponse
 
 _SECURITY_HEADERS = {
     "Cache-Control": "no-store",
@@ -109,9 +109,9 @@ class AnalysisRequestSizeLimitMiddleware:
         send: Send,
     ) -> None:
         request_id = get_request_id() or new_request_id()
-        response_model = AnalysisApiErrorResponse(
+        response_model = ApiErrorResponse(
             detail="Analysis request body exceeds limit.",
-            error=AnalysisApiErrorDetail(
+            error=ApiErrorDetail(
                 code="ANALYSIS_REQUEST_BODY_TOO_LARGE",
                 message="Analysis request body exceeds limit.",
                 request_id=request_id,

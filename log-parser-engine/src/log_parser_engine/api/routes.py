@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from log_parser_engine.application import (
     AnalyzeEventsCommand,
@@ -22,6 +26,7 @@ from log_parser_engine.models import (
 )
 
 from .dependencies import get_service
+from .errors import ApiResponseTooLargeError
 from .response_models import (
     AggregationApiResponse,
     BatchParseResultApiResponse,
@@ -49,6 +54,7 @@ from .schemas import (
     ParseRequest,
     ParseWithParserRequest,
     QueryRequest,
+    StoreClearRequest,
 )
 from .uploads import read_bounded_upload
 
@@ -508,6 +514,11 @@ def add_event(
     payload: AddEventRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> EventWriteResultApiResponse:
+    _require_capability(
+        service.container.options.allow_public_event_write,
+        "direct event write is disabled",
+    )
+    _validate_metadata(payload.options.metadata, service)
     return EventWriteResultApiResponse.from_domain(
         service.add_event(payload.event, options=payload.options)
     )
@@ -534,6 +545,11 @@ def add_many_events(
     payload: AddManyEventsRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> BatchWriteResultApiResponse:
+    _require_capability(
+        service.container.options.allow_public_event_write,
+        "direct event write is disabled",
+    )
+    _validate_metadata(payload.options.metadata, service)
     return BatchWriteResultApiResponse.from_domain(
         service.add_many_events(payload.events, options=payload.options)
     )
@@ -583,7 +599,43 @@ def delete_event(
     event_id: str,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> dict[str, bool]:
+    _require_capability(
+        service.container.options.allow_public_event_delete,
+        "event deletion is disabled",
+    )
     return {"deleted": service.delete_event(event_id)}
+
+
+@router.post(
+    "/api/v1/store/clear",
+    summary="Clear all stored events",
+)
+def clear_store(
+    payload: StoreClearRequest,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> dict[str, int]:
+    _require_capability(
+        service.container.options.allow_public_store_clear,
+        "store clear is disabled",
+    )
+    expected = service.container.options.store_clear_confirmation
+    if payload.confirmation.strip() != expected:
+        raise HTTPException(
+            status_code=400,
+            detail="store clear confirmation does not match",
+        )
+    return {"cleared": service.clear_events()}
+
+
+@router.post(
+    "/store/clear",
+    deprecated=True,
+)
+def clear_store_legacy(
+    payload: StoreClearRequest,
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> dict[str, int]:
+    return clear_store(payload, service)
 
 
 @router.delete(
@@ -606,7 +658,10 @@ def query_events(
     payload: QueryRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> QueryApiResponse:
-    return QueryApiResponse.from_domain(service.query_events(payload.query))
+    _validate_query_request(payload.query, service)
+    response = QueryApiResponse.from_domain(service.query_events(payload.query))
+    _enforce_response_size_limit(response, service)
+    return response
 
 
 @router.post(
@@ -630,10 +685,15 @@ def aggregate_events(
     payload: AggregateRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> AggregationApiResponse | None:
+    _validate_aggregation_limit(payload.request.limit, service)
+    if payload.base_query is not None:
+        _validate_query_request(payload.base_query, service)
     result = service.aggregate_events(payload.request, base_query=payload.base_query)
     if result is None:
         return None
-    return AggregationApiResponse.from_domain(result)
+    response = AggregationApiResponse.from_domain(result)
+    _enforce_response_size_limit(response, service)
+    return response
 
 
 @router.post(
@@ -674,3 +734,89 @@ def _to_parse_api_response(
     if isinstance(result, BatchWriteResult):
         return BatchWriteResultApiResponse.from_domain(result)
     raise HTTPException(status_code=500, detail="unexpected parse response")
+
+
+def _require_capability(enabled: bool, message: str) -> None:
+    if enabled:
+        return
+    raise HTTPException(status_code=403, detail=message)
+
+
+def _validate_metadata(
+    metadata: dict[str, Any],
+    service: LogAnalysisApplicationService,
+) -> None:
+    options = service.container.options
+    estimated_bytes = len(
+        json.dumps(
+            metadata,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    if estimated_bytes > options.max_metadata_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail="metadata exceeds configured size limit",
+        )
+    if _max_depth(metadata) > options.max_metadata_depth:
+        raise HTTPException(
+            status_code=400,
+            detail="metadata exceeds configured depth limit",
+        )
+
+
+def _max_depth(value: object, depth: int = 1) -> int:
+    if isinstance(value, dict):
+        if not value:
+            return depth
+        return max(_max_depth(item, depth + 1) for item in value.values())
+    if isinstance(value, list):
+        if not value:
+            return depth
+        return max(_max_depth(item, depth + 1) for item in value)
+    return depth
+
+
+def _validate_query_request(
+    query: Any,
+    service: LogAnalysisApplicationService,
+) -> None:
+    options = service.container.options
+    if (
+        query.limit is not None
+        and query.limit > options.event_store_options.max_page_size
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="query limit exceeds configured page size",
+        )
+    if len(query.facet_fields) > options.max_query_facet_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="facet field count exceeds configured limit",
+        )
+    if query.aggregation is not None:
+        _validate_aggregation_limit(query.aggregation.limit, service)
+
+
+def _validate_aggregation_limit(
+    limit: int,
+    service: LogAnalysisApplicationService,
+) -> None:
+    if limit <= service.container.options.max_aggregation_buckets:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail="aggregation limit exceeds configured bucket limit",
+    )
+
+
+def _enforce_response_size_limit(
+    payload: BaseModel,
+    service: LogAnalysisApplicationService,
+) -> None:
+    estimated_bytes = len(payload.model_dump_json().encode("utf-8"))
+    if estimated_bytes <= service.container.options.max_response_estimated_bytes:
+        return
+    raise ApiResponseTooLargeError()
