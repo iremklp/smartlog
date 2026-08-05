@@ -71,6 +71,7 @@ from .plugin_load_result import PluginLoadResult
 from .ranked_item import RankedItem
 from .redis_event_classification import RedisEventClassification
 from .redis_record import RedisLogRecord
+from .report import ReportDocument, ReportManifest, ReportRequest
 from .stored_event import StoredEvent
 from .syslog_record import SyslogRecord
 from .timeline import TimelineBucket, TimelineResult
@@ -144,6 +145,9 @@ __all__ = [
     "PluginLoadResult",
     "RedisEventClassification",
     "RedisLogRecord",
+    "ReportDocument",
+    "ReportManifest",
+    "ReportRequest",
     "SyslogRecord",
     "WebAccessRecord",
     "WebErrorRecord",

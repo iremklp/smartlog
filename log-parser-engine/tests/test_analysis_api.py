@@ -218,6 +218,39 @@ def test_analysis_api_rejects_unconfigured_attribute_group_fields() -> None:
         assert "must-not-be-returned" not in response.text
 
 
+def test_analysis_api_rejects_non_public_group_dimension_paths() -> None:
+    client = _client()
+
+    response = client.post(
+        "/api/v1/analysis",
+        json={"group_fields": ["attributes.team"]},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "ANALYSIS_REQUEST_VALIDATION_FAILED"
+    assert body["error"]["details"]["fields"] == ["group_fields"]
+
+
+def test_analysis_validation_error_fields_are_deduplicated_and_bounded() -> None:
+    client = _client()
+    payload: dict[str, object] = {"top_n": 0}
+    for index in range(30):
+        payload[f"unknown_field_{index}"] = index
+
+    response = client.post("/api/v1/analysis", json=payload)
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "ANALYSIS_REQUEST_VALIDATION_FAILED"
+
+    fields = body["error"]["details"]["fields"]
+    assert isinstance(fields, list)
+    assert len(fields) == 20
+    assert len(fields) == len(set(fields))
+    assert all(isinstance(field, str) and field and "body" not in field for field in fields)
+
+
 def test_analysis_api_bounds_request_body_before_json_materialization() -> None:
     client = _client(
         application_overrides={"max_analysis_request_body_bytes": 256}

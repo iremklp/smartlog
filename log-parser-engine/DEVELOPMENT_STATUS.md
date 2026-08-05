@@ -10,6 +10,103 @@ tabanın üzerinde doğrulanmıştır.
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
+## Sprint kaydi: Report Engine Foundation (2026-08-05)
+
+Bu sprintte yalniz Report Engine Foundation kapsami ele alindi. Yeni subsystem,
+architectural degisiklik veya yeni ozellik gelistirmesi yapilmadi.
+
+Kod degisiklikleri:
+
+- `src/log_parser_engine/models/report.py` eklendi:
+  - `ReportRequest`
+  - `ReportManifest`
+  - `ReportDocument`
+- Bu modellerde bounded validation, format/section allowlist ve immutable
+  metadata kurallari tanimlandi.
+- `src/log_parser_engine/models/__init__.py` guncellendi ve report modelleri
+  public model surface'ine export edildi.
+- `tests/test_report_models.py` eklendi ve report foundation contract
+  davranislari testlendi.
+
+Calistirilan komutlar:
+
+- `poetry run pytest tests/test_report_models.py`
+- `poetry run pytest tests/test_analysis_api.py`
+
+Gercek sonuclar:
+
+- Report foundation testleri: `4 passed`
+- Analysis API regresyon testi: `18 passed`
+
+Kalan riskler (Report Engine Foundation kapsaminda):
+
+- Report uretim servisi, export lifecycle ve download endpointleri bu sprintte
+  bilerek eklenmedi; yalniz model/test foundation hazirlandi.
+- PDF/Excel gibi agir format bagimliliklari ve buyuk cikti stream stratejisi
+  sonraki sprintte tasarim karari gerektirir.
+
+## Sprint kaydi: API Contract Hardening (2026-08-05)
+
+Bu sprintte yalniz API contract hardening kapsami ele alindi. Yeni subsystem,
+architectural degisiklik veya yeni ozellik gelistirmesi yapilmadi.
+
+Kod degisiklikleri:
+
+- `tests/test_analysis_api.py` icine iki yeni contract testi eklendi:
+  - public olmayan `group_fields` yollarinin (`attributes.*`) API katmaninda
+    422 ile reddedilmesi
+  - analysis validation hata detaylarindaki `fields` listesinin dedupe ve
+    en fazla 20 alanla sinirli olmasi
+
+Calistirilan komutlar:
+
+- `poetry run pytest tests/test_analysis_api.py`
+- `cd frontend && npm ci`
+- `npm run test -- src/lib/api/analysis-contracts.test.ts src/lib/api/contracts.test.ts src/lib/api/client.test.ts src/lib/api/endpoints.test.ts`
+
+Gercek sonuclar:
+
+- Backend API contract testi: `18 passed`
+- Frontend API contract testi: `4 files`, `16 tests`, tamami basarili
+
+Kalan riskler (API contract kapsaminda):
+
+- Frontend `npm ci` ciktisinda `8 vulnerabilities` uyarisi devam ediyor
+  (`5 moderate`, `2 high`, `1 critical`).
+- Analysis/public response contractinda derinlik ve liste sinirlari testle
+  guvenceye alinmis olsa da yeni alan eklendikce `_EXCLUDED_RESPONSE_KEYS`
+  listesinin gozetimi surekli gerekir.
+
+## Sprint kaydi: Frontend Quality Gate (2026-08-05)
+
+Bu sprintte yalniz frontend kalite kapisi dogrulandi. Yeni subsystem,
+architectural degisiklik veya yeni ozellik gelistirmesi yapilmadi.
+
+Calistirilan komutlar (`log-parser-engine/frontend`):
+
+- `npm ci`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test`
+- `npm run build`
+
+Gercek sonuclar:
+
+- `npm ci`: basarili
+- `npm run typecheck`: basarili
+- `npm run lint`: basarili
+- `npm run test`: basarili (`17 test file`, `62 test`)
+- `npm run build`: basarili
+
+Kalan riskler (frontend kapsaminda):
+
+- `npm ci` ciktisinda bilinen zafiyet uyarisi var: `8 vulnerabilities`
+  (`5 moderate`, `2 high`, `1 critical`).
+- Vitest calisirken React Router v7 future flag warningleri basiliyor;
+  testleri bozmasa da guncelleme backlog'unda takip edilmelidir.
+- Build ciktisinda buyuk chunk olusuyor (`BarChart-*.js` ~373 kB);
+  bundle parcalama optimizasyonu izlenmelidir.
+
 ## Sprint kaydi: Backend Quality Gate (2026-08-05)
 
 Bu sprintte yalniz backend kalite kapisi dogrulandi. Yeni subsystem,

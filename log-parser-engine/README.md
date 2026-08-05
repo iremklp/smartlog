@@ -97,11 +97,17 @@ Environment:
 Frontend quality gates:
 
 ```bash
+npm ci
 npm run typecheck
 npm run lint
 npm run test
-npm run check
 npm run build
+```
+
+Tek komutta toplu kontrol icin:
+
+```bash
+npm run check
 ```
 
 ## Linting
@@ -125,6 +131,37 @@ poetry run pytest --cov
 poetry run ruff check
 poetry run mypy
 poetry build
+```
+
+## API Contract Hardening Sprint
+
+Bu sprintte API sozlesmesi yalniz mevcut endpoint davranisini sertlestirme,
+gizli veri yayilimini engelleme ve validation/error envelope stabilitesini
+testle guvence altina alma kapsaminda ilerletilir.
+
+Dogrulama komutlari:
+
+```bash
+poetry run pytest tests/test_analysis_api.py
+cd frontend
+npm ci
+npm run test -- src/lib/api/analysis-contracts.test.ts src/lib/api/contracts.test.ts src/lib/api/client.test.ts src/lib/api/endpoints.test.ts
+```
+
+## Report Engine Foundation Sprint
+
+Bu sprintte Report Engine yalniz foundation seviyesinde ele alinir:
+
+- bounded ve immutable report request/manifest/document modelleri,
+- deterministic format/section dogrulamasi,
+- metadata guvenlik sinirlari ve mutasyon korumasi,
+- mevcut endpoint davranisini degistirmeden model/test tabani.
+
+Dogrulama komutlari:
+
+```bash
+poetry run pytest tests/test_report_models.py
+poetry run pytest tests/test_analysis_api.py
 ```
 
 ## Plugin startup and discovery
