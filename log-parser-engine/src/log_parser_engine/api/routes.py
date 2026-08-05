@@ -8,10 +8,18 @@ from log_parser_engine.application import (
     ApplicationRuntimeStatistics,
     CompareEventsCommand,
     LogAnalysisApplicationService,
+    ParseBytesCommand,
+    ParseTextCommand,
 )
-from log_parser_engine.core import ParserContext
 from log_parser_engine.exceptions import EmptyContentError
-from log_parser_engine.models import IngestionResult
+from log_parser_engine.models import (
+    BatchParseResult,
+    BatchWriteResult,
+    EventWriteResult,
+    IngestionResult,
+    ParseResult,
+    PipelineResult,
+)
 
 from .dependencies import get_service
 from .response_models import (
@@ -22,6 +30,7 @@ from .response_models import (
     ParseResultApiResponse,
     ParserRegistrationApiResponse,
     PipelineResultApiResponse,
+    PublicApiConfigApiResponse,
     QueryApiResponse,
     StoredEventDetailApiResponse,
     StoreStatisticsApiResponse,
@@ -127,6 +136,29 @@ def list_parsers_legacy(
     return list_parsers(service)
 
 
+@router.get(
+    "/api/v1/config",
+    response_model=PublicApiConfigApiResponse,
+    summary="Get safe public API config",
+)
+def public_config(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> PublicApiConfigApiResponse:
+    config = service.public_config()
+    return PublicApiConfigApiResponse.model_validate(config.model_dump(mode="json"))
+
+
+@router.get(
+    "/config",
+    deprecated=True,
+    response_model=PublicApiConfigApiResponse,
+)
+def public_config_legacy(
+    service: LogAnalysisApplicationService = Depends(get_service),
+) -> PublicApiConfigApiResponse:
+    return public_config(service)
+
+
 @router.post(
     "/analysis",
     tags=["Analysis"],
@@ -213,12 +245,15 @@ def parse_text(
     payload: ParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> PipelineResultApiResponse:
-    result = service.parse_text(
-        payload.raw_log,
+    command = ParseTextCommand(
+        raw_log=payload.raw_log,
         context=payload.context,
         options=payload.options,
     )
-    return PipelineResultApiResponse.from_domain(result)
+    response = service.execute_parse_text(command)
+    if isinstance(response.result, PipelineResult):
+        return PipelineResultApiResponse.from_domain(response.result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")
 
 
 @router.post(
@@ -270,52 +305,21 @@ async def parse_file(
             detail="uploaded file is empty",
         ) from exc
 
-    source_label = source_name or file.filename
-    ingestion = service.ingest_bytes(payload, source_name=source_label)
-    context = ParserContext(
-        source_name=source_label,
-        file_path=file.filename,
+    command = ParseBytesCommand(
+        data=payload,
+        source_name=source_name,
+        file_name=file.filename,
         content_type=file.content_type,
-        attributes=ingestion.parser_context_attributes,
+        parser_name=parser_name,
+        store_result=store_result,
+        batch_mode=batch_mode,
+        allow_disabled_parser=allow_disabled_parser,
     )
-
-    if batch_mode:
-        if store_result:
-            return BatchWriteResultApiResponse.from_domain(
-                service.batch_parse_and_store_text(ingestion.text, context=context)
-            )
-        return BatchParseResultApiResponse.from_domain(
-            service.batch_parse_text(ingestion.text, context=context)
-        )
-
-    if parser_name:
-        parse_result = service.parse_with_parser(
-            parser_name,
-            ingestion.text,
-            context=context,
-            allow_disabled_parser=allow_disabled_parser,
-        )
-        if store_result:
-            if not parse_result.events:
-                raise HTTPException(
-                    status_code=400,
-                    detail="parser did not produce an event to store",
-                )
-            return EventWriteResultApiResponse.from_domain(
-                service.add_event(parse_result.events[0])
-            )
-        return ParseResultApiResponse.from_domain(parse_result)
-
-    if store_result:
-        try:
-            return EventWriteResultApiResponse.from_domain(
-                service.parse_and_store_text(ingestion.text, context=context)
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return PipelineResultApiResponse.from_domain(
-        service.parse_text(ingestion.text, context=context)
-    )
+    try:
+        response = service.execute_parse_bytes(command)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _to_parse_api_response(response.result)
 
 
 @router.post(
@@ -365,13 +369,19 @@ def parse_and_store_text(
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> EventWriteResultApiResponse:
     try:
-        return EventWriteResultApiResponse.from_domain(service.parse_and_store_text(
-            payload.raw_log,
-            context=payload.context,
-            options=payload.options,
-        ))
+        response = service.execute_parse_text(
+            ParseTextCommand(
+                raw_log=payload.raw_log,
+                context=payload.context,
+                options=payload.options,
+                store_result=True,
+            )
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if isinstance(response.result, EventWriteResult):
+        return EventWriteResultApiResponse.from_domain(response.result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")
 
 
 @router.post(
@@ -396,12 +406,17 @@ def parse_with_parser(
     payload: ParseWithParserRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> ParseResultApiResponse:
-    return ParseResultApiResponse.from_domain(service.parse_with_parser(
-        parser_name,
-        payload.raw_log,
-        context=payload.context,
-        allow_disabled_parser=payload.allow_disabled_parser,
-    ))
+    response = service.execute_parse_text(
+        ParseTextCommand(
+            raw_log=payload.raw_log,
+            context=payload.context,
+            parser_name=parser_name,
+            allow_disabled_parser=payload.allow_disabled_parser,
+        )
+    )
+    if isinstance(response.result, ParseResult):
+        return ParseResultApiResponse.from_domain(response.result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")
 
 
 @router.post(
@@ -426,11 +441,16 @@ def batch_parse_text(
     payload: BatchParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> BatchParseResultApiResponse:
-    return BatchParseResultApiResponse.from_domain(service.batch_parse_text(
-        payload.text,
-        context=payload.context,
-        options=payload.options,
-    ))
+    response = service.execute_parse_text(
+        ParseTextCommand(
+            raw_log=payload.text,
+            context=payload.context,
+            batch_mode=True,
+        )
+    )
+    if isinstance(response.result, BatchParseResult):
+        return BatchParseResultApiResponse.from_domain(response.result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")
 
 
 @router.post(
@@ -454,11 +474,17 @@ def batch_parse_and_store_text(
     payload: BatchParseRequest,
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> BatchWriteResultApiResponse:
-    return BatchWriteResultApiResponse.from_domain(service.batch_parse_and_store_text(
-        payload.text,
-        context=payload.context,
-        options=payload.options,
-    ))
+    response = service.execute_parse_text(
+        ParseTextCommand(
+            raw_log=payload.text,
+            context=payload.context,
+            batch_mode=True,
+            store_result=True,
+        )
+    )
+    if isinstance(response.result, BatchWriteResult):
+        return BatchWriteResultApiResponse.from_domain(response.result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")
 
 
 @router.post(
@@ -620,3 +646,31 @@ def aggregate_events_legacy(
     service: LogAnalysisApplicationService = Depends(get_service),
 ) -> AggregationApiResponse | None:
     return aggregate_events(payload, service)
+
+
+def _to_parse_api_response(
+    result: (
+        PipelineResult
+        | ParseResult
+        | BatchParseResult
+        | EventWriteResult
+        | BatchWriteResult
+    ),
+) -> (
+    PipelineResultApiResponse
+    | ParseResultApiResponse
+    | BatchParseResultApiResponse
+    | EventWriteResultApiResponse
+    | BatchWriteResultApiResponse
+):
+    if isinstance(result, PipelineResult):
+        return PipelineResultApiResponse.from_domain(result)
+    if isinstance(result, ParseResult):
+        return ParseResultApiResponse.from_domain(result)
+    if isinstance(result, BatchParseResult):
+        return BatchParseResultApiResponse.from_domain(result)
+    if isinstance(result, EventWriteResult):
+        return EventWriteResultApiResponse.from_domain(result)
+    if isinstance(result, BatchWriteResult):
+        return BatchWriteResultApiResponse.from_domain(result)
+    raise HTTPException(status_code=500, detail="unexpected parse response")

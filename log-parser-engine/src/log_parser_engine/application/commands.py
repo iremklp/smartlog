@@ -43,6 +43,24 @@ class ParseTextCommand(BaseModel):
     raw_log: str
     context: ParserContext | None = None
     options: PipelineOptions = Field(default_factory=PipelineOptions)
+    parser_name: str | None = None
+    store_result: bool = False
+    batch_mode: bool = False
+    allow_disabled_parser: bool = False
+
+
+class ParseBytesCommand(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    data: bytes
+    source_name: str | None = None
+    file_name: str | None = None
+    content_type: str | None = None
+    options: PipelineOptions = Field(default_factory=PipelineOptions)
+    parser_name: str | None = None
+    store_result: bool = False
+    batch_mode: bool = False
+    allow_disabled_parser: bool = False
 
 
 class ParseWithParserCommand(BaseModel):

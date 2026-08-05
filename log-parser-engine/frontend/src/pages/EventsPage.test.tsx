@@ -3,17 +3,38 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-import { queryEvents } from "../lib/api/endpoints";
+import { getPublicConfig, queryEvents } from "../lib/api/endpoints";
 import type { EventQueryResult } from "../lib/api/types";
 import { EventsPage } from "./EventsPage";
 
 vi.mock("../lib/api/endpoints", () => ({
+  getPublicConfig: vi.fn(),
   queryEvents: vi.fn()
 }));
 
 const queryEventsMock = vi.mocked(queryEvents);
+const getPublicConfigMock = vi.mocked(getPublicConfig);
 
 beforeEach(() => {
+  getPublicConfigMock.mockReset();
+  getPublicConfigMock.mockResolvedValue({
+    app: { name: "log-parser-engine", version: "0.1.0", environment: "development" },
+    limits: {
+      max_upload_bytes: 50 * 1024 * 1024,
+      max_text_characters: 1024 * 1024,
+      max_page_size: 200,
+      max_response_items: 1000
+    },
+    capabilities: {
+      can_clear_store: true,
+      can_delete_events: true,
+      includes_raw_message_in_event_detail: true,
+      includes_runtime_metrics: true,
+      supports_file_upload: true,
+      requires_authentication: false,
+      uses_persistent_storage: false
+    }
+  });
   queryEventsMock.mockReset();
   queryEventsMock.mockResolvedValue(emptyResult());
 });

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,13 +31,27 @@ from log_parser_engine.storage import (
     BatchWriteOptions,
     EventStore,
     EventWriteOptions,
+    InMemoryEventStore,
 )
 
-from .commands import AnalyzeEventsCommand, CompareEventsCommand
+from .commands import (
+    AnalyzeEventsCommand,
+    CompareEventsCommand,
+    ParseBytesCommand,
+    ParseTextCommand,
+)
 from .container import ApplicationContainer
 from .health import ApplicationHealth
 from .helpers import build_parser_context
-from .responses import AnalyzeEventsResponse, CompareEventsResponse
+from .responses import (
+    AnalyzeEventsResponse,
+    CompareEventsResponse,
+    ParseOperationResponse,
+    PublicApiCapabilitiesResponse,
+    PublicApiConfigResponse,
+    PublicApiIdentityResponse,
+    PublicApiLimitsResponse,
+)
 from .runtime_statistics import ApplicationRuntimeStatistics
 
 
@@ -92,6 +107,75 @@ class LogAnalysisApplicationService:
             store_statistics=self._container.store_statistics(),
             startup_warnings=self._container.startup_warnings,
             **analysis_metrics,
+        )
+
+    def public_config(self) -> PublicApiConfigResponse:
+        options = self._container.options
+        return PublicApiConfigResponse(
+            app=PublicApiIdentityResponse(
+                name=options.name,
+                version=self._resolve_version(),
+                environment=self._resolve_environment(),
+            ),
+            limits=PublicApiLimitsResponse(
+                max_upload_bytes=options.max_upload_bytes,
+                max_text_characters=options.batch_parse_options.max_record_characters,
+                max_page_size=options.event_store_options.max_page_size,
+                max_response_items=options.batch_parse_options.max_buffered_results,
+            ),
+            capabilities=PublicApiCapabilitiesResponse(
+                can_clear_store=True,
+                can_delete_events=True,
+                includes_raw_message_in_event_detail=True,
+                includes_runtime_metrics=True,
+                supports_file_upload=True,
+                requires_authentication=False,
+                uses_persistent_storage=not isinstance(
+                    self._container.store,
+                    InMemoryEventStore,
+                ),
+            ),
+        )
+
+    def execute_parse_text(
+        self,
+        command: ParseTextCommand,
+    ) -> ParseOperationResponse:
+        if not isinstance(command, ParseTextCommand):
+            raise TypeError("command must be a ParseTextCommand")
+        return self._execute_parse_operation(
+            raw_log=command.raw_log,
+            context=command.context,
+            options=command.options,
+            parser_name=command.parser_name,
+            store_result=command.store_result,
+            batch_mode=command.batch_mode,
+            allow_disabled_parser=command.allow_disabled_parser,
+        )
+
+    def execute_parse_bytes(
+        self,
+        command: ParseBytesCommand,
+    ) -> ParseOperationResponse:
+        if not isinstance(command, ParseBytesCommand):
+            raise TypeError("command must be a ParseBytesCommand")
+
+        source_label = command.source_name or command.file_name
+        ingestion = self.ingest_bytes(command.data, source_name=source_label)
+        context = ParserContext(
+            source_name=source_label,
+            file_path=command.file_name,
+            content_type=command.content_type,
+            attributes=ingestion.parser_context_attributes,
+        )
+        return self._execute_parse_operation(
+            raw_log=ingestion.text,
+            context=context,
+            options=command.options,
+            parser_name=command.parser_name,
+            store_result=command.store_result,
+            batch_mode=command.batch_mode,
+            allow_disabled_parser=command.allow_disabled_parser,
         )
 
     def analyze_events(
@@ -347,3 +431,60 @@ class LogAnalysisApplicationService:
         if not result.success or result.event is None:
             raise ValueError("pipeline result did not produce a canonical event")
         return result.event
+
+    def _execute_parse_operation(
+        self,
+        *,
+        raw_log: str,
+        context: ParserContext | None,
+        options: PipelineOptions,
+        parser_name: str | None,
+        store_result: bool,
+        batch_mode: bool,
+        allow_disabled_parser: bool,
+    ) -> ParseOperationResponse:
+        if batch_mode:
+            if store_result:
+                batch_write_result = self.batch_parse_and_store_text(
+                    raw_log,
+                    context=context,
+                )
+                return ParseOperationResponse(result=batch_write_result)
+            batch_result = self.batch_parse_text(raw_log, context=context)
+            return ParseOperationResponse(result=batch_result)
+
+        if parser_name:
+            parse_result = self.parse_with_parser(
+                parser_name,
+                raw_log,
+                context=context,
+                allow_disabled_parser=allow_disabled_parser,
+            )
+            if store_result:
+                if not parse_result.events:
+                    raise ValueError("parser did not produce an event to store")
+                event_write_result = self.add_event(parse_result.events[0])
+                return ParseOperationResponse(result=event_write_result)
+            return ParseOperationResponse(result=parse_result)
+
+        if store_result:
+            event_write_result = self.parse_and_store_text(
+                raw_log,
+                context=context,
+                options=options,
+            )
+            return ParseOperationResponse(result=event_write_result)
+
+        pipeline_result = self.parse_text(raw_log, context=context, options=options)
+        return ParseOperationResponse(result=pipeline_result)
+
+    def _resolve_version(self) -> str:
+        from log_parser_engine import __version__
+
+        return __version__
+
+    def _resolve_environment(self) -> str:
+        configured = os.getenv("LOG_PARSER_ENV", "").strip()
+        if configured:
+            return configured
+        return "development"

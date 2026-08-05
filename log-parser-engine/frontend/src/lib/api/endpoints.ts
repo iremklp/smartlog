@@ -27,9 +27,14 @@ import type {
   ParserRegistration,
   PipelineResult,
   RuntimeStatistics,
+  PublicApiConfig,
   LogEvent,
   StoredEvent
 } from "./types";
+
+export function getPublicConfig(signal?: AbortSignal) {
+  return requestJson<PublicApiConfig>("/api/v1/config", { method: "GET" }, signal);
+}
 
 export function getHealth(signal?: AbortSignal) {
   return requestJson<ApplicationHealth>("/health", { method: "GET" }, signal);

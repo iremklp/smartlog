@@ -7,6 +7,7 @@ import {
   addEvent,
   batchParseAndStoreText,
   batchParseText,
+  getPublicConfig,
   listParsers,
   parseFile,
   parseText,
@@ -19,6 +20,7 @@ vi.mock("../lib/api/endpoints", () => ({
   addEvent: vi.fn(),
   batchParseAndStoreText: vi.fn(),
   batchParseText: vi.fn(),
+  getPublicConfig: vi.fn(),
   listParsers: vi.fn(),
   parseFile: vi.fn(),
   parseText: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("../lib/api/endpoints", () => ({
 const addEventMock = vi.mocked(addEvent);
 const batchParseAndStoreTextMock = vi.mocked(batchParseAndStoreText);
 const batchParseTextMock = vi.mocked(batchParseText);
+const getPublicConfigMock = vi.mocked(getPublicConfig);
 const listParsersMock = vi.mocked(listParsers);
 const parseFileMock = vi.mocked(parseFile);
 const parseTextMock = vi.mocked(parseText);
@@ -37,10 +40,30 @@ beforeEach(() => {
   addEventMock.mockReset();
   batchParseAndStoreTextMock.mockReset();
   batchParseTextMock.mockReset();
+  getPublicConfigMock.mockReset();
   listParsersMock.mockReset();
   parseFileMock.mockReset();
   parseTextMock.mockReset();
   parseWithParserMock.mockReset();
+
+  getPublicConfigMock.mockResolvedValue({
+    app: { name: "log-parser-engine", version: "0.1.0", environment: "development" },
+    limits: {
+      max_upload_bytes: 50 * 1024 * 1024,
+      max_text_characters: 1024 * 1024,
+      max_page_size: 200,
+      max_response_items: 1000
+    },
+    capabilities: {
+      can_clear_store: true,
+      can_delete_events: true,
+      includes_raw_message_in_event_detail: true,
+      includes_runtime_metrics: true,
+      supports_file_upload: true,
+      requires_authentication: false,
+      uses_persistent_storage: false
+    }
+  });
 
   listParsersMock.mockResolvedValue([
     {

@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { EventsTable } from "../components/EventsTable";
 import { Panel } from "../components/Panel";
 import { eventPageHasMore } from "../lib/api/contracts";
-import { queryEvents } from "../lib/api/endpoints";
+import { getPublicConfig, queryEvents } from "../lib/api/endpoints";
 import type { EventQuery, EventQueryResult, LogSeverity } from "../lib/api/types";
 import { formatNumber } from "../lib/utils/format";
 
 export function EventsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const configQuery = useQuery({
+    queryKey: ["public-config"],
+    queryFn: ({ signal }) => getPublicConfig(signal)
+  });
+  const maxPageSize = configQuery.data?.limits.max_page_size ?? 200;
+  const defaultPageSize = Math.min(50, maxPageSize);
 
   const [message, setMessage] = useState(() => searchParams.get("message") ?? "");
   const [limit, setLimit] = useState(() => parseInteger(searchParams.get("limit"), 50));
@@ -38,13 +46,23 @@ export function EventsPage() {
         parser_names: parserName ? [parserName] : undefined
       },
       sort: [{ field: "timestamp", direction: "desc" }],
-      limit,
+      limit: Math.min(limit, maxPageSize),
       offset,
       include_events: true,
       include_total: true
     }),
-    [endTime, limit, message, offset, parserName, severity, startTime]
+    [endTime, limit, maxPageSize, message, offset, parserName, severity, startTime]
   );
+
+  useEffect(() => {
+    setLimit((current) => {
+      const bounded = Math.min(current, maxPageSize);
+      if (bounded < 1) {
+        return Math.max(1, defaultPageSize);
+      }
+      return bounded;
+    });
+  }, [defaultPageSize, maxPageSize]);
 
   const hasPresetFilters = Boolean(
     searchParams.get("message") ||
@@ -162,9 +180,17 @@ export function EventsPage() {
             aria-label="Limit"
             type="number"
             min={1}
-            max={200}
+            max={maxPageSize}
             value={limit}
-            onChange={(event) => setLimit(Number(event.target.value) || 50)}
+            onChange={(event) =>
+              setLimit(
+                clampLimit(
+                  Number(event.target.value),
+                  defaultPageSize,
+                  maxPageSize
+                )
+              )
+            }
             className="rounded-xl border-white/20 bg-black/20"
           />
 
@@ -236,6 +262,13 @@ function parseInteger(value: string | null, fallback: number): number {
     return fallback;
   }
   return Math.max(0, Math.trunc(parsed));
+}
+
+function clampLimit(value: number, fallback: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.max(1, Math.min(max, Math.trunc(value)));
 }
 
 function buildEventsSearchParams(input: {

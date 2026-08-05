@@ -106,6 +106,35 @@ export interface EventStoreStatistics {
   last_retention_at: string | null;
 }
 
+export interface PublicApiConfig {
+  app: PublicApiIdentity;
+  limits: PublicApiLimits;
+  capabilities: PublicApiCapabilities;
+}
+
+export interface PublicApiIdentity {
+  name: string;
+  version: string;
+  environment: string;
+}
+
+export interface PublicApiLimits {
+  max_upload_bytes: number;
+  max_text_characters: number;
+  max_page_size: number;
+  max_response_items: number;
+}
+
+export interface PublicApiCapabilities {
+  can_clear_store: boolean;
+  can_delete_events: boolean;
+  includes_raw_message_in_event_detail: boolean;
+  includes_runtime_metrics: boolean;
+  supports_file_upload: boolean;
+  requires_authentication: boolean;
+  uses_persistent_storage: boolean;
+}
+
 export interface ParserMetadata {
   name: string;
   display_name: string;

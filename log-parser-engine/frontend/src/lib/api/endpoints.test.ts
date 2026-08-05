@@ -1,4 +1,11 @@
-import { analyzeEvents, compareEvents, getHealth, parseWithParser, queryEvents } from "./endpoints";
+import {
+  analyzeEvents,
+  compareEvents,
+  getHealth,
+  getPublicConfig,
+  parseWithParser,
+  queryEvents
+} from "./endpoints";
 import type { ComparisonRequest, EventQuery } from "./types";
 
 function installFetchResponse(
@@ -36,6 +43,33 @@ describe("API endpoints", () => {
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual(payload);
     expect(JSON.parse(String(init?.body))).not.toHaveProperty("parser_name");
+  });
+
+  it("loads public config from the versioned endpoint", async () => {
+    const fetchMock = installFetchResponse({
+      app: { name: "log-parser-engine", version: "0.1.0", environment: "development" },
+      limits: {
+        max_upload_bytes: 52428800,
+        max_text_characters: 1048576,
+        max_page_size: 1000,
+        max_response_items: 1000
+      },
+      capabilities: {
+        can_clear_store: true,
+        can_delete_events: true,
+        includes_raw_message_in_event_detail: true,
+        includes_runtime_metrics: true,
+        supports_file_upload: true,
+        requires_authentication: false,
+        uses_persistent_storage: false
+      }
+    });
+
+    await getPublicConfig();
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe("http://localhost:8000/api/v1/config");
+    expect(init?.method).toBe("GET");
   });
 
   it("wraps event queries in the backend query envelope", async () => {

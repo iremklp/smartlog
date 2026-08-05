@@ -11,6 +11,7 @@ import {
   addEvent,
   batchParseAndStoreText,
   batchParseText,
+  getPublicConfig,
   listParsers,
   parseFile,
   parseText,
@@ -30,6 +31,12 @@ type TextFormValues = z.infer<typeof textSchema>;
 export function AnalysisPage() {
   const [activeTab, setActiveTab] = useState<"text" | "file">("text");
   const [output, setOutput] = useState<unknown>(null);
+  const configQuery = useQuery({
+    queryKey: ["public-config"],
+    queryFn: ({ signal }) => getPublicConfig(signal)
+  });
+  const supportsFileUpload = configQuery.data?.capabilities.supports_file_upload ?? true;
+  const maxUploadBytes = configQuery.data?.limits.max_upload_bytes ?? 50 * 1024 * 1024;
 
   const parsersQuery = useQuery({
     queryKey: ["parsers"],
@@ -148,6 +155,7 @@ export function AnalysisPage() {
             </button>
             <button
               className={`rounded-full px-3 py-1 text-sm ${activeTab === "file" ? "bg-accent text-black" : "bg-white/10 text-inkSoft"}`}
+              disabled={!supportsFileUpload}
               onClick={() => setActiveTab("file")}
             >
               File
@@ -221,6 +229,8 @@ export function AnalysisPage() {
           <FileParseForm
             parsers={parsersQuery.data ?? []}
             pending={fileMutation.isPending}
+            maxUploadBytes={maxUploadBytes}
+            supportsFileUpload={supportsFileUpload}
             onSubmit={(payload) => fileMutation.mutate(payload)}
           />
         )}
@@ -273,10 +283,14 @@ export function AnalysisPage() {
 function FileParseForm({
   parsers,
   pending,
+  maxUploadBytes,
+  supportsFileUpload,
   onSubmit
 }: {
   parsers: Array<{ parser_name: string; parser_version: string }>;
   pending: boolean;
+  maxUploadBytes: number;
+  supportsFileUpload: boolean;
   onSubmit: (payload: {
     file: File;
     sourceName?: string;
@@ -290,6 +304,16 @@ function FileParseForm({
   const [parserName, setParserName] = useState("");
   const [storeResult, setStoreResult] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
+  const maxUploadMiB = maxUploadBytes / (1024 * 1024);
+
+  if (!supportsFileUpload) {
+    return (
+      <div className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-3 text-sm text-warn">
+        Dosya upload capability devre dışı.
+      </div>
+    );
+  }
 
   return (
     <form
@@ -299,14 +323,26 @@ function FileParseForm({
         if (!file) {
           return;
         }
+        if (file.size > maxUploadBytes) {
+          setSizeError(
+            `Dosya boyutu limiti aşıldı. Maksimum ${maxUploadMiB.toFixed(1)} MiB.`
+          );
+          return;
+        }
+        setSizeError(null);
         onSubmit({ file, sourceName, parserName, storeResult, batchMode });
       }}
     >
       <input
         type="file"
         className="rounded-xl border-white/20 bg-black/20"
-        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+        onChange={(event) => {
+          const selected = event.target.files?.[0] ?? null;
+          setFile(selected);
+          setSizeError(null);
+        }}
       />
+      <p className="text-xs text-inkSoft">Maksimum upload: {maxUploadMiB.toFixed(1)} MiB</p>
       <input
         value={sourceName}
         onChange={(event) => setSourceName(event.target.value)}
@@ -345,6 +381,7 @@ function FileParseForm({
           Batch
         </label>
       </div>
+      {sizeError ? <p className="text-sm text-err">{sizeError}</p> : null}
       <button
         type="submit"
         disabled={pending || !file}

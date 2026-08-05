@@ -123,6 +123,33 @@ def test_api_parse_file_and_store_statistics_endpoints() -> None:
     assert "event_count" in stats
 
 
+def test_api_public_config_exposes_safe_capabilities_and_limits() -> None:
+    parser = FakeParser(
+        "fake",
+        source_type=LogSourceType.FILE,
+        matched=True,
+        confidence=0.9,
+        reason="match",
+    )
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False, max_upload_bytes=4096),
+        registry=ParserRegistry([parser]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    response = client.get("/api/v1/config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["app"]["name"] == "log-parser-engine"
+    assert payload["limits"]["max_upload_bytes"] == 4096
+    assert payload["capabilities"]["supports_file_upload"] is True
+    assert payload["capabilities"]["requires_authentication"] is False
+    assert "cors_allowed_origins" not in response.text
+
+
 def test_api_includes_cors_headers_for_dev_origin() -> None:
     parser = FakeParser(
         "fake",

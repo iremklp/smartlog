@@ -570,3 +570,40 @@ class BatchParseResultApiResponse(BaseModel):
             warnings=tuple(value.warnings),
             source_id=value.source_id,
         )
+
+
+class PublicAppConfigApiResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    version: str
+    environment: str
+
+
+class PublicLimitsConfigApiResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    max_upload_bytes: int
+    max_text_characters: int
+    max_page_size: int
+    max_response_items: int
+
+
+class PublicCapabilitiesConfigApiResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    can_clear_store: bool
+    can_delete_events: bool
+    includes_raw_message_in_event_detail: bool
+    includes_runtime_metrics: bool
+    supports_file_upload: bool
+    requires_authentication: bool
+    uses_persistent_storage: bool
+
+
+class PublicApiConfigApiResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    app: PublicAppConfigApiResponse
+    limits: PublicLimitsConfigApiResponse
+    capabilities: PublicCapabilitiesConfigApiResponse
