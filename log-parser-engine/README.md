@@ -113,7 +113,7 @@ poetry run ruff check .
 ## Type checking
 
 ```bash
-poetry run mypy src
+poetry run mypy
 ```
 
 ## Backend Quality Gate
@@ -123,7 +123,7 @@ poetry install
 poetry run pytest
 poetry run pytest --cov
 poetry run ruff check
-poetry run mypy src
+poetry run mypy
 poetry build
 ```
 
