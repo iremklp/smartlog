@@ -104,6 +104,28 @@ npm run test
 npm run build
 ```
 
+OpenAPI tabanli contract generation:
+
+```bash
+cd frontend
+npm run contract:generate
+```
+
+Contract drift kontrolu (CI icin):
+
+```bash
+cd frontend
+npm run contract:check
+```
+
+Uretilen dosyalar:
+
+- `frontend/src/lib/api/generated/openapi.schema.json`
+- `frontend/src/lib/api/generated/openapi.ts`
+
+Bu dosyalar elle duzenlenmemelidir; backend OpenAPI sozlesmesinden tekrar
+uretilmelidir.
+
 Tek komutta toplu kontrol icin:
 
 ```bash

@@ -10,7 +10,42 @@ tabanın üzerinde doğrulanmıştır.
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
-## Guncel Sonuc - Sprint 3 Frontend Temiz Kurulum ve Quality Gate (2026-08-05)
+## Guncel Sonuc - Sprint 4 OpenAPI ve Frontend Contract Hardening (2026-08-05)
+
+Bu bolum yalniz guncel OpenAPI tabanli contract hardening sonucunu ozetler.
+
+Yapilan degisiklikler:
+
+- Backend OpenAPI ciktisi frontend contract kaynagi olarak snapshotlandi:
+  - `frontend/src/lib/api/generated/openapi.schema.json`
+  - `frontend/src/lib/api/generated/openapi.ts`
+- Frontend API istemcisi kritik endpointlerde generated contractlarla uyumlu
+  hale getirildi (`/query`, `/api/v1/analysis`, `/api/v1/analysis/compare`).
+- Kritik endpoint response'lari icin runtime contract validation eklendi
+  (Zod).
+- Backend tarafina OpenAPI drift testi eklendi:
+  - `tests/test_openapi_contract_drift.py`
+- Frontend scriptleri eklendi:
+  - `npm run contract:generate`
+  - `npm run contract:check`
+
+Contract alan notlari:
+
+- Parse request payload alanı: `raw_log`
+- Log event payload alanı: `raw_message`
+- Pagination: `offset`, `limit`, `returned`, `total`
+- `has_more` / `has_next` backend contract alani degildir.
+
+Kalan riskler:
+
+- Frontend `npm audit` uyarisinda `8 vulnerability` devam ediyor.
+- OpenAPI snapshot dosyasi bilerek versioned tutuldugu icin backend schema
+  degisikliklerinde `contract:generate` calistirilmadiginda drift testi kirmasi
+  beklenen davranistir.
+
+## History
+
+## Sprint kaydi: Sprint 3 Frontend Temiz Kurulum ve Quality Gate (2026-08-05)
 
 Bu bolum yalniz guncel frontend quality gate sonucunu ozetler.
 
@@ -56,8 +91,6 @@ Kalan riskler:
   (`5 moderate`, `2 high`, `1 critical`).
 - Vitest calisirken React Router v7 future-flag warningleri goruluyor; testleri
   bozmasa da teknik borc olarak takip edilmelidir.
-
-## History
 
 ## Sprint kaydi: Backend Temiz Kurulum ve Quality Gate (2026-08-05)
 

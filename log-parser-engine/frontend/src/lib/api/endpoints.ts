@@ -1,17 +1,24 @@
 import { requestJson } from "./client";
+import {
+  normalizeAnalysisRequest,
+  normalizeComparisonRequest,
+  normalizeEventQuery
+} from "./generated-normalizers";
+import {
+  validateAnalysisResponse,
+  validateComparisonResponse,
+  validateEventQueryResult
+} from "./response-contracts";
 import type {
   AnalysisRequest,
-  AnalysisResponse,
   ApplicationHealth,
   BatchParseRequest,
   BatchParseResult,
   BatchWriteResult,
   ComparisonRequest,
-  ComparisonResponse,
   EventAggregationRequest,
   EventAggregationResult,
   EventQuery,
-  EventQueryResult,
   EventStoreStatistics,
   EventWriteResult,
   ParseRequest,
@@ -128,11 +135,12 @@ export async function parseFile(
 }
 
 export function queryEvents(query: EventQuery, signal?: AbortSignal) {
-  return requestJson<EventQueryResult>(
+  const normalizedQuery = normalizeEventQuery(query);
+  return requestJson<unknown>(
     "/query",
-    { method: "POST", body: JSON.stringify({ query }) },
+    { method: "POST", body: JSON.stringify({ query: normalizedQuery }) },
     signal
-  );
+  ).then((payload) => validateEventQueryResult(payload));
 }
 
 export function aggregateEvents(
@@ -148,19 +156,21 @@ export function aggregateEvents(
 }
 
 export function analyzeEvents(payload: AnalysisRequest, signal?: AbortSignal) {
-  return requestJson<AnalysisResponse>(
+  const normalizedPayload = normalizeAnalysisRequest(payload);
+  return requestJson<unknown>(
     "/api/v1/analysis",
-    { method: "POST", body: JSON.stringify(payload) },
+    { method: "POST", body: JSON.stringify(normalizedPayload) },
     signal
-  );
+  ).then((responsePayload) => validateAnalysisResponse(responsePayload));
 }
 
 export function compareEvents(payload: ComparisonRequest, signal?: AbortSignal) {
-  return requestJson<ComparisonResponse>(
+  const normalizedPayload = normalizeComparisonRequest(payload);
+  return requestJson<unknown>(
     "/api/v1/analysis/compare",
-    { method: "POST", body: JSON.stringify(payload) },
+    { method: "POST", body: JSON.stringify(normalizedPayload) },
     signal
-  );
+  ).then((responsePayload) => validateComparisonResponse(responsePayload));
 }
 
 export function getEventById(eventId: string, signal?: AbortSignal) {
