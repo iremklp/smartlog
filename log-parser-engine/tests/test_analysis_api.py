@@ -142,7 +142,8 @@ def test_analysis_event_limit_maps_to_413() -> None:
     assert metrics["analyzed_events_total"] == 0
 
 
-def test_analysis_openapi_documents_v1_routes_and_hides_legacy_aliases() -> None:
+def test_analysis_openapi_documents_v1_routes_and_marks_legacy_aliases_deprecated(
+) -> None:
     client = _client()
 
     schema = client.get("/openapi.json").json()
@@ -150,8 +151,10 @@ def test_analysis_openapi_documents_v1_routes_and_hides_legacy_aliases() -> None
 
     assert "/api/v1/analysis" in paths
     assert "/api/v1/analysis/compare" in paths
-    assert "/analysis" not in paths
-    assert "/analysis/compare" not in paths
+    assert "/analysis" in paths
+    assert "/analysis/compare" in paths
+    assert paths["/analysis"]["post"]["deprecated"] is True
+    assert paths["/analysis/compare"]["post"]["deprecated"] is True
     response_schema = schema["components"]["schemas"]["AnalysisApiResponse"]
     assert "request" not in response_schema["properties"]
     assert "metadata" not in response_schema["properties"]

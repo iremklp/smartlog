@@ -50,22 +50,30 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 
 ### Main Endpoints
 
-- `GET /health`
-- `GET /runtime/statistics`
-- `GET /store/statistics`
-- `GET /parsers`
-- `POST /parse`
-- `POST /parse/{parser_name}`
-- `POST /parse/file` (multipart)
-- `POST /parse/store`
-- `POST /batch/parse`
-- `POST /batch/parse/store`
-- `POST /query`
-- `POST /aggregate`
+- `GET /api/v1/health`
+- `GET /api/v1/runtime/statistics`
+- `GET /api/v1/store/statistics`
+- `GET /api/v1/parsers`
+- `POST /api/v1/ingest/text`
+- `POST /api/v1/parse`
+- `POST /api/v1/parse/{parser_name}`
+- `POST /api/v1/parse/file` (multipart)
+- `POST /api/v1/parse/store`
+- `POST /api/v1/batch/parse`
+- `POST /api/v1/batch/parse/store`
+- `POST /api/v1/query`
+- `POST /api/v1/aggregate`
 - `POST /api/v1/analysis`
 - `POST /api/v1/analysis/compare`
-- `GET /events/{event_id}`
-- `DELETE /events/{event_id}`
+- `POST /api/v1/events`
+- `POST /api/v1/events/batch`
+- `GET /api/v1/events/{event_id}`
+- `DELETE /api/v1/events/{event_id}`
+
+Legacy versiyonsuz endpointler aktif kalir ancak OpenAPI uzerinde deprecated
+olarak isaretlenir. Migration detaylari icin:
+
+- `API_MIGRATION_v1.md`
 
 ## Running tests
 

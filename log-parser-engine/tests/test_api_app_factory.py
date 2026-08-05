@@ -224,6 +224,7 @@ def test_api_query_severity_filter_returns_matching_events() -> None:
     assert body["page"]["returned"] == 1
     assert len(body["events"]) == 1
     assert body["events"][0]["event"]["severity"] == "error"
+    assert "raw_message" not in body["events"][0]["event"]
 
 
 def test_api_missing_event_returns_404() -> None:
@@ -239,3 +240,39 @@ def test_api_missing_event_returns_404() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "event not found"
+
+
+def test_api_event_detail_includes_raw_message() -> None:
+    parser = FakeParser(
+        "fake",
+        source_type=LogSourceType.FILE,
+        matched=True,
+        confidence=0.9,
+        reason="match",
+    )
+    container = ApplicationContainer.build(
+        options=ApplicationOptions(enable_builtin_parsers=False),
+        registry=ParserRegistry([parser]),
+        store=InMemoryEventStore(),
+    )
+    app = create_app(container=container)
+    client = TestClient(app)
+
+    event_response = client.post(
+        "/events",
+        json={
+            "event": {
+                "timestamp": "2026-07-25T20:05:31Z",
+                "source_type": "APPLICATION",
+                "severity": "ERROR",
+                "message": "seed",
+                "raw_message": "seed raw",
+            }
+        },
+    )
+    assert event_response.status_code == 200
+    event_id = event_response.json()["stored_event"]["id"]
+
+    detail_response = client.get(f"/events/{event_id}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["event"]["raw_message"] == "seed raw"

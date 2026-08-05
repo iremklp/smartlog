@@ -10,7 +10,51 @@ tabanın üzerinde doğrulanmıştır.
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
 
-## Guncel Sonuc - Sprint 4 OpenAPI ve Frontend Contract Hardening (2026-08-05)
+## Guncel Sonuc - Sprint 5 REST API Versiyonlama ve Guvenli Response Modelleri (2026-08-05)
+
+Bu bolum yalniz guncel `/api/v1` versiyonlama ve guvenli response model
+hardening sonucunu ozetler.
+
+Yapilan degisiklikler:
+
+- API yuzeyi tum ana endpointlerde `/api/v1` altinda tutarli hale getirildi.
+- Versiyonsuz endpointler korunarak OpenAPI uzerinde `deprecated: true` olarak
+  isaretlendi (sessiz kaldirma yok).
+- Domain model passthrough yerine explicit API response modelleri eklendi:
+  - parser list
+  - parse sonuc ailesi
+  - query (compact event list)
+  - event detail
+  - aggregation
+  - store statistics
+- Query list event payloadindan `raw_message` cikartildi; detail endpointinde
+  korunmaya devam etti.
+- Migration notu eklendi: `API_MIGRATION_v1.md`.
+
+Calistirilan kalite komutlari:
+
+- `poetry run pytest tests/test_api_app_factory.py tests/test_api_security.py tests/test_api_uploads.py tests/test_analysis_api.py tests/test_openapi_contract_drift.py`
+- `poetry run ruff check .`
+- `poetry run mypy src`
+- `cd frontend && npm run contract:generate`
+- `cd frontend && npm run typecheck && npm run test`
+
+Gercek sonuclar:
+
+- Backend API testleri: `54 passed`
+- `ruff`: basarili
+- `mypy`: `Success: no issues found in 219 source files`
+- OpenAPI schema generation: basarili
+- Frontend: `typecheck` basarili, `test` `17 file / 64 test` basarili
+
+Kalan riskler:
+
+- Frontend testlerinde React Router v7 future-flag warningleri devam ediyor.
+- `npm audit` uyarisinda 8 vulnerability devam ediyor.
+
+## History
+
+## Sprint kaydi: Sprint 4 OpenAPI ve Frontend Contract Hardening (2026-08-05)
 
 Bu bolum yalniz guncel OpenAPI tabanli contract hardening sonucunu ozetler.
 
@@ -42,8 +86,6 @@ Kalan riskler:
 - OpenAPI snapshot dosyasi bilerek versioned tutuldugu icin backend schema
   degisikliklerinde `contract:generate` calistirilmadiginda drift testi kirmasi
   beklenen davranistir.
-
-## History
 
 ## Sprint kaydi: Sprint 3 Frontend Temiz Kurulum ve Quality Gate (2026-08-05)
 

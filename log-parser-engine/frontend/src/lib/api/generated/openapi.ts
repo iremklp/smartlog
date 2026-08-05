@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API health */
+        get: operations["health_api_v1_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -11,8 +28,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
-        get: operations["health_health_get"];
+        /**
+         * Health Legacy
+         * @deprecated
+         */
+        get: operations["health_legacy_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runtime/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get runtime statistics */
+        get: operations["runtime_statistics_api_v1_runtime_statistics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -28,8 +65,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Runtime Statistics */
-        get: operations["runtime_statistics_runtime_statistics_get"];
+        /**
+         * Runtime Statistics Legacy
+         * @deprecated
+         */
+        get: operations["runtime_statistics_legacy_runtime_statistics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/store/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get store statistics */
+        get: operations["store_statistics_api_v1_store_statistics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45,8 +102,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Store Statistics */
-        get: operations["store_statistics_store_statistics_get"];
+        /**
+         * Store Statistics Legacy
+         * @deprecated
+         */
+        get: operations["store_statistics_legacy_store_statistics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parsers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List parser registrations */
+        get: operations["list_parsers_api_v1_parsers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -62,8 +139,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Parsers */
-        get: operations["list_parsers_parsers_get"];
+        /**
+         * List Parsers Legacy
+         * @deprecated
+         */
+        get: operations["list_parsers_legacy_parsers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -89,6 +169,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Events
+         * @deprecated
+         */
+        post: operations["analyze_events_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analysis/compare": {
         parameters: {
             query?: never;
@@ -106,6 +206,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analysis/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare Events
+         * @deprecated
+         */
+        post: operations["compare_events_analysis_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingest/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest raw text */
+        post: operations["ingest_text_api_v1_ingest_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ingest/text": {
         parameters: {
             query?: never;
@@ -115,8 +252,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ingest Text */
-        post: operations["ingest_text_ingest_text_post"];
+        /**
+         * Ingest Text Legacy
+         * @deprecated
+         */
+        post: operations["ingest_text_legacy_ingest_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse text */
+        post: operations["parse_text_api_v1_parse_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -132,8 +289,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse Text */
-        post: operations["parse_text_parse_post"];
+        /**
+         * Parse Text Legacy
+         * @deprecated
+         */
+        post: operations["parse_text_legacy_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parse/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse uploaded file */
+        post: operations["parse_file_api_v1_parse_file_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -149,8 +326,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse File */
-        post: operations["parse_file_parse_file_post"];
+        /**
+         * Parse File Legacy
+         * @deprecated
+         */
+        post: operations["parse_file_legacy_parse_file_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parse/store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse and store text */
+        post: operations["parse_and_store_text_api_v1_parse_store_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -166,8 +363,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse And Store Text */
-        post: operations["parse_and_store_text_parse_store_post"];
+        /**
+         * Parse And Store Text Legacy
+         * @deprecated
+         */
+        post: operations["parse_and_store_text_legacy_parse_store_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parse/{parser_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse with explicit parser */
+        post: operations["parse_with_parser_api_v1_parse__parser_name__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -183,8 +400,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Parse With Parser */
-        post: operations["parse_with_parser_parse__parser_name__post"];
+        /**
+         * Parse With Parser Legacy
+         * @deprecated
+         */
+        post: operations["parse_with_parser_legacy_parse__parser_name__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/batch/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Batch parse text */
+        post: operations["batch_parse_text_api_v1_batch_parse_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -200,8 +437,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Batch Parse Text */
-        post: operations["batch_parse_text_batch_parse_post"];
+        /**
+         * Batch Parse Text Legacy
+         * @deprecated
+         */
+        post: operations["batch_parse_text_legacy_batch_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/batch/parse/store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Batch parse and store text */
+        post: operations["batch_parse_and_store_text_api_v1_batch_parse_store_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -217,8 +474,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Batch Parse And Store Text */
-        post: operations["batch_parse_and_store_text_batch_parse_store_post"];
+        /**
+         * Batch Parse And Store Text Legacy
+         * @deprecated
+         */
+        post: operations["batch_parse_and_store_text_legacy_batch_parse_store_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add one event */
+        post: operations["add_event_api_v1_events_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -234,8 +511,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add Event */
-        post: operations["add_event_events_post"];
+        /**
+         * Add Event Legacy
+         * @deprecated
+         */
+        post: operations["add_event_legacy_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add many events */
+        post: operations["add_many_events_api_v1_events_batch_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -251,9 +548,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add Many Events */
-        post: operations["add_many_events_events_batch_post"];
+        /**
+         * Add Many Events Legacy
+         * @deprecated
+         */
+        post: operations["add_many_events_legacy_events_batch_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get event detail */
+        get: operations["get_event_api_v1_events__event_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete event by id */
+        delete: operations["delete_event_api_v1_events__event_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -266,12 +584,35 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Event */
-        get: operations["get_event_events__event_id__get"];
+        /**
+         * Get Event Legacy
+         * @deprecated
+         */
+        get: operations["get_event_legacy_events__event_id__get"];
         put?: never;
         post?: never;
-        /** Delete Event */
-        delete: operations["delete_event_events__event_id__delete"];
+        /**
+         * Delete Event Legacy
+         * @deprecated
+         */
+        delete: operations["delete_event_legacy_events__event_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query events */
+        post: operations["query_events_api_v1_query_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -286,8 +627,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Query Events */
-        post: operations["query_events_query_post"];
+        /**
+         * Query Events Legacy
+         * @deprecated
+         */
+        post: operations["query_events_legacy_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aggregate events */
+        post: operations["aggregate_events_api_v1_aggregate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -303,8 +664,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Aggregate Events */
-        post: operations["aggregate_events_aggregate_post"];
+        /**
+         * Aggregate Events Legacy
+         * @deprecated
+         */
+        post: operations["aggregate_events_legacy_aggregate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -331,23 +695,40 @@ export interface components {
             request: components["schemas"]["EventAggregationRequest"];
             base_query?: components["schemas"]["EventQuery"] | null;
         };
-        /**
-         * AggregationBucket
-         * @description Represent one deterministic aggregation bucket.
-         */
-        AggregationBucket: {
+        /** AggregationApiResponse */
+        AggregationApiResponse: {
+            request: components["schemas"]["AggregationRequestApiResponse"];
+            /**
+             * Buckets
+             * @default []
+             */
+            buckets: components["schemas"]["AggregationBucketApiResponse"][];
+        };
+        /** AggregationBucketApiResponse */
+        AggregationBucketApiResponse: {
             /** Group Value */
             group_value: string | number;
             /** Event Count */
             event_count: number;
             /** Metric Value */
-            metric_value?: number | null;
+            metric_value: number | null;
             /** Sample Count */
-            sample_count?: number | null;
+            sample_count: number | null;
             /** Bucket Start Time */
-            bucket_start_time?: string | null;
+            bucket_start_time: string | null;
             /** Bucket End Time */
-            bucket_end_time?: string | null;
+            bucket_end_time: string | null;
+        };
+        /** AggregationRequestApiResponse */
+        AggregationRequestApiResponse: {
+            /** Group By */
+            group_by: string;
+            /** Metric */
+            metric: string;
+            /** Time Bucket Seconds */
+            time_bucket_seconds?: number | null;
+            /** Limit */
+            limit: number;
         };
         /**
          * AnalysisApiErrorDetail
@@ -808,73 +1189,6 @@ export interface components {
             content_type?: string | null;
         };
         /**
-         * BatchItem
-         * @description Immutable public record envelope for batch orchestration output.
-         */
-        BatchItem: {
-            /** Index */
-            index: number;
-            /** Source Line Start */
-            source_line_start?: number | null;
-            /** Source Line End */
-            source_line_end?: number | null;
-            /** Raw Record */
-            raw_record?: string | null;
-            /** Raw Record Preview */
-            raw_record_preview?: string | null;
-            /**
-             * Record Type
-             * @enum {string}
-             */
-            record_type: "data" | "header" | "comment" | "blank" | "document";
-            /** Context Attributes */
-            context_attributes?: {
-                [key: string]: unknown;
-            };
-            /** Character Count */
-            character_count: number;
-        };
-        /**
-         * BatchItemResult
-         * @description Immutable result emitted per logical batch item.
-         */
-        BatchItemResult: {
-            item: components["schemas"]["BatchItem"];
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "success" | "failure" | "skipped" | "header" | "comment";
-            /** Parser Name */
-            parser_name?: string | null;
-            event?: components["schemas"]["LogEvent"] | null;
-            parse_result?: components["schemas"]["ParseResult"] | null;
-            /** Error Code */
-            error_code?: string | null;
-            /** Error Message */
-            error_message?: string | null;
-            /** Duration Ms */
-            duration_ms?: number | null;
-            /**
-             * Detection Performed
-             * @default false
-             */
-            detection_performed: boolean;
-            /**
-             * Redetection Performed
-             * @default false
-             */
-            redetection_performed: boolean;
-            /** State Updates */
-            state_updates?: {
-                [key: string]: unknown;
-            };
-            /** Attributes */
-            attributes?: {
-                [key: string]: unknown;
-            };
-        };
-        /**
          * BatchParseOptions
          * @description Immutable options controlling batch parse orchestration.
          */
@@ -1038,170 +1352,98 @@ export interface components {
             context?: components["schemas"]["ParserContext"] | null;
             options?: components["schemas"]["BatchParseOptions"];
         };
-        /**
-         * BatchParseResult
-         * @description Collected output for a batch parse execution.
-         */
-        BatchParseResult: {
-            /** Events */
-            events?: components["schemas"]["LogEvent"][];
-            /** Failures */
-            failures?: components["schemas"]["BatchItemResult"][];
-            statistics: components["schemas"]["BatchParseStatistics"];
-            /** Sessions */
-            sessions?: components["schemas"]["ParserSessionInfo"][];
-            /** Warnings */
-            warnings?: string[];
+        /** BatchParseResultApiResponse */
+        BatchParseResultApiResponse: {
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["EventDetailApiResponse"][];
+            /**
+             * Failures
+             * @default []
+             */
+            failures: {
+                [key: string]: unknown;
+            }[];
+            /** Statistics */
+            statistics: {
+                [key: string]: unknown;
+            };
+            /**
+             * Sessions
+             * @default []
+             */
+            sessions: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
             /** Source Id */
             source_id?: string | null;
         };
-        /**
-         * BatchParseStatistics
-         * @description Immutable statistics summary for a batch parse execution.
-         */
-        BatchParseStatistics: {
+        /** BatchWriteResultApiResponse */
+        BatchWriteResultApiResponse: {
             /**
-             * Records Seen
-             * @default 0
+             * Inserted
+             * @default []
              */
-            records_seen: number;
+            inserted: components["schemas"]["StoredEventDetailApiResponse"][];
             /**
-             * Records Attempted
-             * @default 0
+             * Ignored Event Ids
+             * @default []
              */
-            records_attempted: number;
+            ignored_event_ids: string[];
             /**
-             * Records Succeeded
-             * @default 0
+             * Replaced
+             * @default []
              */
-            records_succeeded: number;
+            replaced: components["schemas"]["StoredEventDetailApiResponse"][];
             /**
-             * Records Failed
-             * @default 0
+             * Evicted Event Ids
+             * @default []
              */
-            records_failed: number;
-            /**
-             * Records Skipped
-             * @default 0
-             */
-            records_skipped: number;
-            /**
-             * Headers Seen
-             * @default 0
-             */
-            headers_seen: number;
-            /**
-             * Comments Seen
-             * @default 0
-             */
-            comments_seen: number;
-            /**
-             * Blank Records Seen
-             * @default 0
-             */
-            blank_records_seen: number;
-            /**
-             * Events Collected
-             * @default 0
-             */
-            events_collected: number;
-            /**
-             * Failures Collected
-             * @default 0
-             */
-            failures_collected: number;
-            /**
-             * Failures Dropped
-             * @default 0
-             */
-            failures_dropped: number;
-            /**
-             * Parser Detection Count
-             * @default 0
-             */
-            parser_detection_count: number;
-            /**
-             * Parser Redetection Count
-             * @default 0
-             */
-            parser_redetection_count: number;
-            /**
-             * Parser Switch Count
-             * @default 0
-             */
-            parser_switch_count: number;
-            /**
-             * Bytes Or Characters Processed
-             * @default 0
-             */
-            bytes_or_characters_processed: number;
-            /**
-             * Max Record Characters Seen
-             * @default 0
-             */
-            max_record_characters_seen: number;
-            /**
-             * Total Duration Ms
-             * @default 0
-             */
-            total_duration_ms: number;
-            /**
-             * Detection Duration Ms
-             * @default 0
-             */
-            detection_duration_ms: number;
-            /**
-             * Parsing Duration Ms
-             * @default 0
-             */
-            parsing_duration_ms: number;
-            /** Earliest Event Timestamp */
-            earliest_event_timestamp?: string | null;
-            /** Latest Event Timestamp */
-            latest_event_timestamp?: string | null;
-            /**
-             * Stopped Early
-             * @default false
-             */
-            stopped_early: boolean;
-            /** Stop Reason */
-            stop_reason?: string | null;
-            /** Parser Counts */
-            parser_counts?: {
-                [key: string]: number;
-            };
-            /** Error Counts */
-            error_counts?: {
-                [key: string]: number;
-            };
-            /** Status Counts */
-            status_counts?: {
-                [key: string]: number;
-            };
-        };
-        /**
-         * BatchWriteResult
-         * @description Result of a batch `add_many` operation.
-         */
-        BatchWriteResult: {
-            /** Inserted */
-            inserted?: components["schemas"]["StoredEvent"][];
-            /** Ignored Event Ids */
-            ignored_event_ids?: string[];
-            /** Replaced */
-            replaced?: components["schemas"]["StoredEvent"][];
-            /** Evicted Event Ids */
-            evicted_event_ids?: string[];
+            evicted_event_ids: string[];
             /**
              * Errors
-             * @description Safe error codes that never include event payloads.
+             * @default []
              */
-            errors?: string[];
+            errors: string[];
             /** Atomic */
             atomic: boolean;
         };
-        /** Body_parse_file_parse_file_post */
-        Body_parse_file_parse_file_post: {
+        /** Body_parse_file_api_v1_parse_file_post */
+        Body_parse_file_api_v1_parse_file_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+            /** Source Name */
+            source_name?: string | null;
+            /** Parser Name */
+            parser_name?: string | null;
+            /**
+             * Store Result
+             * @default false
+             */
+            store_result: boolean;
+            /**
+             * Batch Mode
+             * @default false
+             */
+            batch_mode: boolean;
+            /**
+             * Allow Disabled Parser
+             * @default false
+             */
+            allow_disabled_parser: boolean;
+        };
+        /** Body_parse_file_legacy_parse_file_post */
+        Body_parse_file_legacy_parse_file_post: {
             /**
              * File
              * Format: binary
@@ -1331,82 +1573,6 @@ export interface components {
              * @default []
              */
             warnings: string[];
-        };
-        /**
-         * DetectionCandidate
-         * @description A single parser evaluation result used during detection scoring.
-         */
-        DetectionCandidate: {
-            /** Parser Name */
-            parser_name: string;
-            /** Parser Version */
-            parser_version: string;
-            /** Confidence */
-            confidence: number;
-            /** Matched */
-            matched: boolean;
-            /**
-             * Priority
-             * @default 100
-             */
-            priority: number;
-            /** Reason */
-            reason?: string | null;
-            /** Signals */
-            signals?: string[];
-            source_type: components["schemas"]["LogSourceType"];
-            /**
-             * Duration Ms
-             * @default 0
-             */
-            duration_ms: number;
-            /** Error */
-            error?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * DetectionDecision
-         * @description The final outcome of evaluating all available parsers for a log input.
-         */
-        DetectionDecision: {
-            selected?: components["schemas"]["DetectionCandidate"] | null;
-            /** Candidates */
-            candidates?: components["schemas"]["DetectionCandidate"][];
-            /**
-             * Minimum Confidence
-             * @default 0.6
-             */
-            minimum_confidence: number;
-            /**
-             * Ambiguous
-             * @default false
-             */
-            ambiguous: boolean;
-            /**
-             * Ambiguity Margin
-             * @default 0.05
-             */
-            ambiguity_margin: number;
-            /** Reason */
-            reason: string;
-            /**
-             * Duration Ms
-             * @default 0
-             */
-            duration_ms: number;
-            /**
-             * Evaluated Parser Count
-             * @default 0
-             */
-            evaluated_parser_count: number;
-            /**
-             * Matched Parser Count
-             * @default 0
-             */
-            matched_parser_count: number;
         };
         /**
          * DistributionResult
@@ -1558,11 +1724,6 @@ export interface components {
             missing_count: number;
         };
         /**
-         * ErrorType
-         * @enum {string}
-         */
-        ErrorType: "unknown" | "unknown" | "parsing" | "parsing" | "validation" | "validation" | "ingestion" | "ingestion" | "unknown_format" | "unknown_format" | "empty_input" | "empty_input" | "internal_error" | "internal_error" | "detection_failed" | "detection_failed" | "parse_failed" | "parse_failed" | "validation_failed" | "validation_failed" | "invalid_timestamp" | "invalid_timestamp" | "invalid_encoding" | "invalid_encoding";
-        /**
          * EventAggregationRequest
          * @description Define one bounded aggregation over a filtered event snapshot.
          */
@@ -1585,14 +1746,72 @@ export interface components {
              */
             limit: number;
         };
-        /**
-         * EventAggregationResult
-         * @description Represent the aggregation produced for an event query.
-         */
-        EventAggregationResult: {
-            request: components["schemas"]["EventAggregationRequest"];
-            /** Buckets */
-            buckets?: components["schemas"]["AggregationBucket"][];
+        /** EventDetailApiResponse */
+        EventDetailApiResponse: {
+            /** Schema Version */
+            schema_version: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /**
+             * Ingested At
+             * Format: date-time
+             */
+            ingested_at: string;
+            /** Source Type */
+            source_type: string;
+            /** Severity */
+            severity: string;
+            /** Event Type */
+            event_type: string | null;
+            /** Message */
+            message: string;
+            /** Service */
+            service: string | null;
+            /** Application */
+            application: string | null;
+            /** Environment */
+            environment: string | null;
+            /** Host */
+            host: string | null;
+            /** Source */
+            source: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Correlation Id */
+            correlation_id: string | null;
+            /** User Id */
+            user_id: string | null;
+            /** Client Ip */
+            client_ip: string | null;
+            /** Server Ip */
+            server_ip: string | null;
+            /** Http Method */
+            http_method: string | null;
+            /** Http Path */
+            http_path: string | null;
+            /** Http Status */
+            http_status: number | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
+            /** Raw Message */
+            raw_message: string;
         };
         /**
          * EventFilter
@@ -1658,30 +1877,15 @@ export interface components {
                 [key: string]: string | number | boolean | null;
             };
         };
-        /**
-         * EventPage
-         * @description Describe pagination for one deterministic query snapshot.
-         */
-        EventPage: {
-            /**
-             * Offset
-             * @description Starting offset of the returned page.
-             */
+        /** EventPageApiResponse */
+        EventPageApiResponse: {
+            /** Offset */
             offset: number;
-            /**
-             * Limit
-             * @description Maximum number of items requested for the page.
-             */
+            /** Limit */
             limit: number;
-            /**
-             * Returned
-             * @description Actual number of events selected for this page.
-             */
+            /** Returned */
             returned: number;
-            /**
-             * Total
-             * @description Total matching events when requested.
-             */
+            /** Total */
             total: number | null;
         };
         /**
@@ -1717,30 +1921,6 @@ export interface components {
             /** Facet Fields */
             facet_fields?: ("severity" | "source_type" | "event_type" | "parser_name" | "host" | "service" | "tags")[];
             aggregation?: components["schemas"]["EventAggregationRequest"] | null;
-        };
-        /**
-         * EventQueryResult
-         * @description Represent an immutable result for one event snapshot query.
-         */
-        EventQueryResult: {
-            /** Events */
-            events?: components["schemas"]["StoredEvent"][];
-            page: components["schemas"]["EventPage"];
-            /** Facets */
-            facets?: {
-                [key: string]: components["schemas"]["FacetBucket"][];
-            };
-            aggregation?: components["schemas"]["EventAggregationResult"] | null;
-            /** Query Duration Ms */
-            query_duration_ms: number;
-            /** Snapshot Size */
-            snapshot_size: number;
-            /** Index Used */
-            index_used: boolean;
-            /** Candidate Count */
-            candidate_count: number;
-            /** Warnings */
-            warnings?: string[];
         };
         /**
          * EventSort
@@ -1813,6 +1993,71 @@ export interface components {
             /** Last Retention At */
             last_retention_at: string | null;
         };
+        /** EventSummaryApiResponse */
+        EventSummaryApiResponse: {
+            /** Schema Version */
+            schema_version: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /**
+             * Ingested At
+             * Format: date-time
+             */
+            ingested_at: string;
+            /** Source Type */
+            source_type: string;
+            /** Severity */
+            severity: string;
+            /** Event Type */
+            event_type: string | null;
+            /** Message */
+            message: string;
+            /** Service */
+            service: string | null;
+            /** Application */
+            application: string | null;
+            /** Environment */
+            environment: string | null;
+            /** Host */
+            host: string | null;
+            /** Source */
+            source: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Correlation Id */
+            correlation_id: string | null;
+            /** User Id */
+            user_id: string | null;
+            /** Client Ip */
+            client_ip: string | null;
+            /** Server Ip */
+            server_ip: string | null;
+            /** Http Method */
+            http_method: string | null;
+            /** Http Path */
+            http_path: string | null;
+            /** Http Status */
+            http_status: number | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
+        };
         /**
          * EventWriteOptions
          * @description Immutable options for a single event write operation.
@@ -1852,25 +2097,19 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * EventWriteResult
-         * @description Result of a single `add` operation.
-         */
-        EventWriteResult: {
+        /** EventWriteResultApiResponse */
+        EventWriteResultApiResponse: {
+            /** Status */
+            status: string;
+            stored_event: components["schemas"]["StoredEventDetailApiResponse"];
             /**
-             * Status
-             * @enum {string}
+             * Evicted Event Ids
+             * @default []
              */
-            status: "inserted" | "ignored_duplicate" | "replaced";
-            stored_event: components["schemas"]["StoredEvent"];
-            /** Evicted Event Ids */
-            evicted_event_ids?: string[];
+            evicted_event_ids: string[];
         };
-        /**
-         * FacetBucket
-         * @description Represent one value/count pair in a facet.
-         */
-        FacetBucket: {
+        /** FacetBucketApiResponse */
+        FacetBucketApiResponse: {
             /** Value */
             value: string;
             /** Count */
@@ -2376,39 +2615,6 @@ export interface components {
              */
             notes: string[];
         };
-        /**
-         * NormalizationResult
-         * @description Result of normalizing a payload.
-         */
-        NormalizationResult: {
-            event: components["schemas"]["LogEvent"];
-            /** Warnings */
-            warnings?: components["schemas"]["NormalizationWarning"][];
-        };
-        /**
-         * NormalizationWarning
-         * @description Non-fatal warning emitted during normalization.
-         */
-        NormalizationWarning: {
-            /** Message */
-            message: string;
-        };
-        /**
-         * ParseError
-         * @description Represents a parse failure or validation issue.
-         */
-        ParseError: {
-            /** Message */
-            message: string;
-            /** @default failed */
-            status: components["schemas"]["ParseStatus"];
-            /** @default unknown_format */
-            error_type: components["schemas"]["ErrorType"];
-            /** Details */
-            details?: {
-                [key: string]: string;
-            } | null;
-        };
         /** ParseRequest */
         ParseRequest: {
             /** Raw Log */
@@ -2416,22 +2622,23 @@ export interface components {
             context?: components["schemas"]["ParserContext"] | null;
             options?: components["schemas"]["PipelineOptions"];
         };
-        /**
-         * ParseResult
-         * @description Aggregate model for parser output.
-         */
-        ParseResult: {
-            status: components["schemas"]["ParseStatus"];
-            /** Events */
-            events?: components["schemas"]["LogEvent"][];
-            /** Errors */
-            errors?: components["schemas"]["ParseError"][];
+        /** ParseResultApiResponse */
+        ParseResultApiResponse: {
+            /** Status */
+            status: string;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["EventDetailApiResponse"][];
+            /**
+             * Errors
+             * @default []
+             */
+            errors: {
+                [key: string]: unknown;
+            }[];
         };
-        /**
-         * ParseStatus
-         * @enum {string}
-         */
-        ParseStatus: "success" | "success" | "failed" | "failed" | "failed" | "failed" | "partial" | "partial";
         /** ParseWithParserRequest */
         ParseWithParserRequest: {
             /** Raw Log */
@@ -2484,159 +2691,59 @@ export interface components {
              */
             preserve_raw: boolean;
         };
-        /**
-         * ParserMetadata
-         * @description Immutable metadata describing a parser contract and capabilities.
-         */
-        ParserMetadata: {
+        /** ParserMetadataApiResponse */
+        ParserMetadataApiResponse: {
             /** Name */
             name: string;
             /** Display Name */
             display_name: string;
             /** Version */
             version: string;
-            source_type: components["schemas"]["LogSourceType"];
+            /** Source Type */
+            source_type: string;
             /** Description */
-            description?: string | null;
+            description: string | null;
             /** Author */
-            author?: string | null;
+            author: string | null;
             /** Homepage */
-            homepage?: string | null;
+            homepage: string | null;
             /** Supported Extensions */
-            supported_extensions?: string[];
+            supported_extensions: string[];
             /** Supported Content Types */
-            supported_content_types?: string[];
-            /**
-             * Priority
-             * @default 100
-             */
+            supported_content_types: string[];
+            /** Priority */
             priority: number;
-            /**
-             * Enabled By Default
-             * @default true
-             */
+            /** Enabled By Default */
             enabled_by_default: boolean;
-            /**
-             * Supports Multiline
-             * @default false
-             */
+            /** Supports Multiline */
             supports_multiline: boolean;
-            /**
-             * Supports Batch
-             * @default true
-             */
+            /** Supports Batch */
             supports_batch: boolean;
-            /**
-             * Thread Safe
-             * @default true
-             */
+            /** Thread Safe */
             thread_safe: boolean;
-            /**
-             * Experimental
-             * @default false
-             */
+            /** Experimental */
             experimental: boolean;
             /** Tags */
-            tags?: string[];
+            tags: string[];
         };
-        /**
-         * ParserRegistration
-         * @description Immutable registration record for a parser in the registry.
-         */
-        ParserRegistration: {
+        /** ParserRegistrationApiResponse */
+        ParserRegistrationApiResponse: {
             /** Parser Name */
             parser_name: string;
             /** Parser Version */
             parser_version: string;
-            source_type: components["schemas"]["LogSourceType"];
-            /**
-             * Enabled
-             * @default true
-             */
+            /** Source Type */
+            source_type: string;
+            /** Enabled */
             enabled: boolean;
             /**
              * Registered At
              * Format: date-time
              */
-            registered_at?: string;
-            /**
-             * Registration Order
-             * @default 0
-             */
+            registered_at: string;
+            /** Registration Order */
             registration_order: number;
-            metadata: components["schemas"]["ParserMetadata"];
-            /** Origin */
-            origin?: string | null;
-            /** Notes */
-            notes?: string | null;
-        };
-        /**
-         * ParserSelection
-         * @description Immutable result of selecting a parser through the manager.
-         */
-        ParserSelection: {
-            /** Parser Name */
-            parser_name?: string | null;
-            /** Parser Version */
-            parser_version?: string | null;
-            source_type?: components["schemas"]["LogSourceType"] | null;
-            /** Confidence */
-            confidence?: number | null;
-            /**
-             * Ambiguous
-             * @default false
-             */
-            ambiguous: boolean;
-            /** Reason */
-            reason: string;
-            decision: components["schemas"]["DetectionDecision"];
-        };
-        /**
-         * ParserSessionInfo
-         * @description Immutable summary of a parser session in a batch stream.
-         */
-        ParserSessionInfo: {
-            /** Parser Name */
-            parser_name: string;
-            /** Parser Version */
-            parser_version: string;
-            /**
-             * Selected By
-             * @enum {string}
-             */
-            selected_by: "explicit" | "detection" | "redetection";
-            /** Detection Confidence */
-            detection_confidence?: number | null;
-            /** Detection Reason */
-            detection_reason?: string | null;
-            /** Started At Record */
-            started_at_record: number;
-            /** Ended At Record */
-            ended_at_record?: number | null;
-            /**
-             * Records Attempted
-             * @default 0
-             */
-            records_attempted: number;
-            /**
-             * Records Succeeded
-             * @default 0
-             */
-            records_succeeded: number;
-            /**
-             * Records Failed
-             * @default 0
-             */
-            records_failed: number;
-            /**
-             * Stateful
-             * @default false
-             */
-            stateful: boolean;
-            /** Attributes */
-            attributes?: {
-                [key: string]: unknown;
-            };
+            metadata: components["schemas"]["ParserMetadataApiResponse"];
         };
         /**
          * PercentileSummary
@@ -2729,70 +2836,80 @@ export interface components {
              */
             max_raw_error_length: number;
         };
-        /**
-         * PipelineResult
-         * @description Immutable outcome of a full processing pipeline run.
-         */
-        PipelineResult: {
+        /** PipelineResultApiResponse */
+        PipelineResultApiResponse: {
             /** Success */
             success: boolean;
-            event?: components["schemas"]["LogEvent"] | null;
-            parse_result?: components["schemas"]["ParseResult"] | null;
-            normalization_result?: components["schemas"]["NormalizationResult"] | null;
-            selection?: components["schemas"]["ParserSelection"] | null;
-            /** Errors */
-            errors?: components["schemas"]["ParseError"][];
-            /** Warnings */
-            warnings?: components["schemas"]["NormalizationWarning"][];
-            /** Stages */
-            stages?: components["schemas"]["PipelineStageResult"][];
+            event?: components["schemas"]["EventDetailApiResponse"] | null;
+            parse_result?: components["schemas"]["ParseResultApiResponse"] | null;
+            /** Normalization Result */
+            normalization_result?: {
+                [key: string]: unknown;
+            } | null;
+            /** Selection */
+            selection?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Errors
+             * @default []
+             */
+            errors: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Stages
+             * @default []
+             */
+            stages: {
+                [key: string]: unknown;
+            }[];
             /** Duration Ms */
             duration_ms: number;
             /** Parser Name */
-            parser_name?: string | null;
+            parser_name: string | null;
             /** Parser Version */
-            parser_version?: string | null;
-            source_type?: components["schemas"]["LogSourceType"] | null;
-            /**
-             * Ambiguous
-             * @default false
-             */
+            parser_version: string | null;
+            /** Source Type */
+            source_type: string | null;
+            /** Ambiguous */
             ambiguous: boolean;
-            /**
-             * Normalized
-             * @default false
-             */
+            /** Normalized */
             normalized: boolean;
         };
-        /**
-         * PipelineStage
-         * @description Ordered stages for a single log processing pipeline run.
-         * @enum {string}
-         */
-        PipelineStage: "input_validation" | "parser_selection" | "parsing" | "normalization" | "completed";
-        /**
-         * PipelineStageResult
-         * @description Immutable result of one pipeline stage.
-         */
-        PipelineStageResult: {
-            stage: components["schemas"]["PipelineStage"];
-            /** Success */
-            success: boolean;
+        /** QueryApiResponse */
+        QueryApiResponse: {
             /**
-             * Skipped
-             * @default false
+             * Events
+             * @default []
              */
-            skipped: boolean;
-            /** Duration Ms */
-            duration_ms: number;
-            /** Message */
-            message?: string | null;
-            /** Error Type */
-            error_type?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
+            events: components["schemas"]["StoredEventSummaryApiResponse"][];
+            page: components["schemas"]["EventPageApiResponse"];
+            /** Facets */
+            facets?: {
+                [key: string]: components["schemas"]["FacetBucketApiResponse"][];
             };
+            aggregation?: components["schemas"]["AggregationApiResponse"] | null;
+            /** Query Duration Ms */
+            query_duration_ms: number;
+            /** Snapshot Size */
+            snapshot_size: number;
+            /** Index Used */
+            index_used: boolean;
+            /** Candidate Count */
+            candidate_count: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** QueryRequest */
         QueryRequest: {
@@ -2847,53 +2964,85 @@ export interface components {
             /** Message Preview */
             message_preview?: string | null;
         };
-        /**
-         * StoredEvent
-         * @description Immutable model representing a log event as it is stored in the event store.
-         *
-         *     It wraps the original `LogEvent` and adds storage-specific metadata.
-         */
-        StoredEvent: {
+        /** StoreStatisticsApiResponse */
+        StoreStatisticsApiResponse: {
+            /** Event Count */
+            event_count: number;
+            /** Estimated Memory Bytes */
+            estimated_memory_bytes: number;
+            /** Max Events */
+            max_events: number;
+            /** Max Estimated Memory Bytes */
+            max_estimated_memory_bytes: number | null;
+            /** Oldest Inserted At */
+            oldest_inserted_at: string | null;
+            /** Newest Inserted At */
+            newest_inserted_at: string | null;
+            /** Earliest Event Timestamp */
+            earliest_event_timestamp: string | null;
+            /** Latest Event Timestamp */
+            latest_event_timestamp: string | null;
+            /** Index Enabled */
+            index_enabled: boolean;
+            /** Indexed Field Count */
+            indexed_field_count: number;
+            /** Duplicate Ignored Count */
+            duplicate_ignored_count: number;
+            /** Replaced Count */
+            replaced_count: number;
+            /** Evicted Count */
+            evicted_count: number;
+            /** Retention Removed Count */
+            retention_removed_count: number;
+            /** Write Count */
+            write_count: number;
+            /** Query Count */
+            query_count: number;
+            /** Delete Count */
+            delete_count: number;
+            /** Clear Count */
+            clear_count: number;
             /**
-             * Id
-             * @description The unique identifier of the event in the store.
+             * Created At
+             * Format: date-time
              */
+            created_at: string;
+            /** Last Write At */
+            last_write_at: string | null;
+            /** Last Query At */
+            last_query_at: string | null;
+            /** Last Retention At */
+            last_retention_at: string | null;
+        };
+        /** StoredEventDetailApiResponse */
+        StoredEventDetailApiResponse: {
+            /** Id */
             id: string;
-            /** @description The original, immutable log event. */
-            event: components["schemas"]["LogEvent"];
+            event: components["schemas"]["EventDetailApiResponse"];
             /**
              * Inserted At
              * Format: date-time
-             * @description The UTC timestamp when the event was inserted into the store.
              */
             inserted_at: string;
-            /**
-             * Sequence
-             * @description A monotonically increasing sequence number for insertion order.
-             */
+            /** Sequence */
             sequence: number;
+            /** Source Batch Id */
+            source_batch_id: string | null;
+        };
+        /** StoredEventSummaryApiResponse */
+        StoredEventSummaryApiResponse: {
+            /** Id */
+            id: string;
+            event: components["schemas"]["EventSummaryApiResponse"];
             /**
-             * Content Hash
-             * @description The SHA-256 hash of the canonical event content.
+             * Inserted At
+             * Format: date-time
              */
-            content_hash: string;
-            /**
-             * Estimated Size Bytes
-             * @description The estimated memory size of the event in bytes.
-             */
-            estimated_size_bytes: number;
-            /**
-             * Source Batch Id
-             * @description The identifier of the batch this event originated from.
-             */
-            source_batch_id?: string | null;
-            /**
-             * Metadata
-             * @description Custom metadata associated with the stored event.
-             */
-            metadata?: {
-                [key: string]: unknown;
-            };
+            inserted_at: string;
+            /** Sequence */
+            sequence: number;
+            /** Source Batch Id */
+            source_batch_id: string | null;
         };
         /**
          * TimelineBucket
@@ -2999,7 +3148,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_health_get: {
+    health_api_v1_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3019,7 +3168,27 @@ export interface operations {
             };
         };
     };
-    runtime_statistics_runtime_statistics_get: {
+    health_legacy_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationHealth"];
+                };
+            };
+        };
+    };
+    runtime_statistics_api_v1_runtime_statistics_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3039,7 +3208,7 @@ export interface operations {
             };
         };
     };
-    store_statistics_store_statistics_get: {
+    runtime_statistics_legacy_runtime_statistics_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3054,12 +3223,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventStoreStatistics"];
+                    "application/json": components["schemas"]["ApplicationRuntimeStatistics"];
                 };
             };
         };
     };
-    list_parsers_parsers_get: {
+    store_statistics_api_v1_store_statistics_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3074,7 +3243,67 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParserRegistration"][];
+                    "application/json": components["schemas"]["StoreStatisticsApiResponse"];
+                };
+            };
+        };
+    };
+    store_statistics_legacy_store_statistics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreStatisticsApiResponse"];
+                };
+            };
+        };
+    };
+    list_parsers_api_v1_parsers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserRegistrationApiResponse"][];
+                };
+            };
+        };
+    };
+    list_parsers_legacy_parsers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserRegistrationApiResponse"][];
                 };
             };
         };
@@ -3130,6 +3359,39 @@ export interface operations {
             };
         };
     };
+    analyze_events_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisApiRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compare_events_api_v1_analysis_compare_post: {
         parameters: {
             query?: never;
@@ -3181,7 +3443,40 @@ export interface operations {
             };
         };
     };
-    ingest_text_ingest_text_post: {
+    compare_events_analysis_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonApiRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_text_api_v1_ingest_text_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3214,7 +3509,40 @@ export interface operations {
             };
         };
     };
-    parse_text_parse_post: {
+    ingest_text_legacy_ingest_text_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_text_api_v1_parse_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3233,7 +3561,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PipelineResult"];
+                    "application/json": components["schemas"]["PipelineResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3247,40 +3575,7 @@ export interface operations {
             };
         };
     };
-    parse_file_parse_file_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_parse_file_parse_file_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipelineResult"] | components["schemas"]["ParseResult"] | components["schemas"]["BatchParseResult"] | components["schemas"]["EventWriteResult"] | components["schemas"]["BatchWriteResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    parse_and_store_text_parse_store_post: {
+    parse_text_legacy_parse_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3299,7 +3594,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventWriteResult"];
+                    "application/json": components["schemas"]["PipelineResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3313,7 +3608,139 @@ export interface operations {
             };
         };
     };
-    parse_with_parser_parse__parser_name__post: {
+    parse_file_api_v1_parse_file_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_file_api_v1_parse_file_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineResultApiResponse"] | components["schemas"]["ParseResultApiResponse"] | components["schemas"]["BatchParseResultApiResponse"] | components["schemas"]["EventWriteResultApiResponse"] | components["schemas"]["BatchWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_file_legacy_parse_file_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_file_legacy_parse_file_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineResultApiResponse"] | components["schemas"]["ParseResultApiResponse"] | components["schemas"]["BatchParseResultApiResponse"] | components["schemas"]["EventWriteResultApiResponse"] | components["schemas"]["BatchWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_and_store_text_api_v1_parse_store_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_and_store_text_legacy_parse_store_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_with_parser_api_v1_parse__parser_name__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3334,7 +3761,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParseResult"];
+                    "application/json": components["schemas"]["ParseResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3348,7 +3775,42 @@ export interface operations {
             };
         };
     };
-    batch_parse_text_batch_parse_post: {
+    parse_with_parser_legacy_parse__parser_name__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parser_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseWithParserRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    batch_parse_text_api_v1_batch_parse_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3367,7 +3829,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchParseResult"];
+                    "application/json": components["schemas"]["BatchParseResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3381,7 +3843,7 @@ export interface operations {
             };
         };
     };
-    batch_parse_and_store_text_batch_parse_store_post: {
+    batch_parse_text_legacy_batch_parse_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3400,7 +3862,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchWriteResult"];
+                    "application/json": components["schemas"]["BatchParseResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3414,7 +3876,73 @@ export interface operations {
             };
         };
     };
-    add_event_events_post: {
+    batch_parse_and_store_text_api_v1_batch_parse_store_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    batch_parse_and_store_text_legacy_batch_parse_store_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_event_api_v1_events_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3433,7 +3961,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventWriteResult"];
+                    "application/json": components["schemas"]["EventWriteResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3447,7 +3975,40 @@ export interface operations {
             };
         };
     };
-    add_many_events_events_batch_post: {
+    add_event_legacy_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_many_events_api_v1_events_batch_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3466,7 +4027,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchWriteResult"];
+                    "application/json": components["schemas"]["BatchWriteResultApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3480,7 +4041,40 @@ export interface operations {
             };
         };
     };
-    get_event_events__event_id__get: {
+    add_many_events_legacy_events_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddManyEventsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchWriteResultApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_api_v1_events__event_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3497,7 +4091,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StoredEvent"];
+                    "application/json": components["schemas"]["StoredEventDetailApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3511,7 +4105,7 @@ export interface operations {
             };
         };
     };
-    delete_event_events__event_id__delete: {
+    delete_event_api_v1_events__event_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3544,7 +4138,71 @@ export interface operations {
             };
         };
     };
-    query_events_query_post: {
+    get_event_legacy_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredEventDetailApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_event_legacy_events__event_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_events_api_v1_query_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3563,7 +4221,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventQueryResult"];
+                    "application/json": components["schemas"]["QueryApiResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3577,7 +4235,40 @@ export interface operations {
             };
         };
     };
-    aggregate_events_aggregate_post: {
+    query_events_legacy_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryApiResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aggregate_events_api_v1_aggregate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3596,7 +4287,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventAggregationResult"] | null;
+                    "application/json": components["schemas"]["AggregationApiResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aggregate_events_legacy_aggregate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AggregateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AggregationApiResponse"] | null;
                 };
             };
             /** @description Validation Error */

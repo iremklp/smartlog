@@ -40,7 +40,7 @@ def test_openapi_contract_field_names_are_stable() -> None:
     assert "raw_message" in log_event_properties
     assert "raw_log" not in log_event_properties
 
-    event_page_properties = components["EventPage"]["properties"]
+    event_page_properties = components["EventPageApiResponse"]["properties"]
     assert "offset" in event_page_properties
     assert "limit" in event_page_properties
     assert "returned" in event_page_properties
@@ -51,3 +51,7 @@ def test_openapi_contract_field_names_are_stable() -> None:
     paths = schema["paths"]
     assert "/api/v1/analysis" in paths
     assert "/api/v1/analysis/compare" in paths
+    assert "/analysis" in paths
+    assert "/analysis/compare" in paths
+    assert paths["/analysis"]["post"]["deprecated"] is True
+    assert paths["/analysis/compare"]["post"]["deprecated"] is True
