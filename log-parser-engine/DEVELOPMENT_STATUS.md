@@ -1,6 +1,6 @@
 # Parsel Engine Geliştirme Durumu
 
-Son kalite kontrolü: 29 Temmuz 2026
+Son kalite kontrolü: 05 Agustos 2026
 Branch: `main`
 Referans taban commit: `25656c4`
 Remote durumu: Backend type-gate düzeltmesi GitHub `main` branchine `25656c4`
@@ -9,6 +9,40 @@ tabanın üzerinde doğrulanmıştır.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
+
+## 2026-08-05 kalite kontrol ozeti
+
+### Calistirilan komutlar ve gercek sonuclar
+
+Backend (`log-parser-engine`):
+
+- `poetry install` -> basarili
+- `poetry run pytest` -> basarili, `549 passed`
+- `poetry run pytest --cov` -> basarili, `549 passed`, toplam coverage `90%`
+- `poetry run ruff check` -> basarili
+- `poetry run mypy` -> basarili (`Success: no issues found in 217 source files`)
+- `poetry run mypy src` -> basarili (`Success: no issues found in 217 source files`)
+- `poetry build` -> basarili (`sdist` + `wheel`)
+
+Frontend (`frontend`):
+
+- `npm ci` -> basarili (8 bilinen `npm audit` zafiyet uyarisi: 5 moderate, 2 high, 1 critical)
+- `npm run typecheck` -> basarili
+- `npm run lint` -> basarili
+- `npm run test` -> basarili, `17 test file / 62 test`
+- `npm run build` -> basarili
+
+### Repository hijyen durumu
+
+- Kokenindeki tracked `.DS_Store` dosyasi temizlendi.
+- Python/Node/Vite cache ve generated dosyalar temizlendi (`__pycache__`, `*.pyc`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.coverage*`, `htmlcov`, `dist`, `build`, `.vite`, `*.tsbuildinfo`, `node_modules`).
+- Kapsamli ignore kurallari hem repository kokunde hem de `log-parser-engine/.gitignore` dosyasinda production seviyesine guncellendi.
+- Test fixture ve sample `.log` dosyalari bilincli olarak versioned kalacak sekilde exception kurallari eklendi.
+
+### Bilinen sorunlar / TODO
+
+- `pyproject.toml` metadata TODO: `authors` placeholder (`Your Name <you@example.com>`), `license`, `repository`, `homepage`, `keywords` alanlari eksik.
+- Frontend testleri React Router v7 future-flag warningleri basiyor; testleri bozmaz ancak guncelleme planinda ele alinmalidir.
 
 ## Son tamamlanan iş
 

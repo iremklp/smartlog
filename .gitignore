@@ -1,2 +1,75 @@
+# -----------------------------
+# Operating system artifacts
+# -----------------------------
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------
+# Python caches and build outputs
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+.eggs/
+*.egg-info/
+build/
+dist/
+
+# -----------------------------
+# Node/Vite caches and outputs
+# -----------------------------
+node_modules/
 .vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------
+# IDE/editor files
+# -----------------------------
+.vscode/
+.idea/
+*.iml
+
+# -----------------------------
+# Temporary files and logs
+# -----------------------------
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.log
+__MACOSX/
+
+# Keep repository fixtures and sample logs versioned.
+!log-parser-engine/tests/fixtures/**/*.log
+!log-parser-engine/samples/*.log

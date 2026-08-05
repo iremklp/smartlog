@@ -73,6 +73,12 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 poetry run pytest
 ```
 
+Coverage:
+
+```bash
+poetry run pytest --cov
+```
+
 ## Web UI (frontend)
 
 UI source lives in [frontend](frontend).
@@ -91,6 +97,9 @@ Environment:
 Frontend quality gates:
 
 ```bash
+npm run typecheck
+npm run lint
+npm run test
 npm run check
 npm run build
 ```
@@ -105,6 +114,17 @@ poetry run ruff check .
 
 ```bash
 poetry run mypy src
+```
+
+## Backend Quality Gate
+
+```bash
+poetry install
+poetry run pytest
+poetry run pytest --cov
+poetry run ruff check
+poetry run mypy src
+poetry build
 ```
 
 ## Plugin startup and discovery
