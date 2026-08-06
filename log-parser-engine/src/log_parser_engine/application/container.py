@@ -17,7 +17,7 @@ from log_parser_engine.storage import EventStore, InMemoryEventStore
 from .helpers import build_parser_manager, build_parser_registry
 from .options import ApplicationOptions
 from .plugin_lifecycle import PluginStartupLifecycle
-from .runtime_statistics import AnalysisRuntimeMetrics
+from .runtime_statistics import AnalysisRuntimeMetrics, RequestRuntimeMetrics
 
 
 class ApplicationContainer:
@@ -70,6 +70,7 @@ class ApplicationContainer:
         self.ingestion_service = FileIngestionService()
         self.analysis_engine = StatisticalAnalysisEngine(self.options.analysis_options)
         self.analysis_runtime_metrics = AnalysisRuntimeMetrics()
+        self.request_runtime_metrics = RequestRuntimeMetrics()
         self._analysis_slots = threading.BoundedSemaphore(
             self.options.max_concurrent_analysis_operations
         )

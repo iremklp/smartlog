@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterable
+from contextvars import Token
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -30,6 +32,14 @@ from log_parser_engine.models import (
     PipelineResult,
     StoredEvent,
 )
+from log_parser_engine.observability.context import (
+    new_operation_id,
+    operation_id_context,
+)
+from log_parser_engine.observability.logging import (
+    emit_structured_log,
+    emit_structured_log_fields,
+)
 from log_parser_engine.storage import (
     BatchWriteOptions,
     EventStore,
@@ -56,6 +66,8 @@ from .responses import (
     PublicApiLimitsResponse,
 )
 from .runtime_statistics import ApplicationRuntimeStatistics
+
+_OPERATION_LOGGER = logging.getLogger("log_parser_engine.operation")
 
 
 class LogAnalysisApplicationService:
@@ -98,6 +110,7 @@ class LogAnalysisApplicationService:
     def runtime_statistics(self) -> ApplicationRuntimeStatistics:
         observed_at = datetime.now(timezone.utc)
         analysis_metrics = self._container.analysis_runtime_metrics.snapshot()
+        request_metrics = self._container.request_runtime_metrics.snapshot()
         return ApplicationRuntimeStatistics(
             created_at=self._container.created_at,
             observed_at=observed_at,
@@ -110,6 +123,7 @@ class LogAnalysisApplicationService:
             store_statistics=self._container.store_statistics(),
             startup_warnings=self._container.startup_warnings,
             **analysis_metrics,
+            **request_metrics,
         )
 
     def public_config(self) -> PublicApiConfigResponse:
@@ -147,15 +161,34 @@ class LogAnalysisApplicationService:
     ) -> ParseOperationResponse:
         if not isinstance(command, ParseTextCommand):
             raise TypeError("command must be a ParseTextCommand")
-        return self._execute_parse_operation(
-            raw_log=command.raw_log,
-            context=command.context,
-            options=command.options,
-            parser_name=command.parser_name,
+        operation, token = self._begin_operation(
+            "parse_text",
+            text_characters=len(command.raw_log),
             store_result=command.store_result,
             batch_mode=command.batch_mode,
-            allow_disabled_parser=command.allow_disabled_parser,
+            parser_selected=bool(command.parser_name),
         )
+        started = perf_counter()
+        try:
+            response = self._execute_parse_operation(
+                raw_log=command.raw_log,
+                context=command.context,
+                options=command.options,
+                parser_name=command.parser_name,
+                store_result=command.store_result,
+                batch_mode=command.batch_mode,
+                allow_disabled_parser=command.allow_disabled_parser,
+            )
+        except Exception as exc:
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
+            )
+            raise
+        self._complete_operation(operation, token, started=started)
+        return response
 
     def execute_parse_bytes(
         self,
@@ -164,23 +197,43 @@ class LogAnalysisApplicationService:
         if not isinstance(command, ParseBytesCommand):
             raise TypeError("command must be a ParseBytesCommand")
 
-        source_label = command.source_name or command.file_name
-        ingestion = self.ingest_bytes(command.data, source_name=source_label)
-        context = ParserContext(
-            source_name=source_label,
-            file_path=command.file_name,
-            content_type=command.content_type,
-            attributes=ingestion.parser_context_attributes,
-        )
-        return self._execute_parse_operation(
-            raw_log=ingestion.text,
-            context=context,
-            options=command.options,
-            parser_name=command.parser_name,
+        operation, token = self._begin_operation(
+            "parse_bytes",
+            payload_bytes=len(command.data),
             store_result=command.store_result,
             batch_mode=command.batch_mode,
-            allow_disabled_parser=command.allow_disabled_parser,
+            parser_selected=bool(command.parser_name),
         )
+        started = perf_counter()
+
+        source_label = command.source_name or command.file_name
+        try:
+            ingestion = self.ingest_bytes(command.data, source_name=source_label)
+            context = ParserContext(
+                source_name=source_label,
+                file_path=command.file_name,
+                content_type=command.content_type,
+                attributes=ingestion.parser_context_attributes,
+            )
+            response = self._execute_parse_operation(
+                raw_log=ingestion.text,
+                context=context,
+                options=command.options,
+                parser_name=command.parser_name,
+                store_result=command.store_result,
+                batch_mode=command.batch_mode,
+                allow_disabled_parser=command.allow_disabled_parser,
+            )
+        except Exception as exc:
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
+            )
+            raise
+        self._complete_operation(operation, token, started=started)
+        return response
 
     def analyze_events(
         self,
@@ -188,6 +241,7 @@ class LogAnalysisApplicationService:
     ) -> AnalyzeEventsResponse:
         if not isinstance(command, AnalyzeEventsCommand):
             raise TypeError("command must be an AnalyzeEventsCommand")
+        operation, token = self._begin_operation("analyze_events")
         started = perf_counter()
         if not self._container.try_acquire_analysis_slot():
             self._container.analysis_runtime_metrics.record_analysis(
@@ -195,18 +249,30 @@ class LogAnalysisApplicationService:
                 duration_ms=(perf_counter() - started) * 1000.0,
                 failed=True,
             )
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=AnalysisConcurrencyLimitError.__name__,
+            )
             raise AnalysisConcurrencyLimitError(
                 self._container.options.max_concurrent_analysis_operations
             )
         try:
             events = self._container.store.snapshot_events()
             result = self._container.analysis_engine.analyze(events, command.request)
-        except Exception:
+        except Exception as exc:
             duration_ms = (perf_counter() - started) * 1000.0
             self._container.analysis_runtime_metrics.record_analysis(
                 event_count=0,
                 duration_ms=duration_ms,
                 failed=True,
+            )
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
             )
             raise
         finally:
@@ -214,6 +280,12 @@ class LogAnalysisApplicationService:
         self._container.analysis_runtime_metrics.record_analysis(
             event_count=result.matched_event_count,
             duration_ms=result.analysis_duration_ms,
+        )
+        self._complete_operation(
+            operation,
+            token,
+            started=started,
+            matched_event_count=result.matched_event_count,
         )
         return AnalyzeEventsResponse(result=result)
 
@@ -223,12 +295,19 @@ class LogAnalysisApplicationService:
     ) -> CompareEventsResponse:
         if not isinstance(command, CompareEventsCommand):
             raise TypeError("command must be a CompareEventsCommand")
+        operation, token = self._begin_operation("compare_events")
         started = perf_counter()
         if not self._container.try_acquire_analysis_slot():
             self._container.analysis_runtime_metrics.record_comparison(
                 event_count=0,
                 duration_ms=(perf_counter() - started) * 1000.0,
                 failed=True,
+            )
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=AnalysisConcurrencyLimitError.__name__,
             )
             raise AnalysisConcurrencyLimitError(
                 self._container.options.max_concurrent_analysis_operations
@@ -240,12 +319,18 @@ class LogAnalysisApplicationService:
                 events,
                 command.request,
             )
-        except Exception:
+        except Exception as exc:
             duration_ms = (perf_counter() - started) * 1000.0
             self._container.analysis_runtime_metrics.record_comparison(
                 event_count=0,
                 duration_ms=duration_ms,
                 failed=True,
+            )
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
             )
             raise
         finally:
@@ -255,6 +340,13 @@ class LogAnalysisApplicationService:
                 result.baseline_event_count + result.comparison_event_count
             ),
             duration_ms=result.duration_ms,
+        )
+        self._complete_operation(
+            operation,
+            token,
+            started=started,
+            baseline_event_count=result.baseline_event_count,
+            comparison_event_count=result.comparison_event_count,
         )
         return CompareEventsResponse(result=result)
 
@@ -384,7 +476,25 @@ class LogAnalysisApplicationService:
         *,
         options: EventWriteOptions | None = None,
     ) -> EventWriteResult:
-        return self._container.store.add(event, options=options)
+        operation, token = self._begin_operation("store_add_event")
+        started = perf_counter()
+        try:
+            result = self._container.store.add(event, options=options)
+        except Exception as exc:
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
+            )
+            raise
+        self._complete_operation(
+            operation,
+            token,
+            started=started,
+            status=result.status,
+        )
+        return result
 
     def add_many_events(
         self,
@@ -393,11 +503,36 @@ class LogAnalysisApplicationService:
         options: EventWriteOptions | None = None,
         batch_options: BatchWriteOptions | None = None,
     ) -> BatchWriteResult:
-        return self._container.store.add_many(
-            events,
-            options=options,
-            batch_options=batch_options,
+        materialized_events = tuple(events)
+        operation, token = self._begin_operation(
+            "store_add_many_events",
+            input_event_count=len(materialized_events),
         )
+        started = perf_counter()
+        try:
+            result = self._container.store.add_many(
+                materialized_events,
+                options=options,
+                batch_options=batch_options,
+            )
+        except Exception as exc:
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
+            )
+            raise
+        self._complete_operation(
+            operation,
+            token,
+            started=started,
+            inserted_count=result.inserted_count,
+            duplicate_count=result.ignored_count,
+            replaced_count=result.replaced_count,
+            failed_count=result.error_count,
+        )
+        return result
 
     def get_event(self, event_id: str) -> StoredEvent | None:
         return self._container.store.get(event_id)
@@ -409,7 +544,33 @@ class LogAnalysisApplicationService:
         return self._container.store.clear()
 
     def query_events(self, query: EventQuery | None = None) -> EventQueryResult:
-        return self._container.store.query(query)
+        resolved_query = query or EventQuery()
+        operation, token = self._begin_operation(
+            "query_events",
+            limit=resolved_query.limit,
+            offset=resolved_query.offset,
+            facet_field_count=len(resolved_query.facet_fields),
+            includes_aggregation=resolved_query.aggregation is not None,
+        )
+        started = perf_counter()
+        try:
+            result = self._container.store.query(resolved_query)
+        except Exception as exc:
+            self._fail_operation(
+                operation,
+                token,
+                started=started,
+                error_type=exc.__class__.__name__,
+            )
+            raise
+        self._complete_operation(
+            operation,
+            token,
+            started=started,
+            returned_count=result.page.returned,
+            total_count=result.page.total,
+        )
+        return result
 
     def aggregate_events(
         self,
@@ -489,6 +650,57 @@ class LogAnalysisApplicationService:
         if len(value) <= self._container.options.max_text_characters:
             return
         raise InputTooLargeError("text input exceeds the configured size limit")
+
+    def _begin_operation(
+        self,
+        name: str,
+        **fields: object,
+    ) -> tuple[str, Token[str | None]]:
+        operation_id = new_operation_id()
+        token = operation_id_context.set(operation_id)
+        emit_structured_log_fields(
+            _OPERATION_LOGGER,
+            event="operation.started",
+            fields={"operation": name, **fields},
+        )
+        return name, token
+
+    def _complete_operation(
+        self,
+        name: str,
+        token: Token[str | None],
+        *,
+        started: float,
+        **fields: object,
+    ) -> None:
+        emit_structured_log_fields(
+            _OPERATION_LOGGER,
+            event="operation.completed",
+            fields={
+                "operation": name,
+                "duration_ms": (perf_counter() - started) * 1000.0,
+                **fields,
+            },
+        )
+        operation_id_context.reset(token)
+
+    def _fail_operation(
+        self,
+        name: str,
+        token: Token[str | None],
+        *,
+        started: float,
+        error_type: str,
+    ) -> None:
+        emit_structured_log(
+            _OPERATION_LOGGER,
+            event="operation.failed",
+            level=logging.ERROR,
+            operation=name,
+            duration_ms=(perf_counter() - started) * 1000.0,
+            error_type=error_type,
+        )
+        operation_id_context.reset(token)
 
     def _resolve_version(self) -> str:
         from log_parser_engine import __version__

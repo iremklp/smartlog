@@ -48,6 +48,34 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 - Enum values in JSON responses use lowercase/snake_case. Legacy uppercase and
   case-insensitive enum inputs remain accepted.
 
+### Structured Logging and Runtime Observability
+
+- Application logs are emitted as one-line JSON by default and are suitable for
+  OpenShift/Kubernetes stdout collectors.
+- `request_id` and `operation_id` correlation fields are attached to request and
+  operation logs.
+- Request completion logs include bounded fields such as `route`, `status_code`
+  and `duration_ms`; slow requests additionally emit `api.request.slow`.
+- Parse/store/query/analysis flows emit standardized
+  `operation.started|operation.completed|operation.failed` events.
+- Sensitive payload content is centrally redacted in log fields. Raw log text,
+  upload bytes, event attributes, message search text and user metadata are not
+  written to logs.
+
+Environment flags:
+
+- `LOG_PARSER_LOG_FORMAT=json|plain` (default: `json`)
+- `LOG_PARSER_LOG_LEVEL=DEBUG|INFO|WARNING|ERROR` (default: `INFO`)
+- `LOG_PARSER_DISABLE_UVICORN_ACCESS_LOG=true|false` (default: `true`) to avoid
+  duplicate access logs when request completion logs are enabled.
+
+OpenShift collector note:
+
+- Logs are newline-delimited JSON objects, which match cluster log forwarders
+  that tail container stdout/stderr.
+- No external shipper configuration is required in this repository; shipping is
+  expected to be handled by cluster-level collectors.
+
 ### Main Endpoints
 
 - `GET /api/v1/health`

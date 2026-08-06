@@ -10,6 +10,7 @@ from log_parser_engine.application import (
     ApplicationOptions,
     LogAnalysisApplicationService,
 )
+from log_parser_engine.observability.logging import configure_structured_logging
 
 from .errors import register_exception_handlers
 from .middleware import (
@@ -34,6 +35,7 @@ def create_app(
     container: ApplicationContainer | None = None,
     options: ApplicationOptions | None = None,
 ) -> FastAPI:
+    configure_structured_logging()
     resolved_container = container or ApplicationContainer.build(options=options)
     service = LogAnalysisApplicationService(resolved_container)
 

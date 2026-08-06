@@ -28,6 +28,10 @@ class ApplicationRuntimeStatistics(BaseModel):
     analyzed_events_total: int = 0
     average_analysis_duration_ms: float = 0.0
     maximum_analysis_duration_ms: float = 0.0
+    requests_total: int = 0
+    slow_requests_total: int = 0
+    average_request_duration_ms: float = 0.0
+    maximum_request_duration_ms: float = 0.0
 
 
 class AnalysisRuntimeMetricsSnapshot(TypedDict):
@@ -38,6 +42,13 @@ class AnalysisRuntimeMetricsSnapshot(TypedDict):
     analyzed_events_total: int
     average_analysis_duration_ms: float
     maximum_analysis_duration_ms: float
+
+
+class RequestRuntimeMetricsSnapshot(TypedDict):
+    requests_total: int
+    slow_requests_total: int
+    average_request_duration_ms: float
+    maximum_request_duration_ms: float
 
 
 class AnalysisRuntimeMetrics:
@@ -124,3 +135,40 @@ class AnalysisRuntimeMetrics:
                     safe_duration,
                 )
             self._analyzed_events_total += safe_events
+
+
+class RequestRuntimeMetrics:
+    """Thread-safe request counters with bounded cardinality."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._requests_total = 0
+        self._slow_requests_total = 0
+        self._request_duration_total_ms = 0.0
+        self._maximum_request_duration_ms = 0.0
+
+    def record_request(self, *, duration_ms: float, slow: bool) -> None:
+        safe_duration = max(0.0, duration_ms)
+        with self._lock:
+            self._requests_total += 1
+            if slow:
+                self._slow_requests_total += 1
+            self._request_duration_total_ms += safe_duration
+            self._maximum_request_duration_ms = max(
+                self._maximum_request_duration_ms,
+                safe_duration,
+            )
+
+    def snapshot(self) -> RequestRuntimeMetricsSnapshot:
+        with self._lock:
+            average = (
+                self._request_duration_total_ms / self._requests_total
+                if self._requests_total
+                else 0.0
+            )
+            return {
+                "requests_total": self._requests_total,
+                "slow_requests_total": self._slow_requests_total,
+                "average_request_duration_ms": average,
+                "maximum_request_duration_ms": self._maximum_request_duration_ms,
+            }

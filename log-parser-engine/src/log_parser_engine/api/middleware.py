@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
+from time import perf_counter
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from log_parser_engine.observability.logging import emit_structured_log
+
 from .request_id import (
     get_request_id,
+    new_operation_id,
     new_request_id,
+    operation_id_context,
     request_id_context,
     resolve_request_id,
 )
@@ -30,6 +36,8 @@ _ANALYSIS_PATHS = frozenset(
         "/api/v1/analysis/compare",
     }
 )
+
+_REQUEST_LOGGER = logging.getLogger("log_parser_engine.request")
 
 
 class AnalysisRequestSizeLimitMiddleware:
@@ -136,13 +144,71 @@ async def request_id_middleware(
         incoming,
         trust_incoming=options.trust_incoming_request_id,
     )
+    operation_id = new_operation_id()
+    route = request.url.path
+    method = request.method
     request.state.request_id = request_id
+    request.state.operation_id = operation_id
     token = request_id_context.set(request_id)
+    operation_token = operation_id_context.set(operation_id)
+    started = perf_counter()
+    emit_structured_log(
+        _REQUEST_LOGGER,
+        event="api.request.started",
+        method=method,
+        route=route,
+    )
     try:
         response = await call_next(request)
+    except Exception as exc:
+        duration_ms = (perf_counter() - started) * 1000.0
+        _record_request_metrics(request, duration_ms=duration_ms)
+        emit_structured_log(
+            _REQUEST_LOGGER,
+            event="api.request.failed",
+            level=logging.ERROR,
+            method=method,
+            route=route,
+            duration_ms=duration_ms,
+            error_type=exc.__class__.__name__,
+        )
+        raise
     finally:
+        operation_id_context.reset(operation_token)
         request_id_context.reset(token)
+    duration_ms = (perf_counter() - started) * 1000.0
+    is_slow = _record_request_metrics(request, duration_ms=duration_ms)
+    emit_structured_log(
+        _REQUEST_LOGGER,
+        event="api.request.completed",
+        method=method,
+        route=route,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    if is_slow:
+        emit_structured_log(
+            _REQUEST_LOGGER,
+            event="api.request.slow",
+            level=logging.WARNING,
+            method=method,
+            route=route,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+            slow_threshold_ms=options.slow_request_threshold_ms,
+        )
     response.headers["X-Request-ID"] = request_id
     for name, value in _SECURITY_HEADERS.items():
         response.headers[name] = value
     return response
+
+
+def _record_request_metrics(request: Request, *, duration_ms: float) -> bool:
+    options = request.app.state.container.options
+    threshold_ms = float(options.slow_request_threshold_ms)
+    is_slow = duration_ms >= threshold_ms
+    request.app.state.container.request_runtime_metrics.record_request(
+        duration_ms=duration_ms,
+        slow=is_slow,
+    )
+    return is_slow

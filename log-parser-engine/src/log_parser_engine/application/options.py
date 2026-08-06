@@ -67,6 +67,11 @@ class ApplicationOptions(BaseModel):
         ge=1_024,
         le=64 * 1024 * 1024,
     )
+    slow_request_threshold_ms: float = Field(
+        default=750.0,
+        ge=1.0,
+        le=120_000.0,
+    )
     allow_public_event_write: bool = False
     allow_public_event_delete: bool = False
     allow_public_store_clear: bool = False
