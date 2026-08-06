@@ -1,6 +1,6 @@
 # Parsel Engine Geliştirme Durumu
 
-Son kalite kontrolü: 05 Agustos 2026
+Son kalite kontrolu: 06 Agustos 2026
 Branch: `main`
 Referans taban commit: `25656c4`
 Remote durumu: Backend type-gate düzeltmesi GitHub `main` branchine `25656c4`
@@ -9,6 +9,81 @@ tabanın üzerinde doğrulanmıştır.
 
 Bu dosya doğrulanmış repository durumunu kaydeder. “Production-oriented”
 tasarım hedefini production-readiness onayı olarak kullanmaz.
+
+## Guncel Sonuc - Sprint 10 CI Quality Pipeline ve Cilt 1 Release Readiness (2026-08-06)
+
+Bu bolum Sprint 10 kapsaminda eklenen CI altyapisi ve release-readiness
+dogrulama ciktilarini ozetler.
+
+Yapilan degisiklikler:
+
+- Repository kokune Jenkins pipeline eklendi: `Jenkinsfile`.
+- Pipeline stage dagilimi backend quality, frontend quality, API contract drift,
+  container smoke ve Cilt 1 readiness check adimlarini kapsar.
+- CI adimlarini yerelde de tekrarlanabilir kilmak icin scriptler eklendi:
+  - `scripts/ci/backend_quality.sh`
+  - `scripts/ci/frontend_quality.sh`
+  - `scripts/ci/contract_check.sh`
+  - `scripts/ci/container_smoke.sh`
+  - `scripts/ci/release_readiness_cilt1.sh`
+- Jenkins credentials store referansi için push/deploy yapmayan placeholder
+  stage eklendi; secret degeri repositoryye yazilmadi.
+- Cilt 1 readiness checklist ciktilari `reports/release/cilt1-readiness.md`
+  altina yazilacak sekilde standardize edildi.
+
+Calistirilan kalite komutlari:
+
+- `./scripts/ci/backend_quality.sh`
+- `./scripts/ci/frontend_quality.sh`
+- `./scripts/ci/contract_check.sh`
+- `./scripts/ci/container_smoke.sh`
+- `./scripts/ci/release_readiness_cilt1.sh --allow-dirty`
+
+Kalan riskler:
+
+- Bu makinede docker/podman yoksa container smoke stage tasarim geregi
+  `SKIPPED` raporu uretir; image runtime davranisi CI agentinde ayrica
+  dogrulanmalidir.
+- Jenkins credentials placeholder stage defaultta calismiyor; registry push
+  akisi release pipeline genisletme adiminda aktif edilmelidir.
+
+## Guncel Sonuc - Sprint 9 OpenShift Container Foundation (2026-08-06)
+
+Bu bolum Sprint 9 kapsaminda container tabaninin geldigini ozetler.
+
+Yapilan degisiklikler:
+
+- Multi-stage `Containerfile` eklendi (frontend build + python build + runtime).
+- OpenShift arbitrary UID uyumlulugu icin group 0 ve `g=u` izin modeli tanimlandi.
+- Runtime portu `8080` ve healthcheck endpointi eklendi.
+- Koku filesystem read-only calisma senaryosu icin `/tmp` tmpfs operasyonel
+  notlari dokumante edildi.
+- `.dockerignore` eklendi.
+
+Kalan riskler:
+
+- Bu ortamda Docker/Podman bulunmadigi durumlarda container run smoke yalnizca
+  CI ortaminda dogrulanabilir.
+
+## Guncel Sonuc - Sprint 8 Structured Logging ve Runtime Observability Foundation (2026-08-06)
+
+Bu bolum Sprint 8 kapsaminda request/operation korelasyonu, structured logging
+ve runtime request metrikleri temelinin geldigini ozetler.
+
+Yapilan degisiklikler:
+
+- `contextvars` tabanli request ve operation kimligi yayilimi eklendi.
+- JSON structured logging formatteri ve merkezi redaction kurallari eklendi.
+- Middleware katmanina request lifecycle eventleri eklendi:
+  `started`, `completed`, `failed`, `slow`.
+- Runtime statistics modeline request odakli metrikler eklendi:
+  total/slow/average/max request duration.
+- Service katmanina parse/store/query/analysis operasyon event loglari eklendi.
+
+Kalan riskler:
+
+- Prometheus exporter ve merkezi log toplama pipeline entegrasyonu bir sonraki
+  operasyonel dilimde tamamlanacaktir.
 
 ## Guncel Sonuc - Sprint 5 REST API Versiyonlama ve Guvenli Response Modelleri (2026-08-05)
 

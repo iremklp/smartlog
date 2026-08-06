@@ -183,13 +183,7 @@ export function EventsPage() {
             max={maxPageSize}
             value={limit}
             onChange={(event) =>
-              setLimit(
-                clampLimit(
-                  Number(event.target.value),
-                  defaultPageSize,
-                  maxPageSize
-                )
-              )
+              setLimit(clampLimit(Number(event.target.value), defaultPageSize, maxPageSize))
             }
             className="rounded-xl border-white/20 bg-black/20"
           />

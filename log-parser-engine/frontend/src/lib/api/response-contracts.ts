@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-import type {
-  AnalysisResponse,
-  ComparisonResponse,
-  EventQueryResult
-} from "./types";
+import type { AnalysisResponse, ComparisonResponse, EventQueryResult } from "./types";
 
 const eventPageSchema = z.object({
   offset: z.number(),
@@ -75,11 +71,7 @@ const eventQueryResultSchema = z
   })
   .passthrough();
 
-function validateContract<T>(
-  endpoint: string,
-  schema: z.ZodTypeAny,
-  payload: unknown
-): T {
+function validateContract<T>(endpoint: string, schema: z.ZodTypeAny, payload: unknown): T {
   const parsed = schema.safeParse(payload);
   if (parsed.success) {
     return parsed.data as T;
@@ -88,17 +80,11 @@ function validateContract<T>(
   const issue = parsed.error.issues[0];
   const path = issue?.path?.join(".") || "root";
   const message = issue?.message || "unknown contract validation error";
-  throw new Error(
-    `Contract validation failed for ${endpoint}: ${path} ${message}`
-  );
+  throw new Error(`Contract validation failed for ${endpoint}: ${path} ${message}`);
 }
 
 export function validateAnalysisResponse(payload: unknown): AnalysisResponse {
-  return validateContract<AnalysisResponse>(
-    "/api/v1/analysis",
-    analysisResponseSchema,
-    payload
-  );
+  return validateContract<AnalysisResponse>("/api/v1/analysis", analysisResponseSchema, payload);
 }
 
 export function validateComparisonResponse(payload: unknown): ComparisonResponse {
@@ -110,9 +96,5 @@ export function validateComparisonResponse(payload: unknown): ComparisonResponse
 }
 
 export function validateEventQueryResult(payload: unknown): EventQueryResult {
-  return validateContract<EventQueryResult>(
-    "/query",
-    eventQueryResultSchema,
-    payload
-  );
+  return validateContract<EventQueryResult>("/query", eventQueryResultSchema, payload);
 }

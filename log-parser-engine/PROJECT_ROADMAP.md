@@ -1,7 +1,7 @@
 # Parsel Engine Proje Yol Haritası
 
-Son güncelleme: 3 Ağustos 2026
-Doğrulama tabanı: `500bdd2` sonrası çalışma ağacı
+Son güncelleme: 6 Agustos 2026
+Dogrulama tabani: Sprint 8-9-10 repository durumu
 
 Bu belge repository içindeki gerçek kod ve kalite kontrollerine göre hazırlanmıştır.
 Bir pazarlama veya hedef mimari belgesi değildir. Durumlar her subsystem
@@ -33,12 +33,11 @@ tamamlandığında yeniden doğrulanmalıdır.
 
 ## Mevcut öncelik
 
-**Q1 Statistical Analysis UI entegrasyonu ilerliyor.** `/analytics` overview ve
-`/analytics/compare` dönem karşılaştırma çalışma alanları kullanılabilir.
-Karşılaştırma aynı process-local snapshotta zorunlu yarı-açık dönemleri, bounded
-metric/group sonuçlarını ve temkinli eşik yorumlarını gösterir. Sıradaki ürün
-dilimi latency, HTTP ve deterministic insight modüllerinin görünür hale
-gelmesidir.
+**Q4 operasyonel release-readiness kalitesinin uygulanmasi aktif.** Sprint 8 ile
+structured logging/runtime observability temeli, Sprint 9 ile OpenShift odakli
+container tabani ve Sprint 10 ile Jenkins quality pipeline omurgasi eklendi.
+Siradaki dilim CI uzerinde container runtime dogrulamasini ve release
+otomasyonunu guvenceye almak.
 
 ## Büyük aşamalar
 
@@ -61,10 +60,10 @@ gelmesidir.
 | 15. Scheduler ve Automation | ⏳ | Uygulama yok | Güvenli in-process lifecycle ve duplicate-job riski belgeli | Multi-pod duplicate execution |
 | 16. Audit ve Enterprise Controls | ⏳ | Uygulama yok | Redacted, bounded ve in-memory audit eventleri; kritik operasyonlar kapsanmış | Kalıcı audit garantisi verilemez |
 | 17. Authentication/Authorization | ⛔ | Abstraction yok | Açık kullanıcı onayı sonrası identity/role/permission abstractionı; adapter sınırı testli | Kurumsal sağlayıcı varsaymak |
-| 18. Observability | 🟡 | Request ID, health ve process-local runtime metrics var | Structured logs, Prometheus metrics, readiness ve cardinality sınırları tamam | Raw log/PII sızıntısı ve yüksek cardinality |
+| 18. Observability | ✅ | Structured JSON logging, merkezi redaction, request/operation correlation ve runtime request metrics aktif | Prometheus exporter ve merkezi log toplama ile tamamlama | Raw log/PII sızıntısı ve yüksek cardinality |
 | 19. Security Hardening | 🟡 | Parser/analysis limitleri, bounded upload, explicit CORS, güvenli request ID ve temel response headerları var | Threat model, dependency/static/secret scan, auth readiness, CSP ve container kontrolleri yeşil | Auth ve otomatik supply-chain taramaları eksik |
-| 20. Deployment | ⏳ | Containerfile veya OpenShift manifesti yok | Non-root, read-only, resource/probe tanımlı image ve OpenShift manifestleri doğrulanmış | Process-local verinin replica'larda ayrışması |
-| 21. CI/CD | ⏳ | Workflow yok | Backend/frontend quality gate, image scan, SBOM, release ve rollback akışı var | Kırık kalite kapılarının otomatikleşmemesi |
+| 20. Deployment | 🟡 | Multi-stage Containerfile, OpenShift arbitrary UID uyumu, port 8080 ve healthcheck mevcut | OpenShift manifestleri ve runtime smoke CI ortaminda dogrulanmis | Process-local verinin replica'larda ayrışması |
+| 21. CI/CD | 🟡 | Jenkinsfile ile backend/frontend/contract/container/readiness stage temeli var | Image scan, SBOM, release tag ve rollback akisi ile tamamlama | Kırık kalite kapılarının otomatikleşmemesi |
 | 22. Performance/Stability | 🟡 | Bazı bounds, concurrency ve memory testleri var | Parser/store/query/analysis benchmark, API load, soak ve kapasite rehberi tamam | 873 kB frontend bundle ve belirsiz kapasite |
 | 23. AI Analysis | ⛔ | Uygulama yok | Yalnız açık talep sonrası provider abstraction, redaction, evidence ve cost limitleri | Veri dış servise çıkışı ve hallucination |
 
@@ -76,7 +75,7 @@ gelmesidir.
 | Foundation | Domain models | ✅ | Pydantic v2 | Canonical enum çıktıları lowercase; legacy uppercase input kabul ediliyor |
 | Foundation | Exception hierarchy | 🟡 | Domain models | Geniş hiyerarşi var; storage ve API mapping tutarlılığı eksik |
 | Foundation | Configuration | 🟡 | Application container | Bazı options/env kullanımları var; merkezi ve doğrulanmış config yüzeyi yok |
-| Foundation | Logging conventions | ⏳ | Request ID | Structured logging ve redaction standardı yok |
+| Foundation | Logging conventions | ✅ | Request ID | Structured JSON logging ve redaction standardi aktif |
 | Foundation | Quality tooling | ✅ | Poetry/npm | Backend pytest/coverage/Ruff/mypy/build ve frontend typecheck/ESLint/Vitest/Prettier/build başarılı |
 | Parser Core | BaseParser/metadata/context | ✅ | Domain models | Sözleşme ve güvenli wrapperlar mevcut |
 | Parser Core | Registry/manager/detection | ✅ | BaseParser | Confidence, ambiguity ve registry yüzeyleri mevcut |
@@ -97,10 +96,12 @@ gelmesidir.
 | Query | Filter/sort/pagination/index | ✅ | StoredEvent snapshot | Deterministik davranış ve source type/lint kapısı yeşil |
 | Query | Facet/aggregation | ✅ | Query engine | Bounded facet ve UTC aggregation sözleşmeleri testli |
 | Application | ApplicationContainer/service | 🟡 | Tüm backend katmanları | Ana orchestration var; lifecycle/config boşlukları sürüyor |
-| API | FastAPI routes/middleware | 🟡 | Application service | Bounded upload, güvenli request ID/CORS/header ve analiz limitleri var; ortak versioning eksik |
+| API | FastAPI routes/middleware | 🟡 | Application service | Bounded upload, guvenli request ID/CORS/header ve analiz limitleri var; versiyonlama genisletmesi suruyor |
 | UI | React shell ve temel sayfalar | 🟡 | REST API | Parse/query/store/system ile `/analytics` overview ve `/analytics/compare` akışları; 52 frontend testi var |
 | Analysis | StatisticalAnalysisEngine | ✅ | Store snapshot | Summary, distribution, timeline, latency, HTTP, comparison ve insight var |
 | Analysis | Analysis UI/dashboard | 🟡 | Analysis API | `/analytics` summary/timeline/distribution ve `/analytics/compare` dönem karşılaştırmasını tüketiyor; derin modüller bekliyor |
+| Deployment | Container foundation | 🟡 | Containerfile | Multi-stage image, arbitrary UID modeli ve SPA/static mode dokumante |
+| CI/CD | Jenkins quality pipeline | 🟡 | Jenkins agent tools | Backend/frontend/contract/container/readiness stage zinciri mevcut |
 
 ## Yakın dönem teslimat sırası
 

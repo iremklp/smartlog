@@ -1,0 +1,103 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    ansiColor('xterm')
+  }
+
+  environment {
+    PIP_CACHE_DIR = "${WORKSPACE}/.ci-cache/pip"
+    NPM_CONFIG_CACHE = "${WORKSPACE}/.ci-cache/npm"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+        sh 'mkdir -p .ci-cache/pip .ci-cache/npm reports'
+      }
+    }
+
+    stage('Backend Quality') {
+      steps {
+        sh './scripts/ci/backend_quality.sh'
+      }
+      post {
+        always {
+          junit testResults: 'reports/backend/pytest.xml', allowEmptyResults: true
+          archiveArtifacts artifacts: 'reports/backend/**,dist/*.whl,dist/*.tar.gz', allowEmptyArchive: true
+        }
+      }
+    }
+
+    stage('Frontend Quality') {
+      steps {
+        sh './scripts/ci/frontend_quality.sh'
+      }
+      post {
+        always {
+          junit testResults: 'reports/frontend/vitest-junit.xml', allowEmptyResults: true
+          archiveArtifacts artifacts: 'reports/frontend/**,frontend/dist/**', allowEmptyArchive: true
+        }
+      }
+    }
+
+    stage('API Contract Drift Check') {
+      steps {
+        sh './scripts/ci/contract_check.sh'
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/contract/**', allowEmptyArchive: true
+        }
+      }
+    }
+
+    stage('Container Build Smoke') {
+      steps {
+        sh './scripts/ci/container_smoke.sh'
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/container/**', allowEmptyArchive: true
+        }
+      }
+    }
+
+    stage('Credentials Placeholder (No Push)') {
+      when {
+        expression { false }
+      }
+      steps {
+        withCredentials([
+          string(credentialsId: 'container-registry-url', variable: 'REGISTRY_URL'),
+          usernamePassword(
+            credentialsId: 'container-registry-creds',
+            usernameVariable: 'REGISTRY_USER',
+            passwordVariable: 'REGISTRY_PASSWORD'
+          )
+        ]) {
+          sh 'echo "Credentials loaded from Jenkins store for future push stage."'
+        }
+      }
+    }
+
+    stage('Release Readiness Cilt 1') {
+      steps {
+        sh './scripts/ci/release_readiness_cilt1.sh'
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/release/**', allowEmptyArchive: true
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'reports/**/*.xml,reports/**/*.txt,reports/**/*.md', allowEmptyArchive: true
+    }
+  }
+}

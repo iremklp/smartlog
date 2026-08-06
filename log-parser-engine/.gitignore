@@ -55,6 +55,7 @@ __MACOSX/
 *.swo
 *~
 *.log
+reports/
 
 .idea/
 .vscode/

@@ -71,9 +71,7 @@ export function normalizeAnalysisRequest(input: AnalysisRequest): GeneratedAnaly
   };
 }
 
-export function normalizeComparisonRequest(
-  input: ComparisonRequest
-): GeneratedComparisonRequest {
+export function normalizeComparisonRequest(input: ComparisonRequest): GeneratedComparisonRequest {
   return {
     ...input,
     baseline_label: input.baseline_label ?? "Baseline",

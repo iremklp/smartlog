@@ -1,7 +1,7 @@
 # Parsel Engine Mimarisi
 
-Son güncelleme: 29 Temmuz 2026
-Referans taban commit: `f9ac2d1`
+Son guncelleme: 6 Agustos 2026
+Referans taban durumu: Sprint 8-9-10 tamamlanan kapsam
 
 ## Kapsam
 
@@ -88,9 +88,9 @@ modellerini kullanır.
 | `batch` | Record reader, buffering, session, state, error policy ve stream | İşlevsel; typed oversized-record failure sözleşmesi testli |
 | `storage` | EventStore protocol, atomik in-memory yazma, retention ve query snapshotı | Write/rollback ile typed query/aggregation sözleşmeleri testli |
 | `analysis` | Summary, dağılım, timeline, percentile, latency, HTTP ve comparison | Backend kapsamı odak testlerinde yeşil |
-| `application` | Bağımlılık lifecycle'ı ve use-case orchestration | API ile domain arasında sınır |
-| `api` | FastAPI app, routes, middleware, schemas ve safe errors | API versioning ve upload sınırı eksik |
-| `frontend` | Parse/query/dashboard/store/system kullanıcı akışları | Contract ve test kapsamı kısmi |
+| `application` | Bağımlılık lifecycle'ı ve use-case orchestration | API ile domain arasında sınır; operation event loglari aktif |
+| `api` | FastAPI app, routes, middleware, schemas ve safe errors | Upload limiti, request observability ve frontend static serving mode aktif |
+| `frontend` | Parse/query/dashboard/store/system kullanıcı akışları | Contract check scriptleri ve quality gate komutlari aktif |
 
 ## Canonical veri modeli
 
@@ -202,9 +202,9 @@ sequenceDiagram
     A-->>C: JSON response
 ```
 
-Güncel `/parse/file` route'u `UploadFile.read()` ile tüm uploadu bir kerede
-belleğe alır. Bu davranış ingestion katmanındaki limitlerden önce gerçekleştiği
-için production güvenlik sınırı değildir ve düzeltilmelidir.
+Guncel `/parse/file` route'u request streamini bounded byte limiti ile kontrol
+eder ve asim durumunda guvenli hata doner. Upload lifecycle'i her durumda
+kaynak kapatma semantigini korur.
 
 ## Batch ve streaming akışı
 
@@ -339,9 +339,48 @@ Güncel endpoint grupları:
 - query ve aggregation,
 - `/api/v1/analysis` ve `/api/v1/analysis/compare`.
 
-Yalnız analysis uçları versioned'dır. Kalan public API yüzeyi root
-endpointlerdedir. Error envelope da analysis ve eski endpointlerde tamamen
-tekilleştirilmiş değildir.
+Analysis endpointleri `/api/v1` altinda versioned yuzeyi kullanir. Legacy
+endpointler deprecation gecisinde korunur. Error envelope birlestirme calismasi
+devam etse de guvenlik ve limit odakli response davranislari testlerle
+dogrulanmistir.
+
+## Observability ve runtime istatistikleri
+
+Sprint 8 ile asagidaki temel taslar eklendi:
+
+- `contextvars` tabanli request ve operation kimligi yayilimi.
+- JSON structured logging formatteri.
+- Merkezilesmis log redaction/sanitize katmani.
+- Request middleware seviyesinde started/completed/failed/slow olaylari.
+- Runtime istatistiklerine request total/slow/average/max metrikleri.
+
+Bu katman process-localdir; metric depolama dis sisteme push etmez.
+
+## Container ve static serving yaklasimi
+
+Sprint 9 ile:
+
+- Multi-stage `Containerfile` (frontend build + python build + runtime) eklendi.
+- OpenShift arbitrary UID uyumlu izin modeli uygulandi.
+- Runtime portu 8080 ve healthcheck tanimi eklendi.
+- API uygulamasina frontend static dist cozumleme modlari eklendi:
+  - `LOG_PARSER_FRONTEND_MODE=disabled|strict|optional`
+  - `LOG_PARSER_FRONTEND_DIST_PATH`
+
+SPA fallback davranisi non-asset yollarinda `index.html` doner.
+
+## CI quality pipeline
+
+Sprint 10 ile repository kokunde `Jenkinsfile` ve script tabanli kalite
+orchestrasyonu eklendi.
+
+Pipeline stage zinciri:
+
+1. Backend quality (`pytest+coverage`, `ruff`, `mypy`, `poetry build`)
+2. Frontend quality (`npm ci`, typecheck, lint, format check, vitest, build)
+3. API contract drift (`npm run contract:check`)
+4. Container smoke (runtime mevcutsa build+health, degilse kontrollu skip)
+5. Cilt 1 release readiness checklist raporu
 
 ## UI akışı
 

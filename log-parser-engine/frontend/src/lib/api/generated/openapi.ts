@@ -152,6 +152,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get safe public API config */
+        get: operations["public_config_api_v1_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Config Legacy
+         * @deprecated
+         */
+        get: operations["public_config_legacy_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analysis": {
         parameters: {
             query?: never;
@@ -601,6 +638,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/store/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear all stored events */
+        post: operations["clear_store_api_v1_store_clear_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clear Store Legacy
+         * @deprecated
+         */
+        post: operations["clear_store_legacy_store_clear_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/query": {
         parameters: {
             query?: never;
@@ -729,36 +803,6 @@ export interface components {
             time_bucket_seconds?: number | null;
             /** Limit */
             limit: number;
-        };
-        /**
-         * AnalysisApiErrorDetail
-         * @description Stable, safe error envelope for analysis endpoints.
-         */
-        AnalysisApiErrorDetail: {
-            /** Code */
-            code: string;
-            /** Message */
-            message: string;
-            /** Request Id */
-            request_id: string;
-            /**
-             * Timestamp
-             * Format: date-time
-             */
-            timestamp: string;
-            /** Details */
-            details?: {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * AnalysisApiErrorResponse
-         * @description Backward-compatible analysis error response.
-         */
-        AnalysisApiErrorResponse: {
-            /** Detail */
-            detail: string;
-            error: components["schemas"]["AnalysisApiErrorDetail"];
         };
         /**
          * AnalysisApiRequest
@@ -1074,6 +1118,36 @@ export interface components {
             out_of_order_timestamp_count: number;
         };
         /**
+         * ApiErrorDetail
+         * @description Standard, safe API error envelope detail.
+         */
+        ApiErrorDetail: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ApiErrorResponse
+         * @description Standard API error response model used across all routes.
+         */
+        ApiErrorResponse: {
+            /** Detail */
+            detail: string;
+            error: components["schemas"]["ApiErrorDetail"];
+        };
+        /**
          * ApplicationHealth
          * @description Health snapshot for the application service.
          */
@@ -1163,6 +1237,26 @@ export interface components {
              * @default 0
              */
             maximum_analysis_duration_ms: number;
+            /**
+             * Requests Total
+             * @default 0
+             */
+            requests_total: number;
+            /**
+             * Slow Requests Total
+             * @default 0
+             */
+            slow_requests_total: number;
+            /**
+             * Average Request Duration Ms
+             * @default 0
+             */
+            average_request_duration_ms: number;
+            /**
+             * Maximum Request Duration Ms
+             * @default 0
+             */
+            maximum_request_duration_ms: number;
         };
         /**
          * ArchiveEntryInfo
@@ -2884,6 +2978,51 @@ export interface components {
             /** Normalized */
             normalized: boolean;
         };
+        /** PublicApiConfigApiResponse */
+        PublicApiConfigApiResponse: {
+            app: components["schemas"]["PublicAppConfigApiResponse"];
+            limits: components["schemas"]["PublicLimitsConfigApiResponse"];
+            capabilities: components["schemas"]["PublicCapabilitiesConfigApiResponse"];
+        };
+        /** PublicAppConfigApiResponse */
+        PublicAppConfigApiResponse: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Environment */
+            environment: string;
+        };
+        /** PublicCapabilitiesConfigApiResponse */
+        PublicCapabilitiesConfigApiResponse: {
+            /** Can Clear Store */
+            can_clear_store: boolean;
+            /** Can Delete Events */
+            can_delete_events: boolean;
+            /** Can Write Events Directly */
+            can_write_events_directly: boolean;
+            /** Includes Raw Message In Event Detail */
+            includes_raw_message_in_event_detail: boolean;
+            /** Includes Runtime Metrics */
+            includes_runtime_metrics: boolean;
+            /** Supports File Upload */
+            supports_file_upload: boolean;
+            /** Requires Authentication */
+            requires_authentication: boolean;
+            /** Uses Persistent Storage */
+            uses_persistent_storage: boolean;
+        };
+        /** PublicLimitsConfigApiResponse */
+        PublicLimitsConfigApiResponse: {
+            /** Max Upload Bytes */
+            max_upload_bytes: number;
+            /** Max Text Characters */
+            max_text_characters: number;
+            /** Max Page Size */
+            max_page_size: number;
+            /** Max Response Items */
+            max_response_items: number;
+        };
         /** QueryApiResponse */
         QueryApiResponse: {
             /**
@@ -2963,6 +3102,11 @@ export interface components {
             path?: string | null;
             /** Message Preview */
             message_preview?: string | null;
+        };
+        /** StoreClearRequest */
+        StoreClearRequest: {
+            /** Confirmation */
+            confirmation: string;
         };
         /** StoreStatisticsApiResponse */
         StoreStatisticsApiResponse: {
@@ -3308,6 +3452,46 @@ export interface operations {
             };
         };
     };
+    public_config_api_v1_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicApiConfigApiResponse"];
+                };
+            };
+        };
+    };
+    public_config_legacy_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicApiConfigApiResponse"];
+                };
+            };
+        };
+    };
     analyze_events_api_v1_analysis_post: {
         parameters: {
             query?: never;
@@ -3336,7 +3520,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3345,7 +3529,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Unprocessable Entity */
@@ -3354,7 +3538,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -3420,7 +3604,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3429,7 +3613,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description Unprocessable Entity */
@@ -3438,7 +3622,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisApiErrorResponse"];
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -4188,6 +4372,76 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_store_api_v1_store_clear_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreClearRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_store_legacy_store_clear_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreClearRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
                     };
                 };
             };

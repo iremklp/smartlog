@@ -324,9 +324,7 @@ function FileParseForm({
           return;
         }
         if (file.size > maxUploadBytes) {
-          setSizeError(
-            `Dosya boyutu limiti aşıldı. Maksimum ${maxUploadMiB.toFixed(1)} MiB.`
-          );
+          setSizeError(`Dosya boyutu limiti aşıldı. Maksimum ${maxUploadMiB.toFixed(1)} MiB.`);
           return;
         }
         setSizeError(null);
