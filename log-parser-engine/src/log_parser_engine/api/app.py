@@ -18,6 +18,7 @@ from .middleware import (
     request_id_middleware,
 )
 from .routes import router
+from .static_assets import SinglePageStaticFiles, resolve_frontend_dist
 
 
 def _resolve_cors_origins(options: ApplicationOptions) -> tuple[str, ...]:
@@ -28,6 +29,13 @@ def _resolve_cors_origins(options: ApplicationOptions) -> tuple[str, ...]:
             validated = ApplicationOptions(cors_allowed_origins=origins)
             return validated.cors_allowed_origins
     return options.cors_allowed_origins
+
+
+def _resolve_frontend_mode() -> str:
+    mode = os.getenv("LOG_PARSER_FRONTEND_MODE", "auto").strip().lower()
+    if mode in {"auto", "api-only", "require"}:
+        return mode
+    return "auto"
 
 
 def create_app(
@@ -58,5 +66,19 @@ def create_app(
     app.state.service = service
     app.middleware("http")(request_id_middleware)
     app.include_router(router)
+
+    frontend_mode = _resolve_frontend_mode()
+    frontend_dist = resolve_frontend_dist(
+        mode=frontend_mode,
+        env_path=os.getenv("LOG_PARSER_FRONTEND_DIST"),
+    )
+    if frontend_dist is not None:
+        # Use a dedicated mount class for SPA fallback while preserving API routes.
+        app.mount(
+            "/",
+            SinglePageStaticFiles(directory=str(frontend_dist), html=True),
+            name="frontend",
+        )
+
     register_exception_handlers(app)
     return app

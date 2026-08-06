@@ -48,6 +48,14 @@ poetry run uvicorn log_parser_engine.api.main:app --reload --port 8000
 - Enum values in JSON responses use lowercase/snake_case. Legacy uppercase and
   case-insensitive enum inputs remain accepted.
 
+Frontend static serving mode (same-origin foundation):
+
+- `LOG_PARSER_FRONTEND_MODE=auto|api-only|require` (default: `auto`)
+- `LOG_PARSER_FRONTEND_DIST=/path/to/dist` (optional explicit dist location)
+- `auto`: if dist is present it is served at `/` with SPA fallback.
+- `api-only`: static mount is disabled; backend only API serves.
+- `require`: startup fails when dist/index.html is missing.
+
 ### Structured Logging and Runtime Observability
 
 - Application logs are emitted as one-line JSON by default and are suitable for
@@ -75,6 +83,44 @@ OpenShift collector note:
   that tail container stdout/stderr.
 - No external shipper configuration is required in this repository; shipping is
   expected to be handled by cluster-level collectors.
+
+## Container (OpenShift Foundation)
+
+Repository includes a multi-stage [Containerfile](Containerfile):
+
+- `frontend-build`: builds React assets with `npm ci && npm run build`
+- `python-build`: installs backend package and runtime deps
+- `runtime`: minimal Python image serving API + same-origin frontend on `8080`
+
+OpenShift compatibility goals implemented:
+
+- no fixed runtime UID in image
+- arbitrary UID compatibility via `chgrp -R 0` and `chmod -R g=u`
+- root filesystem can be mounted read-only with writable `/tmp`
+- secrets are not copied into image layers (`.dockerignore` excludes `.env*`)
+
+Health and probe alignment:
+
+- app port: `8080`
+- liveness/readiness/startup endpoint: `GET /api/v1/health`
+- container `HEALTHCHECK` points to same endpoint
+
+Local smoke (Docker):
+
+```bash
+docker build -t log-parser-engine:ocf -f Containerfile .
+docker run --rm -p 8080:8080 --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m log-parser-engine:ocf
+curl -fsS http://localhost:8080/api/v1/health
+curl -I http://localhost:8080/
+```
+
+Local smoke (Podman):
+
+```bash
+podman build -t log-parser-engine:ocf -f Containerfile .
+podman run --rm -p 8080:8080 --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m log-parser-engine:ocf
+curl -fsS http://localhost:8080/api/v1/health
+```
 
 ### Main Endpoints
 

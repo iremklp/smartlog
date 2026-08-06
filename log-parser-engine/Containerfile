@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.7
+
+FROM node:20-alpine AS frontend-build
+WORKDIR /workspace/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM python:3.11-slim AS python-build
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /workspace
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install . "uvicorn[standard]==0.32.1"
+
+FROM python:3.11-slim AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HOME=/tmp \
+    TMPDIR=/tmp \
+    PORT=8080 \
+    LOG_PARSER_FRONTEND_MODE=require \
+    LOG_PARSER_FRONTEND_DIST=/opt/app/dist
+
+WORKDIR /opt/app
+COPY --from=python-build /usr/local /usr/local
+COPY --from=frontend-build /workspace/frontend/dist /opt/app/dist
+
+# OpenShift arbitrary UID compatibility: grant group-write/read mirrors to uid 0 group.
+RUN mkdir -p /tmp \
+    && chgrp -R 0 /opt/app /tmp \
+    && chmod -R g=u /opt/app /tmp
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health', timeout=3)"
+
+CMD ["uvicorn", "log_parser_engine.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
